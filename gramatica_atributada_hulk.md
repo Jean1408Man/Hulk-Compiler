@@ -1024,3 +1024,490 @@ binding       ::= ID (':' type)? '=' expr
 ---
 
 *Gramática atributada elaborada a partir de la especificación oficial del lenguaje HULK — Universidad de La Habana.*
+
+---
+
+## 20. Estructura de Nodos AST — Correspondencia con la Gramática
+
+Cada clase AST implementada corresponde a una o más producciones de la gramática. A continuación se documenta cada nodo con su sintaxis HULK, sus campos internos y la regla gramatical que representa.
+
+---
+
+### 20.1 Literales
+
+#### `Number`
+```
+expr → NUMBER
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `value` | `double` | Valor numérico de 32 bits |
+
+#### `String`
+```
+expr → STRING
+       STRING ::= '"' (CHAR | ESCAPE_SEQ)* '"'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `value` | `std::string` | Contenido literal de la cadena |
+
+#### `Boolean`
+```
+expr → 'true' | 'false'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `value` | `bool` | Valor booleano |
+
+---
+
+### 20.2 Operaciones Binarias
+
+#### `ArithmeticBinOp`
+```
+expr → expr ('+' | '-' | '*' | '/' | '^') expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `left` | `unique_ptr<ASTnode>` | Operando izquierdo |
+| `right` | `unique_ptr<ASTnode>` | Operando derecho |
+| `op` | `ArithmeticOp` | `Plus`, `Minus`, `Mult`, `Div`, `Pow` |
+
+#### `LogicBinOp`
+```
+expr → expr ('&' | '|') expr
+     | expr ('==' | '!=' | '<' | '>' | '<=' | '>=') expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `left` | `unique_ptr<ASTnode>` | Operando izquierdo |
+| `right` | `unique_ptr<ASTnode>` | Operando derecho |
+| `op` | `LogicOp` | `And`, `Or`, `Greater`, `Less`, `Equal`, `NotEqual`, `GreaterEqual`, `LessEqual` |
+
+#### `StringBinOp`
+```
+expr → expr ('@' | '@@') expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `left` | `unique_ptr<ASTnode>` | Operando izquierdo |
+| `right` | `unique_ptr<ASTnode>` | Operando derecho |
+| `op` | `StringOp` | `Concat` (`@`), `SpaceConcat` (`@@`) |
+
+---
+
+### 20.3 Operaciones Unarias
+
+#### `ArithmeticUnaryOp`
+```
+expr → '-' expr
+     | 'sqrt' '(' expr ')'
+     | 'sin'  '(' expr ')'
+     | 'cos'  '(' expr ')'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `operand` | `unique_ptr<ASTnode>` | Operando |
+| `type` | `ArithUnaryType` | `Minus`, `Sin`, `Cos`, `Sqrt` |
+
+#### `LogicUnaryOp`
+```
+expr → '!' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `operand` | `unique_ptr<ASTnode>` | Operando booleano |
+
+---
+
+### 20.4 Variables y Alcance
+
+#### `VariableBinding`
+```
+binding → ID '=' expr
+        | ID ':' type '=' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre de la variable |
+| `typeAnnotation` | `std::string` | Anotación de tipo (vacío si ausente) |
+| `initializer` | `unique_ptr<ASTnode>` | Expresión de inicialización |
+
+#### `LetIn`
+```
+expr → 'let' binding (',' binding)* 'in' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `bindings` | `vector<unique_ptr<VariableBinding>>` | Uno o más bindings |
+| `body` | `unique_ptr<ASTnode>` | Expresión cuerpo |
+
+#### `VariableReference`
+```
+expr → ID
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre de la variable referenciada |
+
+#### `DestructiveAssign`
+```
+expr → ID ':=' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre de la variable destino |
+| `value` | `unique_ptr<ASTnode>` | Nueva expresión de valor |
+
+#### `DestructiveAssignMember`
+```
+expr → expr '.' ID ':=' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `object` | `unique_ptr<ASTnode>` | Objeto receptor (normalmente `self`) |
+| `memberName` | `std::string` | Nombre del atributo destino |
+| `value` | `unique_ptr<ASTnode>` | Nueva expresión de valor |
+
+---
+
+### 20.5 Funciones
+
+#### `Param` *(struct auxiliar)*
+```
+param → ID
+      | ID ':' type
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre del parámetro |
+| `typeAnnotation` | `std::string` | Tipo anotado (vacío si ausente) |
+
+#### `FunctionDecl`
+```
+decl → 'function' ID '(' params? ')'             '=>' expr ';'
+     | 'function' ID '(' params? ')' ':' type     '=>' expr ';'
+     | 'function' ID '(' params? ')'             block
+     | 'function' ID '(' params? ')' ':' type     block
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre de la función |
+| `params` | `vector<Param>` | Lista de parámetros |
+| `returnTypeAnnotation` | `std::string` | Tipo de retorno anotado (vacío si ausente) |
+| `body` | `unique_ptr<ASTnode>` | Expresión simple o `ExprBlock` |
+
+#### `FunctionCall`
+```
+expr → ID '(' args? ')'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre de la función invocada |
+| `args` | `vector<unique_ptr<ASTnode>>` | Argumentos de la llamada |
+
+#### `Lambda`
+```
+expr → '(' params? ')'           '=>' expr
+     | '(' params? ')' ':' type  '=>' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `params` | `vector<Param>` | Parámetros de la lambda |
+| `returnTypeAnnotation` | `std::string` | Tipo de retorno anotado (vacío si ausente) |
+| `body` | `unique_ptr<ASTnode>` | Cuerpo de la lambda |
+
+---
+
+### 20.6 Control de Flujo
+
+#### `IfStmt`
+```
+expr → 'if' '(' expr ')' expr
+       ('elif' '(' expr ')' expr)*
+       'else' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `condition` | `unique_ptr<ASTnode>` | Condición principal |
+| `thenBranch` | `unique_ptr<ASTnode>` | Rama `then` |
+| `elifBranches` | `vector<ElifBranch>` | Ramas `elif` (pueden ser cero) |
+| `elseBranch` | `unique_ptr<ASTnode>` | Rama `else` |
+
+#### `ElifBranch` *(struct auxiliar)*
+```
+'elif' '(' expr ')' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `condition` | `unique_ptr<ASTnode>` | Condición del elif |
+| `body` | `unique_ptr<ASTnode>` | Cuerpo del elif |
+
+#### `WhileStmt`
+```
+expr → 'while' '(' expr ')' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `condition` | `unique_ptr<ASTnode>` | Condición del bucle |
+| `body` | `unique_ptr<ASTnode>` | Cuerpo del bucle |
+
+#### `For`
+```
+expr → 'for' '(' ID 'in' expr ')' expr
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `varName` | `std::string` | Variable de iteración |
+| `iterable` | `unique_ptr<ASTnode>` | Expresión iterable |
+| `body` | `unique_ptr<ASTnode>` | Cuerpo del bucle |
+
+---
+
+### 20.7 Tipos (Clases)
+
+#### `TypeMemberAttribute`
+```
+member → ID '=' expr ';'
+       | ID ':' type '=' expr ';'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre del atributo |
+| `typeAnnotation` | `std::string` | Tipo anotado (vacío si ausente) |
+| `initializer` | `unique_ptr<ASTnode>` | Expresión de inicialización |
+
+#### `TypeMemberMethod`
+```
+member → ID '(' params? ')'           '=>' expr ';'
+       | ID '(' params? ')' ':' type  '=>' expr ';'
+       | ID '(' params? ')'           block
+       | ID '(' params? ')' ':' type  block
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre del método |
+| `params` | `vector<Param>` | Parámetros del método |
+| `returnTypeAnnotation` | `std::string` | Tipo de retorno anotado (vacío si ausente) |
+| `body` | `unique_ptr<ASTnode>` | Cuerpo del método |
+
+#### `TypeMember` *(struct auxiliar)*
+```
+-- wrapper que mantiene el orden de declaración de atributos y métodos
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `kind` | `Kind` | `Attribute` o `Method` |
+| `node` | `unique_ptr<ASTnode>` | `TypeMemberAttribute` o `TypeMemberMethod` |
+
+#### `TypeDecl`
+```
+decl → 'type' ID                                         '{' member* '}'
+     | 'type' ID '(' params? ')'                         '{' member* '}'
+     | 'type' ID                   'inherits' ID          '{' member* '}'
+     | 'type' ID '(' params? ')'  'inherits' ID '(' args? ')' '{' member* '}'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre del tipo |
+| `ctorParams` | `vector<Param>` | Parámetros del constructor (puede estar vacío) |
+| `parentName` | `std::string` | Nombre del tipo padre (vacío si no hereda) |
+| `parentArgs` | `vector<unique_ptr<ASTnode>>` | Argumentos al constructor padre |
+| `members` | `vector<TypeMember>` | Atributos y métodos en orden de declaración |
+
+#### `NewExpr`
+```
+expr → 'new' ID '(' args? ')'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `typeName` | `std::string` | Nombre del tipo a instanciar |
+| `args` | `vector<unique_ptr<ASTnode>>` | Argumentos al constructor |
+
+#### `MemberAccess`
+```
+expr → expr '.' ID
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `object` | `unique_ptr<ASTnode>` | Expresión objeto |
+| `memberName` | `std::string` | Nombre del atributo accedido |
+
+#### `MethodCall`
+```
+expr → expr '.' ID '(' args? ')'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `object` | `unique_ptr<ASTnode>` | Expresión objeto |
+| `methodName` | `std::string` | Nombre del método invocado |
+| `args` | `vector<unique_ptr<ASTnode>>` | Argumentos de la llamada |
+
+#### `IsExpr`
+```
+expr → expr 'is' ID
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `expr` | `unique_ptr<ASTnode>` | Expresión a comprobar |
+| `typeName` | `std::string` | Nombre del tipo contra el que se comprueba |
+
+#### `AsExpr`
+```
+expr → expr 'as' ID
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `expr` | `unique_ptr<ASTnode>` | Expresión a convertir |
+| `typeName` | `std::string` | Tipo destino del downcast |
+
+---
+
+### 20.8 Protocolos
+
+#### `ProtocolMethodSig` *(struct auxiliar)*
+```
+method_sig → ID '(' params? ')' ':' type ';'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre del método |
+| `params` | `vector<Param>` | Parámetros de la firma |
+| `returnType` | `std::string` | Tipo de retorno (obligatorio en protocolos) |
+
+#### `ProtocolDecl`
+```
+decl → 'protocol' ID                    '{' method_sig* '}'
+     | 'protocol' ID 'extends' ID       '{' method_sig* '}'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | `std::string` | Nombre del protocolo |
+| `parentName` | `std::string` | Nombre del protocolo padre (vacío si no extiende) |
+| `methodSigs` | `vector<ProtocolMethodSig>` | Firmas de métodos requeridos |
+
+---
+
+### 20.9 Vectores
+
+#### `VectorLiteral`
+```
+expr → '[' expr (',' expr)* ']'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `elements` | `vector<unique_ptr<ASTnode>>` | Expresiones de los elementos |
+
+#### `VectorGenerator`
+```
+expr → '[' expr '|' ID 'in' expr ']'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `body` | `unique_ptr<ASTnode>` | Expresión generadora (usa `varName`) |
+| `varName` | `std::string` | Variable de iteración |
+| `iterable` | `unique_ptr<ASTnode>` | Fuente iterable |
+
+#### `VectorIndex`
+```
+expr → expr '[' expr ']'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `vector` | `unique_ptr<ASTnode>` | Expresión vector |
+| `index` | `unique_ptr<ASTnode>` | Expresión índice (debe ser `Number`) |
+
+---
+
+### 20.10 Funciones Builtin
+
+#### `Print`
+```
+expr → 'print' '(' expr ')'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `expr` | `unique_ptr<ASTnode>` | Expresión a imprimir y retornar |
+
+#### `BuiltinCall`
+```
+expr → 'exp'   '(' expr ')'
+     | 'log'   '(' expr ',' expr ')'
+     | 'rand'  '(' ')'
+     | 'range' '(' expr ',' expr ')'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `func` | `BuiltinFunc` | `Exp`, `Log`, `Rand`, `Range` |
+| `args` | `vector<unique_ptr<ASTnode>>` | Argumentos de la función |
+
+> `sqrt`, `sin`, `cos` y la negación unaria están cubiertos por `ArithmeticUnaryOp`.
+
+---
+
+### 20.11 Nodos Especiales de Tipos
+
+#### `SelfRef`
+```
+expr → 'self'
+```
+Sin campos. Representa la instancia actual dentro de un método. No es asignable.
+
+#### `BaseCall`
+```
+expr → 'base' '(' args? ')'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `args` | `vector<unique_ptr<ASTnode>>` | Argumentos al método del padre |
+
+---
+
+### 20.12 Bloques y Estructura del Programa
+
+#### `Group`
+```
+expr → '(' expr ')'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `expr` | `unique_ptr<ASTnode>` | Expresión agrupada |
+
+#### `ExprBlock`
+```
+block → '{' (expr ';')+ '}'
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `exprs` | `vector<unique_ptr<ASTnode>>` | Secuencia de expresiones |
+
+> El tipo del bloque es el tipo de la última expresión (`GetLast()`).
+
+#### `Program`
+```
+program → decl* expr ';'?
+```
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `declarations` | `vector<unique_ptr<ASTnode>>` | `FunctionDecl`, `TypeDecl`, `ProtocolDecl` |
+| `globalExpr` | `unique_ptr<ASTnode>` | Expresión global (obligatoria, punto de entrada) |
+
+---
+
+### 20.13 Mapa de clases por categoría
+
+| Categoría | Clases |
+|-----------|--------|
+| **Literales** | `Number`, `String`, `Boolean` |
+| **Aritmética** | `ArithmeticBinOp`, `ArithmeticUnaryOp` |
+| **Lógica** | `LogicBinOp`, `LogicUnaryOp` |
+| **Cadenas** | `StringBinOp` |
+| **Variables** | `VariableBinding`, `LetIn`, `VariableReference`, `DestructiveAssign`, `DestructiveAssignMember` |
+| **Funciones** | `Param`, `FunctionDecl`, `FunctionCall`, `Lambda` |
+| **Control de flujo** | `IfStmt`, `ElifBranch`, `WhileStmt`, `For` |
+| **Tipos** | `TypeMember`, `TypeMemberAttribute`, `TypeMemberMethod`, `TypeDecl`, `NewExpr`, `MemberAccess`, `MethodCall`, `IsExpr`, `AsExpr` |
+| **Protocolos** | `ProtocolMethodSig`, `ProtocolDecl` |
+| **Vectores** | `VectorLiteral`, `VectorGenerator`, `VectorIndex` |
+| **Builtin** | `Print`, `BuiltinCall` |
+| **Especiales** | `SelfRef`, `BaseCall`, `Group`, `ExprBlock`, `Program` |
