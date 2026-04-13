@@ -59,6 +59,7 @@ enum class TokenKind {
     And,               // &
     Or,                // |
     Not,               // !
+    DoubleConcat,   // @@
     Concat,            // @
     FatArrow,          // =>
 

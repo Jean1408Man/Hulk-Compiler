@@ -196,6 +196,9 @@ Token Lexer::scan_operator_or_delimiter() {
     if (cursor_.match("=>")) {
         return make_token(TokenKind::FatArrow, "=>", start, cursor_.position());
     }
+    if (cursor_.match("@@")) {
+    return make_token(TokenKind::DoubleConcat, "@@", start, cursor_.position());
+}
 
     const char c = cursor_.advance();
     const hulk::common::Position end = cursor_.position();
