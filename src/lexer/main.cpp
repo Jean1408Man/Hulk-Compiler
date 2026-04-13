@@ -68,6 +68,7 @@ const char* to_string(TokenKind kind) {
         case TokenKind::And: return "And";
         case TokenKind::Or: return "Or";
         case TokenKind::Not: return "Not";
+        case TokenKind::DoubleConcat: return "DoubleConcat";
         case TokenKind::Concat: return "Concat";
         case TokenKind::FatArrow: return "FatArrow";
 
