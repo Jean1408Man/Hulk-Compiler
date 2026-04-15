@@ -1,0 +1,6 @@
+type Point(x: Number, y: Number) {
+  x: Number = x;
+  y: Number = y;
+  norm() => x * x + y * y;
+}
+new Point(1, 2)

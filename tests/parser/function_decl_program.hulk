@@ -1,0 +1,2 @@
+function inc(x: Number): Number => x + 1;
+inc(41)
