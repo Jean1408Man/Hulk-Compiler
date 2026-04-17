@@ -5,14 +5,14 @@
 
 namespace Hulk {
 
-    enum class ArithmeticOp { Plus, Minus, Mult, Div, Pow };
+    enum class ArithmeticOp { Plus, Minus, Mult, Div, Mod, Pow };
 
     class ArithmeticBinOp : public BinOp {
     private:
         ArithmeticOp op;
 
     public:
-        ArithmeticBinOp(std::unique_ptr<ASTnode> left, ArithmeticOp operation, std::unique_ptr<ASTnode> right);
+        ArithmeticBinOp(std::unique_ptr<Expr> left, ArithmeticOp operation, std::unique_ptr<Expr> right);
 
         ArithmeticOp GetOperator() const { return op; }
         
