@@ -1,0 +1,4 @@
+// Corte 7 — Test err_01: tipo no declarado
+// Esperado: error semántico "tipo 'Fantasma' no declarado" con span correcto
+
+let x = new Fantasma() in print(x);
