@@ -3,11 +3,63 @@
 
 namespace Hulk {
 
+// Constructor — registra tipos builtin y funciones/constantes de dominio
+SemanticTables::SemanticTables() {
+    // Tipos builtin de la jerarquía raíz
+    register_builtin_type("Object",  "");
+    register_builtin_type("Number",  "Object");
+    register_builtin_type("String",  "Object");
+    register_builtin_type("Boolean", "Object");
+
+    // Funciones builtin (nombre → aridad)
+    //   arity -1 = variadic (no se chequea aridad)
+    for (auto& [n, a] : std::initializer_list<std::pair<const char*, int>>{
+            {"print",  1},
+            {"sqrt",   1},
+            {"sin",    1},
+            {"cos",    1},
+            {"exp",    1},
+            {"log",    2},
+            {"rand",   0},
+            {"range",  2},
+        })
+    {
+        BuiltinFuncInfo bfi;
+        bfi.name  = n;
+        bfi.arity = a;
+        builtin_funcs_[bfi.name] = bfi;
+    }
+
+    // Constantes builtin
+    for (auto& [n, t] : std::initializer_list<std::pair<const char*, const char*>>{
+            {"PI", "Number"},
+            {"E",  "Number"},
+        })
+    {
+        BuiltinConstInfo bci;
+        bci.name = n;
+        bci.type = t;
+        builtin_consts_[bci.name] = bci;
+    }
+}
+
+void SemanticTables::register_builtin_type(const std::string& name,
+                                           const std::string& parent) {
+    SemanticTypeInfo info;
+    info.name        = name;
+    info.parent_name = parent;
+    info.is_builtin  = true;
+    info.decl        = nullptr;
+    types_.emplace(name, std::move(info));
+}
+
 // Registro
 bool SemanticTables::register_type(SemanticTypeInfo info) {
-    const std::string name = info.name;
-    auto [_, inserted] = types_.emplace(name, std::move(info));
-    return inserted;
+    // Rechazar redeclaración de tipos builtin
+    auto it = types_.find(info.name);
+    if (it != types_.end()) return false;   // duplicado (incluye builtins)
+    types_.emplace(info.name, std::move(info));
+    return true;
 }
 
 bool SemanticTables::register_func(SemanticFuncInfo info) {
@@ -30,6 +82,16 @@ SemanticTypeInfo* SemanticTables::lookup_type(const std::string& name) {
 const SemanticFuncInfo* SemanticTables::lookup_func(const std::string& name) const {
     auto it = funcs_.find(name);
     return (it != funcs_.end()) ? &it->second : nullptr;
+}
+
+const BuiltinFuncInfo* SemanticTables::lookup_builtin_func(const std::string& name) const {
+    auto it = builtin_funcs_.find(name);
+    return (it != builtin_funcs_.end()) ? &it->second : nullptr;
+}
+
+const BuiltinConstInfo* SemanticTables::lookup_builtin_const(const std::string& name) const {
+    auto it = builtin_consts_.find(name);
+    return (it != builtin_consts_.end()) ? &it->second : nullptr;
 }
 
 // Jerarquía de herencia

@@ -75,6 +75,7 @@ int main(int argc, char* argv[]) {
             }
             std::cout << "Tipos registrados:\n";
             for (auto& [name, info] : sem.tables().all_types()) {
+                if (info.is_builtin) continue;
                 std::cout << "  type " << name;
                 if (!info.parent_name.empty())
                     std::cout << " inherits " << info.parent_name;

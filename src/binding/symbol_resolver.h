@@ -10,6 +10,7 @@
 #include <memory>
 #include <unordered_map>
 #include <string>
+#include <vector>
 
 namespace Hulk {
     class Program;
@@ -51,6 +52,7 @@ namespace Hulk {
     class StringBinOp;
     class ArithmeticUnaryOp;
     class LogicUnaryOp;
+    struct Param;
 }
 
 namespace Hulk {
@@ -61,24 +63,30 @@ namespace Hulk {
     // Se guarda en el mapa externo: Expr* → ResolutionResult.
     // -----------------------------------------------------------------------
     enum class ResolutionKind {
-        Variable,    // VariableBinding*
-        Param,       // const Param*
-        Function,    // FunctionDecl*
-        Type,        // SemanticTypeInfo*
-        Method,      // SemanticMethodInfo*
-        Attribute,   // SemanticAttrInfo*
-        Unresolved   // error — no se encontró
+        Variable,       // VariableBinding*
+        Param,          // const Param*
+        Synthetic,      // SyntheticSymbol* (for-var, self, etc.)
+        Function,       // FunctionDecl*
+        BuiltinFunction,// BuiltinFuncInfo*
+        BuiltinConstant,// BuiltinConstInfo*
+        Type,           // SemanticTypeInfo*
+        Method,         // SemanticMethodInfo*
+        Attribute,      // SemanticAttrInfo*
+        Unresolved      // error — no se encontró
     };
 
     struct ResolutionResult {
         ResolutionKind kind = ResolutionKind::Unresolved;
         union {
-            VariableBinding*         binding;
-            const Param*             param;
-            FunctionDecl*            func_decl;
-            const SemanticTypeInfo*  type_info;
+            VariableBinding*          binding;
+            const Param*              param;
+            SyntheticSymbol*          synthetic;
+            FunctionDecl*             func_decl;
+            const BuiltinFuncInfo*    builtin_func;
+            const BuiltinConstInfo*   builtin_const;
+            const SemanticTypeInfo*   type_info;
             const SemanticMethodInfo* method_info;
-            const SemanticAttrInfo*  attr_info;
+            const SemanticAttrInfo*   attr_info;
         };
         // Constructor por defecto — Unresolved
         ResolutionResult() : kind(ResolutionKind::Unresolved), binding(nullptr) {}
@@ -89,8 +97,17 @@ namespace Hulk {
         static ResolutionResult from_param(const Param* p) {
             ResolutionResult r; r.kind = ResolutionKind::Param; r.param = p; return r;
         }
+        static ResolutionResult from_synthetic(SyntheticSymbol* s) {
+            ResolutionResult r; r.kind = ResolutionKind::Synthetic; r.synthetic = s; return r;
+        }
         static ResolutionResult from_func(FunctionDecl* f) {
             ResolutionResult r; r.kind = ResolutionKind::Function; r.func_decl = f; return r;
+        }
+        static ResolutionResult from_builtin_func(const BuiltinFuncInfo* bf) {
+            ResolutionResult r; r.kind = ResolutionKind::BuiltinFunction; r.builtin_func = bf; return r;
+        }
+        static ResolutionResult from_builtin_const(const BuiltinConstInfo* bc) {
+            ResolutionResult r; r.kind = ResolutionKind::BuiltinConstant; r.builtin_const = bc; return r;
         }
         static ResolutionResult from_type(const SemanticTypeInfo* t) {
             ResolutionResult r; r.kind = ResolutionKind::Type; r.type_info = t; return r;
@@ -101,6 +118,19 @@ namespace Hulk {
         static ResolutionResult from_attr(const SemanticAttrInfo* a) {
             ResolutionResult r; r.kind = ResolutionKind::Attribute; r.attr_info = a; return r;
         }
+    };
+
+    // -----------------------------------------------------------------------
+    // ResolverContext — contexto semántico del resolver al visitar nodos.
+    //
+    // Permite distinguir en qué parte del programa estamos para validar
+    // correctamente el uso de self, base, etc.
+    // -----------------------------------------------------------------------
+    enum class ResolverContext {
+        Global,             // nivel de programa / funciones globales
+        Function,           // dentro de una función global
+        TypeAttributeInit,  // dentro del inicializador de un atributo de tipo
+        Method              // dentro del cuerpo de un método de tipo
     };
 
     // -----------------------------------------------------------------------
@@ -150,10 +180,20 @@ namespace Hulk {
         std::unordered_map<Expr*, ResolutionResult> resolution_map_;
         bool has_errors_ = false;
 
+        // Contexto semántico actual
+        ResolverContext context_ = ResolverContext::Global;
+
         // Nombre del tipo en cuyo cuerpo estamos (para self, override, etc.)
         std::string current_type_name_;
         // Nombre de la función/método actual (para errores contextuales)
         std::string current_func_name_;
+        // Nombre del método actual (para base())
+        std::string current_method_name_;
+        // Símbolo sintético self del método actual (para resolution_map_)
+        SyntheticSymbol* current_self_symbol_ = nullptr;
+
+        // Almacén de símbolos sintéticos (propiedad del resolver)
+        std::vector<std::unique_ptr<SyntheticSymbol>> synthetic_symbols_;
 
         // Helpers de scope
         void push_scope();
@@ -184,8 +224,19 @@ namespace Hulk {
         // Pase 3 — Chequeos globales sobre las tablas ya construidas
         void run_checks();
         void check_inheritance();   // padre declarado + sin ciclos
-        void check_methods();       // duplicados + override válido
+        void check_methods();       // duplicados + override válido con firma
         void check_arities();       // aridades de FunctionCall y NewExpr (via tablas)
+
+        // Helpers de validación
+        bool is_known_type_name(const std::string& name) const;
+        void check_type_annotation(const hulk::common::Span& span,
+                                   const std::string& type_name);
+        void check_duplicate_params(const std::vector<Param>& params,
+                                    const hulk::common::Span& span,
+                                    const std::string& owner);
+        const SemanticAttrInfo* find_attribute_in_ancestors(
+                                    const std::string& type_name,
+                                    const std::string& attr_name) const;
 
         // Pase 2 — Resolver referencias (ExprVisitor)
 

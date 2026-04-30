@@ -38,6 +38,7 @@ namespace Hulk {
         std::vector<SemanticAttrInfo>                        attributes;
         std::unordered_map<std::string, SemanticMethodInfo>  methods;
         TypeDecl*           decl = nullptr;  // puntero al nodo original (para spans en errores)
+        bool                is_builtin = false; // true para Object, Number, String, Boolean
     };
 
 } 

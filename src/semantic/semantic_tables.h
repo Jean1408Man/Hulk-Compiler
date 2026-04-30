@@ -11,6 +11,20 @@
 namespace Hulk {
 
     // -----------------------------------------------------------------------
+    // Información de funciones builtin (sqrt, sin, print, etc.)
+    // -----------------------------------------------------------------------
+    struct BuiltinFuncInfo {
+        std::string name;
+        int         arity;   // -1 = variadic
+    };
+
+    // Información de constantes builtin (PI, E)
+    struct BuiltinConstInfo {
+        std::string name;
+        std::string type;   // "Number", "String", etc.
+    };
+
+    // -----------------------------------------------------------------------
     // SemanticTables — contenedor de todas las tablas de análisis estático.
     //
     // Construido por el SymbolResolver (Pase 1) y consumido por:
@@ -20,10 +34,16 @@ namespace Hulk {
     // -----------------------------------------------------------------------
     class SemanticTables {
     public:
+        // Constructor: pre-registra tipos builtin y funciones/constantes builtin.
+        SemanticTables();
+
         // Registro (llamado durante Pase 1 del SymbolResolver)
 
         // Devuelve false si ya existía un tipo con ese nombre (duplicado).
         bool register_type(SemanticTypeInfo info);
+
+        // Registro interno de tipos builtin (solo usa constructor)
+        void register_builtin_type(const std::string& name, const std::string& parent);
 
         // Devuelve false si ya existía una función con ese nombre (duplicado).
         bool register_func(SemanticFuncInfo info);
@@ -36,6 +56,10 @@ namespace Hulk {
 
         // nullptr si no existe.
         const SemanticFuncInfo* lookup_func(const std::string& name) const;
+
+        // Builtins
+        const BuiltinFuncInfo*   lookup_builtin_func(const std::string& name) const;
+        const BuiltinConstInfo*  lookup_builtin_const(const std::string& name) const;
 
         // Jerarquía de herencia
 
@@ -61,8 +85,10 @@ namespace Hulk {
         const std::unordered_map<std::string, SemanticFuncInfo>& all_funcs() const;
 
     private:
-        std::unordered_map<std::string, SemanticTypeInfo> types_;
-        std::unordered_map<std::string, SemanticFuncInfo> funcs_;
+        std::unordered_map<std::string, SemanticTypeInfo>  types_;
+        std::unordered_map<std::string, SemanticFuncInfo>  funcs_;
+        std::unordered_map<std::string, BuiltinFuncInfo>   builtin_funcs_;
+        std::unordered_map<std::string, BuiltinConstInfo>  builtin_consts_;
 
         // Auxiliar para detección de ciclos — DFS con conjunto de visitados
         bool has_cycle_impl(const std::string& name,
