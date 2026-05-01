@@ -61,7 +61,8 @@ SEMANTIC_SRCS := \
 	src/semantic/analyzer.cpp \
 	src/binding/symbol_resolver.cpp \
 	src/inference/hulk_type.cpp \
-	src/inference/type_inferencer.cpp
+	src/inference/type_inferencer.cpp \
+	src/typecheck/type_checker.cpp
 
 SEMANTIC_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SEMANTIC_SRCS))
 
@@ -174,14 +175,20 @@ semantic: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS)
 		-o hulk_semantic
 
 semantic-tests: semantic
-	@echo "=== Corte 7: chequeos semánticos — programas válidos ==="; \
+	@echo "=== chequeos semánticos — programas válidos ==="; \
 	for f in tests/semantic/ok_*.hulk; do \
 		echo "----- $$f -----"; \
 		./hulk_semantic $$f || true; \
 		echo; \
 	done; \
-	echo "=== Corte 7: chequeos semánticos — programas con error ==="; \
+	echo "=== chequeos semánticos — programas con error ==="; \
 	for f in tests/semantic/err_*.hulk; do \
+		echo "----- $$f -----"; \
+		./hulk_semantic $$f 1>/dev/null; \
+		echo; \
+	done; \
+	echo "=== chequeos semánticos de tipo ==="; \
+	for f in tests/typecheck/*.hulk; do \
 		echo "----- $$f -----"; \
 		./hulk_semantic $$f 1>/dev/null; \
 		echo; \

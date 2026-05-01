@@ -41,6 +41,9 @@ namespace Hulk {
         bool operator==(const HulkType& other) const;
         bool operator!=(const HulkType& other) const;
 
+        // A conforma a B si A == B o A es subtipo de B.
+        bool conforms_to(const HulkType& other, const class SemanticTables& tables) const;
+
         std::string to_string() const;
 
     private:
@@ -48,6 +51,6 @@ namespace Hulk {
         std::string name_; // Solo usado si kind_ == Object
     };
 
-} // namespace Hulk
+}
 
-#endif // HULK_INFERENCE_TYPE_H
+#endif

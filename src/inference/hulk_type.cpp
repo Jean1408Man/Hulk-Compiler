@@ -1,4 +1,5 @@
 #include "hulk_type.h"
+#include "../semantic/semantic_tables.h"
 
 namespace Hulk {
 
@@ -31,4 +32,18 @@ namespace Hulk {
         }
     }
 
-} // namespace Hulk
+    bool HulkType::conforms_to(const HulkType& other, const SemanticTables& tables) const {
+        if (is_error() || other.is_error()) return true; // Evitar cascadas de errores
+        if (is_unknown() || other.is_unknown()) return true; // Durante inferencia permitimos
+        if (*this == other) return true;
+
+        if (other.kind() == Kind::Object && other.name() == "Object") return true;
+
+        if (kind_ == Kind::Object && other.kind() == Kind::Object) {
+            return tables.is_subtype(name_, other.name());
+        }
+
+        return false;
+    }
+
+}

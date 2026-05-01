@@ -1,6 +1,7 @@
 #include "analyzer.h"
 #include "../ast/others/program.h"
 #include "../inference/type_inferencer.h"
+#include "../typecheck/type_checker.h"
 
 namespace Hulk {
 
@@ -15,13 +16,12 @@ bool SemanticAnalyzer::analyze(Program& program) {
     const bool ok = resolver_->run(program);
     has_errors_ = !ok;
 
-    // Corte 8: Inferencia de tipos, solo si la resolución de símbolos pasó bien
-    // o parcialmente para intentar recuperar. Idealmente corremos siempre.
     inferencer_ = std::make_unique<TypeInferencer>(tables_, resolver_->resolution_map(), engine_);
     inferencer_->infer(program);
     
-    // Si la inferencia generó errores, actualizamos has_errors_
-    // La diagnostic engine ya tiene el estado de si hay errores, pero lo reflejamos aquí
+    type_checker_ = std::make_unique<TypeChecker>(tables_, inferencer_->type_map(), resolver_->resolution_map(), engine_);
+    type_checker_->check(program);
+
     if (engine_.has_errors()) {
         has_errors_ = true;
     }

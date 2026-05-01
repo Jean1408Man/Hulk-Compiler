@@ -11,6 +11,7 @@
 namespace Hulk { 
     class Program; 
     class TypeInferencer;
+    class TypeChecker;
 }
 
 namespace Hulk {
@@ -56,6 +57,7 @@ namespace Hulk {
         SemanticTables                  tables_;
         std::unique_ptr<SymbolResolver> resolver_;
         std::unique_ptr<TypeInferencer> inferencer_;
+        std::unique_ptr<TypeChecker>    type_checker_;
         bool                            has_errors_ = false;
     };
 
