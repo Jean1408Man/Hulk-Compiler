@@ -76,9 +76,16 @@ namespace Hulk {
         std::string find_ancestor(const std::string& type_name,
                                   const std::string& target) const;
 
+        // Encuentra el ancestro común más bajo (LCA) entre dos tipos.
+        std::string find_lca(const std::string& a, const std::string& b) const;
+
         // ¿Existe el método 'method_name' en 'type_name' o en algún ancestro?
         const SemanticMethodInfo* find_method(const std::string& type_name,
                                               const std::string& method_name) const;
+
+        // ¿Existe el atributo 'attr_name' en 'type_name' o en algún ancestro?
+        const SemanticAttrInfo* find_attribute(const std::string& type_name,
+                                               const std::string& attr_name) const;
 
         // Iteración (para chequeos globales)
         const std::unordered_map<std::string, SemanticTypeInfo>& all_types() const;

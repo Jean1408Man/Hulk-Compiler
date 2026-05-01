@@ -59,7 +59,9 @@ SEMANTIC_SRCS := \
 	src/objects/hulk_value.cpp \
 	src/semantic/semantic_tables.cpp \
 	src/semantic/analyzer.cpp \
-	src/binding/symbol_resolver.cpp
+	src/binding/symbol_resolver.cpp \
+	src/inference/hulk_type.cpp \
+	src/inference/type_inferencer.cpp
 
 SEMANTIC_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SEMANTIC_SRCS))
 

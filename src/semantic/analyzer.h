@@ -3,10 +3,15 @@
 
 #include "semantic_tables.h"
 #include "../binding/symbol_resolver.h"
+#include "../inference/hulk_type.h"
 #include "../common/diagnosticEngine.hpp"
 #include <memory>
+#include <unordered_map>
 
-namespace Hulk { class Program; }
+namespace Hulk { 
+    class Program; 
+    class TypeInferencer;
+}
 
 namespace Hulk {
 
@@ -31,6 +36,7 @@ namespace Hulk {
     class SemanticAnalyzer {
     public:
         explicit SemanticAnalyzer(hulk::common::DiagnosticEngine& engine);
+        ~SemanticAnalyzer();
 
         // Ejecuta el análisis semántico completo sobre el programa.
         // Devuelve true si no hubo errores.
@@ -41,6 +47,7 @@ namespace Hulk {
         SemanticTables&       tables()       { return tables_; }
 
         const std::unordered_map<Expr*, ResolutionResult>& resolution_map() const;
+        const std::unordered_map<Expr*, HulkType>& type_map() const;
 
         bool has_errors() const { return has_errors_; }
 
@@ -48,6 +55,7 @@ namespace Hulk {
         hulk::common::DiagnosticEngine& engine_;
         SemanticTables                  tables_;
         std::unique_ptr<SymbolResolver> resolver_;
+        std::unique_ptr<TypeInferencer> inferencer_;
         bool                            has_errors_ = false;
     };
 

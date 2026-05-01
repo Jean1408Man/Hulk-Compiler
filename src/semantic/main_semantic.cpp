@@ -66,11 +66,23 @@ int main(int argc, char* argv[]) {
         if (ok) {
             // Resumen de lo registrado — útil para depuración
             std::cout << "\n=== Análisis semántico OK ===\n";
-            std::cout << "Funciones registradas:\n";
+            std::cout << "Funciones registradas e inferidas:\n";
             for (auto& [name, info] : sem.tables().all_funcs()) {
                 std::cout << "  function " << name << "(" << info.params.size() << " params)";
-                if (!info.return_type_annotation.empty())
-                    std::cout << " : " << info.return_type_annotation;
+                
+                // Buscar tipo inferido si no hay anotación
+                std::string type_str = info.return_type_annotation;
+                if (type_str.empty() && info.body) {
+                    auto it = sem.type_map().find(info.body);
+                    if (it != sem.type_map().end()) {
+                        type_str = it->second.to_string();
+                    }
+                }
+                
+                if (!type_str.empty())
+                    std::cout << " : " << type_str;
+                else
+                    std::cout << " : Unknown";
                 std::cout << "\n";
             }
             std::cout << "Tipos registrados:\n";
@@ -82,6 +94,14 @@ int main(int argc, char* argv[]) {
                 std::cout << " { " << info.attributes.size() << " attrs, "
                           << info.methods.size() << " methods }\n";
             }
+            
+            if (program->GetGlobalExpr()) {
+                auto it = sem.type_map().find(program->GetGlobalExpr());
+                if (it != sem.type_map().end()) {
+                    std::cout << "Tipo de expresión global: " << it->second.to_string() << "\n";
+                }
+            }
+
             std::cout << "Referencias resueltas: "
                       << sem.resolution_map().size() << "\n";
             return 0;

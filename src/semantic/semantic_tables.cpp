@@ -154,6 +154,34 @@ std::string SemanticTables::find_ancestor(const std::string& type_name,
     return "";
 }
 
+std::string SemanticTables::find_lca(const std::string& a, const std::string& b) const {
+    if (a == b) return a;
+    if (a.empty() || b.empty()) return "Object";
+
+    std::unordered_set<std::string> ancestors_a;
+    std::string current = a;
+    int depth = 0;
+    while (!current.empty() && depth < 256) {
+        ancestors_a.insert(current);
+        auto it = types_.find(current);
+        if (it == types_.end()) break;
+        current = it->second.parent_name;
+        depth++;
+    }
+
+    current = b;
+    depth = 0;
+    while (!current.empty() && depth < 256) {
+        if (ancestors_a.count(current)) return current;
+        auto it = types_.find(current);
+        if (it == types_.end()) break;
+        current = it->second.parent_name;
+        depth++;
+    }
+
+    return "Object";
+}
+
 const SemanticMethodInfo* SemanticTables::find_method(
         const std::string& type_name,
         const std::string& method_name) const {
@@ -165,6 +193,24 @@ const SemanticMethodInfo* SemanticTables::find_method(
         if (it == types_.end()) break;
         auto mit = it->second.methods.find(method_name);
         if (mit != it->second.methods.end()) return &mit->second;
+        current = it->second.parent_name;
+        ++depth;
+    }
+    return nullptr;
+}
+
+const SemanticAttrInfo* SemanticTables::find_attribute(
+        const std::string& type_name,
+        const std::string& attr_name) const {
+    std::string current = type_name;
+    constexpr int MAX_DEPTH = 256;
+    int depth = 0;
+    while (!current.empty() && depth < MAX_DEPTH) {
+        auto it = types_.find(current);
+        if (it == types_.end()) break;
+        for (const auto& attr : it->second.attributes) {
+            if (attr.name == attr_name) return &attr;
+        }
         current = it->second.parent_name;
         ++depth;
     }

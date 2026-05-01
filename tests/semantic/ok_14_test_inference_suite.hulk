@@ -1,0 +1,55 @@
+// Basic literals
+let x = 42 in print(x);
+let y = "hello" in print(y);
+let z = true in if (z) print("yes") else print("no");
+
+// Arithmetic and Logic
+let a = 1 + 2 * 3 in print(a);
+let b = (1 > 0) & (2 < 3) in if (b) print("ok") else print("bad");
+
+// LCA - Simple
+let c = if (true) 1 else 2.0 in print(c); // Number
+
+// LCA - Objects (assuming A and B inherit from Object)
+type A() {}
+type B() inherits A() {}
+type C() inherits A() {}
+
+function get_a(cond) => if (cond) new B() else new C(); // Should infer A
+let obj = get_a(true) in print("inferred A");
+
+// Disjoint types LCA
+let disjoint = if (true) 1 else "string" in print(disjoint); // Should infer Object
+
+// Nested lets
+let x1 = 1 in
+let x2 = x1 + 1 in
+let x3 = x2 + 1 in
+print(x3);
+
+// Function inference (Forward call)
+function first() => second() + 1;
+function second() => 10;
+print(first()); // Requires iterative inference or correct ordering
+
+// Attribute inference
+type Point(x, y) {
+    x = x;
+    y = y;
+    dist() => sqrt(self.x * self.x + self.y * self.y);
+}
+let p = new Point(3, 4) in print(p.dist());
+
+// Recursion with annotation (OK)
+function fib(n : Number) : Number => if (n <= 1) n else fib(n-1) + fib(n-2);
+print(fib(10));
+
+// Method calls
+type Calculator() {
+    add(a, b) => a + b;
+}
+let calc = new Calculator() in print(calc.add(1, 2));
+
+// Is and As
+let is_b = new B() is A in if (is_b) print("B is A") else print("not A");
+let as_a = new B() as A in print("Cast OK");
