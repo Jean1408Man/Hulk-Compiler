@@ -53,11 +53,6 @@ namespace Hulk {
     class IsExpr;
     class AsExpr;
 
-    // Vectores
-    class VectorLiteral;
-    class VectorIndex;
-    class VectorGenerator;
-
     // Declaraciones
     class FunctionDecl;
     class TypeDecl;
@@ -126,10 +121,6 @@ namespace Hulk {
         virtual void visit(IsExpr&) = 0;
         virtual void visit(AsExpr&) = 0;
 
-        // Vectores
-        virtual void visit(VectorLiteral&) = 0;
-        virtual void visit(VectorIndex&) = 0;
-        virtual void visit(VectorGenerator&) = 0;
     };
 
     // -----------------------------------------------------------------------

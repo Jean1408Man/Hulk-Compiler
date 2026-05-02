@@ -36,9 +36,6 @@
 #include "../ast/types/typeDecl.h"
 #include "../ast/types/typeMemberAttribute.h"
 #include "../ast/types/typeMemberMethod.h"
-#include "../ast/vectors/vectorLiteral.h"
-#include "../ast/vectors/vectorIndex.h"
-#include "../ast/vectors/vectorGenerator.h"
 #include "../ast/protocols/protocolDecl.h"
 
 #include <cmath>
@@ -308,14 +305,8 @@ void Evaluator::visit(BuiltinCall& n) {
         case BuiltinFunc::Log:   result_ = HulkValue(std::log(num_arg(1)) /
                                                       std::log(num_arg(0)));          break;
         case BuiltinFunc::Rand:  result_ = HulkValue((double)rand() / RAND_MAX);      break;
-        case BuiltinFunc::Range: {
-            double from = num_arg(0), to = num_arg(1);
-            auto vec = std::make_shared<HulkVector>();
-            for (double i = from; i < to; i += 1.0)
-                vec->push_back(HulkValue(i));
-            result_ = HulkValue(vec);
-            break;
-        }
+        case BuiltinFunc::Range:
+            report_error_raw(n.span, "range() no está soportado: vectores eliminados");
     }
 }
 
@@ -386,19 +377,7 @@ void Evaluator::visit(WhileStmt& n) {
 }
 
 void Evaluator::visit(For& n) {
-    HulkValue iterable = eval(n.GetIterable());
-
-    if (!iterable.is_vector())
-        report_error(n.span, "EVAL_TYPE_NOT_VECTOR", iterable.to_string());
-
-    auto prev_env = env_;
-    result_ = HulkValue{};
-    for (auto& item : *iterable.as_vector()) {
-        env_ = std::make_shared<Environment>(prev_env);
-        env_->define(n.GetVarName(), item);
-        result_ = eval(n.GetBody());
-    }
-    env_ = prev_env;
+    report_error_raw(n.span, "for/range no está soportado: vectores eliminados");
 }
 
 // ============================================================================
@@ -653,50 +632,6 @@ void Evaluator::visit(AsExpr& n) {
                      val.is_object() ? val.as_object()->type_name : val.to_string(),
                      n.GetTypeName());
     result_ = val;
-}
-
-// ============================================================================
-// Vectores
-// ============================================================================
-
-void Evaluator::visit(VectorLiteral& n) {
-    auto vec = std::make_shared<HulkVector>();
-    for (auto& elem : n.GetElements())
-        vec->push_back(eval(elem.get()));
-    result_ = HulkValue(vec);
-}
-
-void Evaluator::visit(VectorIndex& n) {
-    HulkValue vec_val = eval(n.GetVector());
-    HulkValue idx_val = eval(n.GetIndex());
-
-    if (!vec_val.is_vector())
-        report_error(n.span, "EVAL_TYPE_NOT_VECTOR", vec_val.to_string());
-    if (!idx_val.is_number())
-        report_error(n.span, "EVAL_TYPE_ARITH", idx_val.to_string());
-
-    auto& vec = *vec_val.as_vector();
-    long long idx = (long long)idx_val.as_number();
-    if (idx < 0 || idx >= (long long)vec.size())
-        report_error(n.span, "EVAL_INDEX_OUT_OF_RANGE", idx, (long long)vec.size());
-
-    result_ = vec[idx];
-}
-
-void Evaluator::visit(VectorGenerator& n) {
-    HulkValue iterable = eval(n.GetIterable());
-    if (!iterable.is_vector())
-        report_error(n.span, "EVAL_TYPE_NOT_VECTOR", iterable.to_string());
-
-    auto result_vec = std::make_shared<HulkVector>();
-    auto prev_env = env_;
-    for (auto& item : *iterable.as_vector()) {
-        env_ = std::make_shared<Environment>(prev_env);
-        env_->define(n.GetVarName(), item);
-        result_vec->push_back(eval(n.GetBody()));
-    }
-    env_ = prev_env;
-    result_ = HulkValue(result_vec);
 }
 
 } // namespace Hulk

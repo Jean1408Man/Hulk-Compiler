@@ -146,10 +146,6 @@ namespace Hulk {
         void visit(IsExpr& n)           override;
         void visit(AsExpr& n)           override;
 
-        // Vectores
-        void visit(VectorLiteral& n)    override;
-        void visit(VectorIndex& n)      override;
-        void visit(VectorGenerator& n)  override;
     };
 
 } // namespace Hulk

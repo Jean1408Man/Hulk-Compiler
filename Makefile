@@ -36,9 +36,6 @@ LEXER_AST_SRCS := \
 	src/ast/others/group.cpp \
 	src/ast/others/program.cpp \
 	src/ast/others/selfRef.cpp \
-	src/ast/vectors/vectorLiteral.cpp \
-	src/ast/vectors/vectorIndex.cpp \
-	src/ast/vectors/vectorGenerator.cpp \
 	src/ast/types/asExpr.cpp \
 	src/ast/types/isExpr.cpp \
 	src/ast/types/memberAccess.cpp \
