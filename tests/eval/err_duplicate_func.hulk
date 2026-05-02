@@ -1,0 +1,5 @@
+// Error: función duplicada
+// Esperado: error de duplicado
+function f() => 1;
+function f() => 2;
+print(f());

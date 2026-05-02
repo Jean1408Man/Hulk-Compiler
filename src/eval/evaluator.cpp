@@ -50,13 +50,18 @@ namespace Hulk {
 // ============================================================================
 
 Evaluator::Evaluator(hulk::common::DiagnosticEngine& engine)
-    : engine_(engine), env_(std::make_shared<Environment>())
+    : engine_(engine)
+    , global_env_(std::make_shared<Environment>())
+    , env_(global_env_)
 {}
 
 void Evaluator::run(Program& program) {
     // Primer pase: registrar todas las declaraciones (funciones y tipos)
     for (auto& decl : program.GetDeclarations())
         decl->accept(*this);
+
+    // Validar jerarquía de tipos: padre existe + sin ciclos
+    validate_type_hierarchy();
 
     // Segundo pase: evaluar la expresión global si existe
     if (Expr* global = program.GetGlobalExpr())
@@ -75,6 +80,31 @@ HulkValue Evaluator::eval(Expr* node) {
 
 std::shared_ptr<Environment> Evaluator::make_child_env() {
     return std::make_shared<Environment>(env_);
+}
+
+void Evaluator::validate_type_hierarchy() {
+    // 0=blanco(no visitado), 1=gris(en pila), 2=negro(terminado)
+    std::unordered_map<std::string, int> color;
+
+    std::function<void(const std::string&)> dfs = [&](const std::string& name) {
+        color[name] = 1; // gris
+        auto it = types_.find(name);
+        if (it == types_.end()) return;
+        const std::string& parent = it->second.parent_name;
+        if (parent.empty()) { color[name] = 2; return; }
+
+        if (!types_.count(parent))
+            report_error({}, "BIND_PARENT_NOT_FOUND", parent, name);
+        if (color[parent] == 1)
+            report_error({}, "BIND_INHERIT_CYCLE", name, parent);
+        if (color[parent] == 0)
+            dfs(parent);
+        color[name] = 2; // negro
+    };
+
+    for (auto& [name, _] : types_)
+        if (color[name] == 0)
+            dfs(name);
 }
 
 const MethodDef* Evaluator::find_method(const std::string& type_name,
@@ -157,7 +187,7 @@ void Evaluator::visit(ArithmeticBinOp& n) {
     HulkValue right = eval(n.GetRight());
 
     if (!left.is_number() || !right.is_number())
-        report_error(n.span, "EVAL_TYPE_ARITH",
+        report_error(n.span, "TYPE_ARITH",
                      left.is_number() ? right.to_string() : left.to_string());
 
     double l = left.as_number();
@@ -168,11 +198,11 @@ void Evaluator::visit(ArithmeticBinOp& n) {
         case ArithmeticOp::Minus: result_ = HulkValue(l - r); break;
         case ArithmeticOp::Mult:  result_ = HulkValue(l * r); break;
         case ArithmeticOp::Div:
-            if (r == 0) report_error(n.span, "EVAL_DIV_ZERO");
+            if (r == 0) report_error(n.span, "RUNTIME_DIV_ZERO");
             result_ = HulkValue(l / r);
             break;
         case ArithmeticOp::Mod:
-            if (r == 0) report_error(n.span, "EVAL_MOD_ZERO");
+            if (r == 0) report_error(n.span, "RUNTIME_MOD_ZERO");
             result_ = HulkValue(std::fmod(l, r));
             break;
         case ArithmeticOp::Pow:
@@ -184,7 +214,7 @@ void Evaluator::visit(ArithmeticBinOp& n) {
 void Evaluator::visit(ArithmeticUnaryOp& n) {
     HulkValue val = eval(n.GetOperand());
     if (!val.is_number())
-        report_error(n.span, "EVAL_TYPE_ARITH", val.to_string());
+        report_error(n.span, "TYPE_ARITH", val.to_string());
     result_ = HulkValue(-val.as_number());
 }
 
@@ -234,25 +264,25 @@ void Evaluator::visit(LogicBinOp& n) {
             break;
         case LogicOp::Greater:
             if (!left.is_number() || !right.is_number())
-                report_error(n.span, "EVAL_TYPE_ARITH",
+                report_error(n.span, "TYPE_ARITH",
                              left.is_number() ? right.to_string() : left.to_string());
             result_ = HulkValue(left.as_number() > right.as_number());
             break;
         case LogicOp::Less:
             if (!left.is_number() || !right.is_number())
-                report_error(n.span, "EVAL_TYPE_ARITH",
+                report_error(n.span, "TYPE_ARITH",
                              left.is_number() ? right.to_string() : left.to_string());
             result_ = HulkValue(left.as_number() < right.as_number());
             break;
         case LogicOp::GreaterEqual:
             if (!left.is_number() || !right.is_number())
-                report_error(n.span, "EVAL_TYPE_ARITH",
+                report_error(n.span, "TYPE_ARITH",
                              left.is_number() ? right.to_string() : left.to_string());
             result_ = HulkValue(left.as_number() >= right.as_number());
             break;
         case LogicOp::LessEqual:
             if (!left.is_number() || !right.is_number())
-                report_error(n.span, "EVAL_TYPE_ARITH",
+                report_error(n.span, "TYPE_ARITH",
                              left.is_number() ? right.to_string() : left.to_string());
             result_ = HulkValue(left.as_number() <= right.as_number());
             break;
@@ -293,7 +323,7 @@ void Evaluator::visit(BuiltinCall& n) {
     auto num_arg = [&](size_t i) -> double {
         HulkValue v = eval(args[i].get());
         if (!v.is_number())
-            report_error(n.span, "EVAL_TYPE_ARITH", v.to_string());
+            report_error(n.span, "TYPE_ARITH", v.to_string());
         return v.as_number();
     };
 
@@ -306,7 +336,7 @@ void Evaluator::visit(BuiltinCall& n) {
                                                       std::log(num_arg(0)));          break;
         case BuiltinFunc::Rand:  result_ = HulkValue((double)rand() / RAND_MAX);      break;
         case BuiltinFunc::Range:
-            report_error_raw(n.span, "range() no está soportado: vectores eliminados");
+            report_error(n.span, "SEM_UNSUPPORTED", "range()");
     }
 }
 
@@ -377,7 +407,7 @@ void Evaluator::visit(WhileStmt& n) {
 }
 
 void Evaluator::visit(For& n) {
-    report_error_raw(n.span, "for/range no está soportado: vectores eliminados");
+    report_error(n.span, "SEM_UNSUPPORTED", "for");
 }
 
 // ============================================================================
@@ -386,13 +416,13 @@ void Evaluator::visit(For& n) {
 
 void Evaluator::visit(VariableReference& n) {
     if (!env_->contains(n.GetName()))
-        report_error(n.span, "EVAL_UNDECLARED_VAR", n.GetName());
+        report_error(n.span, "BIND_UNDECLARED_VAR", n.GetName());
     result_ = env_->get(n.GetName());
 }
 
 void Evaluator::visit(DestructiveAssign& n) {
     if (!env_->contains(n.GetName()))
-        report_error(n.span, "EVAL_ASSIGN_UNDECLARED", n.GetName());
+        report_error(n.span, "BIND_ASSIGN_UNDECLARED", n.GetName());
     HulkValue val = eval(n.GetValue());
     env_->assign(n.GetName(), val);
     result_ = val;
@@ -401,14 +431,21 @@ void Evaluator::visit(DestructiveAssign& n) {
 void Evaluator::visit(DestructiveAssignMember& n) {
     HulkValue obj_val = eval(n.GetObject());
     if (!obj_val.is_object())
-        report_error(n.span, "EVAL_TYPE_NOT_OBJECT", obj_val.to_string());
+        report_error(n.span, "TYPE_NOT_OBJECT", obj_val.to_string());
+    auto& fields = obj_val.as_object()->fields;
+    auto it = fields.find(n.GetMemberName());
+    if (it == fields.end())
+        report_error(n.span, "BIND_UNDECLARED_MEMBER",
+                     n.GetMemberName(), obj_val.as_object()->type_name);
     HulkValue val = eval(n.GetValue());
-    obj_val.as_object()->fields[n.GetMemberName()] = val;
+    it->second = val;
     result_ = val;
 }
 
 // Registro de función (pase de declaraciones en run())
 void Evaluator::visit(FunctionDecl& n) {
+    if (funcs_.count(n.GetName()))
+        report_error(n.span, "BIND_DUPLICATE_FUNC", n.GetName());
     funcs_[n.GetName()] = &n;
     result_ = HulkValue{};
 }
@@ -417,14 +454,14 @@ void Evaluator::visit(FunctionCall& n) {
     // Buscar en tabla global
     auto it = funcs_.find(n.GetName());
     if (it == funcs_.end())
-        report_error(n.span, "EVAL_UNDECLARED_FUNC", n.GetName());
+        report_error(n.span, "BIND_UNDECLARED_FUNC", n.GetName());
 
     FunctionDecl* decl = it->second;
     const auto& params = decl->GetParams();
     const auto& args   = n.GetArgs();
 
     if (params.size() != args.size())
-        report_error(n.span, "EVAL_ARITY_FUNC",
+        report_error(n.span, "TYPE_ARITY_FUNC",
                      n.GetName(), params.size(), args.size());
 
     // Evaluar argumentos en el scope actual
@@ -433,8 +470,8 @@ void Evaluator::visit(FunctionCall& n) {
     for (auto& arg : args)
         arg_vals.push_back(eval(arg.get()));
 
-    // Crear scope de la función sobre el scope GLOBAL (closures léxicos simples)
-    auto func_env = std::make_shared<Environment>(env_);
+    // Scope de la función sobre el global — no captura variables del caller
+    auto func_env = std::make_shared<Environment>(global_env_);
     for (size_t i = 0; i < params.size(); ++i)
         func_env->define(params[i].name, arg_vals[i]);
 
@@ -447,7 +484,7 @@ void Evaluator::visit(FunctionCall& n) {
 void Evaluator::visit(Lambda& n) {
     // Lambdas de primera clase no soportadas en esta versión.
     // El parser desazucara la mayoría de lambdas inline antes de llegar aquí.
-    report_error_raw(n.span, "Lambda de primera clase no soportada en esta versión");
+    report_error(n.span, "SEM_UNSUPPORTED", "lambda");
 }
 
 // ============================================================================
@@ -456,8 +493,11 @@ void Evaluator::visit(Lambda& n) {
 
 // Registro de tipo (pase de declaraciones en run())
 void Evaluator::visit(TypeDecl& n) {
+    if (types_.count(n.GetName()))
+        report_error(n.span, "BIND_DUPLICATE_TYPE", n.GetName());
+
     TypeDef def;
-    def.name       = n.GetName();
+    def.name        = n.GetName();
     def.parent_name = n.HasParent() ? n.GetParentName() : "";
 
     for (auto& p : n.GetCtorParams())
@@ -466,12 +506,18 @@ void Evaluator::visit(TypeDecl& n) {
     for (auto& expr : n.GetParentArgs())
         def.parent_args.push_back(expr.get());
 
+    std::unordered_map<std::string, bool> seen_attrs;
     for (auto& member : n.GetMembers()) {
         if (member.kind == TypeMember::Kind::Attribute) {
             auto* attr = static_cast<TypeMemberAttribute*>(member.node.get());
+            if (seen_attrs.count(attr->GetName()))
+                report_error(n.span, "BIND_DUPLICATE_ATTR", attr->GetName(), n.GetName());
+            seen_attrs[attr->GetName()] = true;
             def.attributes.emplace_back(attr->GetName(), attr->GetInitializer());
         } else {
             auto* method = static_cast<TypeMemberMethod*>(member.node.get());
+            if (def.methods.count(method->GetName()))
+                report_error(n.span, "BIND_DUPLICATE_METHOD", method->GetName(), n.GetName());
             MethodDef mdef;
             mdef.params = method->GetParams();
             mdef.body   = method->GetBody();
@@ -490,13 +536,13 @@ void Evaluator::visit(ProtocolDecl& n)        { (void)n; result_ = HulkValue{}; 
 void Evaluator::visit(NewExpr& n) {
     auto it = types_.find(n.GetTypeName());
     if (it == types_.end())
-        report_error(n.span, "EVAL_UNDECLARED_TYPE", n.GetTypeName());
+        report_error(n.span, "BIND_UNDECLARED_TYPE", n.GetTypeName());
 
     const TypeDef& def = it->second;
     const auto& args   = n.GetArgs();
 
     if (def.ctor_params.size() != args.size())
-        report_error(n.span, "EVAL_ARITY_CTOR",
+        report_error(n.span, "TYPE_ARITY_CTOR",
                      n.GetTypeName(), def.ctor_params.size(), args.size());
 
     // Evaluar argumentos del constructor
@@ -514,12 +560,12 @@ void Evaluator::visit(NewExpr& n) {
 void Evaluator::visit(MemberAccess& n) {
     HulkValue obj_val = eval(n.GetObject());
     if (!obj_val.is_object())
-        report_error(n.span, "EVAL_TYPE_NOT_OBJECT", obj_val.to_string());
+        report_error(n.span, "TYPE_NOT_OBJECT", obj_val.to_string());
 
     auto& obj = *obj_val.as_object();
     auto it = obj.fields.find(n.GetMemberName());
     if (it == obj.fields.end())
-        report_error(n.span, "EVAL_UNDECLARED_MEMBER",
+        report_error(n.span, "BIND_UNDECLARED_MEMBER",
                      n.GetMemberName(), obj.type_name);
 
     result_ = it->second;
@@ -528,19 +574,19 @@ void Evaluator::visit(MemberAccess& n) {
 void Evaluator::visit(MethodCall& n) {
     HulkValue obj_val = eval(n.GetObject());
     if (!obj_val.is_object())
-        report_error(n.span, "EVAL_TYPE_NOT_OBJECT", obj_val.to_string());
+        report_error(n.span, "TYPE_NOT_OBJECT", obj_val.to_string());
 
     auto obj_ptr = obj_val.as_object();
     const std::string& type_name = obj_ptr->type_name;
 
     const MethodDef* method = find_method(type_name, n.GetMethodName());
     if (!method)
-        report_error(n.span, "EVAL_UNDECLARED_MEMBER",
+        report_error(n.span, "BIND_UNDECLARED_MEMBER",
                      n.GetMethodName(), type_name);
 
     const auto& args = n.GetArgs();
     if (method->params.size() != args.size())
-        report_error(n.span, "EVAL_ARITY_METHOD",
+        report_error(n.span, "TYPE_ARITY_METHOD",
                      n.GetMethodName(), method->params.size(), args.size());
 
     // Evaluar argumentos
@@ -549,8 +595,8 @@ void Evaluator::visit(MethodCall& n) {
     for (auto& arg : args)
         arg_vals.push_back(eval(arg.get()));
 
-    // Crear scope del método: parámetros + self como variable
-    auto method_env = std::make_shared<Environment>(env_);
+    // Scope del método sobre el global — no captura variables del caller
+    auto method_env = std::make_shared<Environment>(global_env_);
     for (size_t i = 0; i < method->params.size(); ++i)
         method_env->define(method->params[i].name, arg_vals[i]);
     method_env->define("self", obj_val);
@@ -559,11 +605,17 @@ void Evaluator::visit(MethodCall& n) {
     self_ = obj_val;
     auto prev_env = env_;
     env_ = method_env;
+    std::string prev_type   = current_type_name_;
+    std::string prev_method = current_method_name_;
+    current_type_name_   = type_name;
+    current_method_name_ = n.GetMethodName();
 
     result_ = eval(method->body);
 
-    env_  = prev_env;
-    self_ = prev_self;
+    env_              = prev_env;
+    self_             = prev_self;
+    current_type_name_   = prev_type;
+    current_method_name_ = prev_method;
 }
 
 void Evaluator::visit(SelfRef&) {
@@ -571,25 +623,44 @@ void Evaluator::visit(SelfRef&) {
 }
 
 void Evaluator::visit(BaseCall& n) {
-    if (!self_.is_object())
-        report_error_raw(n.span, "base() solo puede usarse dentro de un método");
+    if (!self_.is_object() || current_method_name_.empty())
+        report_error(n.span, "SEM_BASE_OUTSIDE");
 
-    const std::string& current_type = self_.as_object()->type_name;
-    auto it = types_.find(current_type);
+    auto it = types_.find(current_type_name_);
     if (it == types_.end() || it->second.parent_name.empty())
-        report_error(n.span, "EVAL_NO_PARENT", current_type);
+        report_error(n.span, "BIND_NO_PARENT", current_type_name_);
 
     const std::string& parent_name = it->second.parent_name;
-    auto pit = types_.find(parent_name);
-    if (pit == types_.end())
-        report_error(n.span, "EVAL_UNDECLARED_TYPE", parent_name);
 
+    // Buscar el método padre con el mismo nombre que el método actual
+    const MethodDef* parent_method = find_method(parent_name, current_method_name_);
+    if (!parent_method)
+        report_error(n.span, "SEM_BASE_NO_METHOD", current_method_name_);
+
+    // Evaluar argumentos
     std::vector<HulkValue> arg_vals;
     for (auto& arg : n.GetArgs())
         arg_vals.push_back(eval(arg.get()));
 
-    init_object(*self_.as_object(), pit->second, arg_vals);
-    result_ = self_;
+    if (parent_method->params.size() != arg_vals.size())
+        report_error(n.span, "TYPE_ARITY_METHOD",
+                     current_method_name_, parent_method->params.size(), arg_vals.size());
+
+    // Ejecutar el método padre con el mismo self
+    auto base_env = std::make_shared<Environment>(global_env_);
+    for (size_t i = 0; i < parent_method->params.size(); ++i)
+        base_env->define(parent_method->params[i].name, arg_vals[i]);
+    base_env->define("self", self_);
+
+    std::string prev_type   = current_type_name_;
+    auto prev_env = env_;
+    env_ = base_env;
+    current_type_name_ = parent_name;
+
+    result_ = eval(parent_method->body);
+
+    env_              = prev_env;
+    current_type_name_ = prev_type;
 }
 
 void Evaluator::visit(IsExpr& n) {
@@ -628,7 +699,7 @@ void Evaluator::visit(AsExpr& n) {
         }
     }
     if (!valid)
-        report_error(n.span, "EVAL_INVALID_CAST",
+        report_error(n.span, "RUNTIME_INVALID_CAST",
                      val.is_object() ? val.as_object()->type_name : val.to_string(),
                      n.GetTypeName());
     result_ = val;

@@ -1,0 +1,6 @@
+// Error: método no puede ver variable local del caller
+// Esperado: EVAL_UNDECLARED_VAR
+type A {
+    m() => x;
+}
+let x = 10, a = new A() in a.m();

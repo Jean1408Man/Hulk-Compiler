@@ -1,0 +1,4 @@
+// Error: asignar a atributo que no existe
+// Esperado: EVAL_UNDECLARED_MEMBER
+type A { x = 1; }
+let a = new A() in a.y := 2;

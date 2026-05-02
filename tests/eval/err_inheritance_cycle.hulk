@@ -1,0 +1,5 @@
+// Error: ciclo de herencia
+// Esperado: error de ciclo
+type A inherits B { }
+type B inherits A { }
+let a = new A() in print(a);

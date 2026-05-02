@@ -1,0 +1,6 @@
+// PENDIENTE: base() requiere soporte en el parser (no implementado aún)
+// Cuando el parser lo soporte, este test debe imprimir "B A"
+// type A { name() => "A"; }
+// type B inherits A { name() => "B" @@ base(); }
+// let b = new B() in print(b.name());
+print("base() pendiente de soporte en parser");
