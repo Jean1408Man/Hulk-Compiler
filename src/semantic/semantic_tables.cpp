@@ -31,6 +31,7 @@ SemanticTables::SemanticTables() {
     }
 
     // Constantes builtin
+    // Constantes builtin
     for (auto& [n, t] : std::initializer_list<std::pair<const char*, const char*>>{
             {"PI", "Number"},
             {"E",  "Number"},
@@ -41,6 +42,21 @@ SemanticTables::SemanticTables() {
         bci.type = t;
         builtin_consts_[bci.name] = bci;
     }
+}
+
+std::vector<Param> SemanticTables::get_effective_constructor(const std::string& type_name) const {
+    const SemanticTypeInfo* info = lookup_type(type_name);
+    if (!info) return {};
+    
+    if (info->defines_constructor) {
+        return info->ctor_params;
+    }
+    
+    if (!info->parent_name.empty()) {
+        return get_effective_constructor(info->parent_name);
+    }
+    
+    return {};
 }
 
 void SemanticTables::register_builtin_type(const std::string& name,

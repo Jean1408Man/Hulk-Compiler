@@ -15,6 +15,9 @@ namespace Hulk {
         TypeChecker(const SemanticTables& tables,
                     const std::unordered_map<Expr*, HulkType>& type_map,
                     const std::unordered_map<Expr*, ResolutionResult>& resolution_map,
+                    const std::unordered_map<const Param*, HulkType>& param_types,
+                    const std::unordered_map<VariableBinding*, HulkType>& binding_types,
+                    const std::unordered_map<const SyntheticSymbol*, HulkType>& synthetic_types,
                     hulk::common::DiagnosticEngine& engine);
 
         void check(Program& program);
@@ -66,6 +69,9 @@ namespace Hulk {
         const SemanticTables& tables_;
         const std::unordered_map<Expr*, HulkType>& type_map_;
         const std::unordered_map<Expr*, ResolutionResult>& resolution_map_;
+        const std::unordered_map<const Param*, HulkType>&           param_types_;
+        const std::unordered_map<VariableBinding*, HulkType>&       binding_types_;
+        const std::unordered_map<const SyntheticSymbol*, HulkType>& synthetic_types_;
         hulk::common::DiagnosticEngine& engine_;
 
         // Helpers

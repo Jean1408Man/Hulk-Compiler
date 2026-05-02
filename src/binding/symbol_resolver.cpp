@@ -85,6 +85,37 @@ bool SymbolResolver::run(Program& program) {
         } else if (auto* td = dynamic_cast<TypeDecl*>(decl.get())) {
             current_type_name_ = td->GetName();
 
+            // Caso 12: parent args ven ctor params
+            if (td->HasParent()) {
+                std::vector<Param> parent_params = tables_.get_effective_constructor(td->GetParentName());
+                bool has_explicit_parent_args = !td->GetParentArgs().empty();
+
+                if (has_explicit_parent_args) {
+                    // Hay args explícitos al padre: resolverlos y validar aridad
+                    push_scope();
+                    for (const auto& p : td->GetCtorParams())
+                        scope_->define_param(p.name, &p);
+                    for (auto& arg : td->GetParentArgs()) resolve(arg.get());
+                    pop_scope();
+
+                    if (td->GetParentArgs().size() != parent_params.size()) {
+                        std::ostringstream oss;
+                        oss << "Tipo '" << td->GetParentName() << "' espera "
+                            << parent_params.size() << " argumento(s) pero recibió "
+                            << td->GetParentArgs().size() << " en herencia de '" << td->GetName() << "'.";
+                        report_raw(td->span, oss.str());
+                    }
+                } else if (td->HasExplicitConstructor() && !parent_params.empty()) {
+                    // Tiene su propio ctor pero no pasa args al padre que los necesita
+                    std::ostringstream oss;
+                    oss << "Tipo '" << td->GetName() << "' declara constructor propio pero no pasa "
+                        << "argumentos al padre '" << td->GetParentName() << "' (que espera "
+                        << parent_params.size() << " argumento(s)).";
+                    report_raw(td->span, oss.str());
+                }
+                // Si no hay ctor propio y no hay parent args → herencia transparente, válido
+            }
+
             for (auto& member : td->GetMembers()) {
                 if (member.kind == TypeMember::Kind::Attribute) {
                     auto* attr = static_cast<TypeMemberAttribute*>(member.node.get());
@@ -247,7 +278,8 @@ void SymbolResolver::visit(TypeDecl& n) {
     info.name        = n.GetName();
     info.ctor_params = n.GetCtorParams();
     info.parent_name = n.HasParent() ? n.GetParentName() : "Object";
-    info.decl        = &n;
+    info.decl                = &n;
+    info.defines_constructor = n.HasExplicitConstructor();
 
     // Caso 12: parámetros duplicados en constructor
     check_duplicate_params(n.GetCtorParams(), n.span,
@@ -285,6 +317,9 @@ void SymbolResolver::visit(TypeDecl& n) {
             mi.params                 = method->GetParams();
             mi.return_type_annotation = method->GetReturnTypeAnnotation();
             mi.body                   = method->GetBody();
+            // Guardar punteros a los params del AST original (para param_types_ lookup)
+            for (const auto& p : method->GetParams())
+                mi.ast_params.push_back(&p);
 
             if (info.methods.count(mi.name)) {
                 report_raw(method->span, "Método '" + mi.name +
@@ -465,21 +500,16 @@ void SymbolResolver::visit(VariableReference& n) {
         return;
     }
 
-    if (!scope_->contains(n.GetName())) {
+    auto res = scope_->lookup(n.GetName());
+    if (!res.is_resolved()) {
         report(n.span, "SEM_UNDECLARED_VAR", n.GetName());
         resolution_map_[&n] = ResolutionResult{};
         return;
     }
 
-    // Lookup en orden: binding → param → synthetic
-    VariableBinding* b = scope_->get_binding(n.GetName());
-    if (b) { resolution_map_[&n] = ResolutionResult::from_binding(b); return; }
-
-    const Param* p = scope_->get_param(n.GetName());
-    if (p) { resolution_map_[&n] = ResolutionResult::from_param(p); return; }
-
-    SyntheticSymbol* s = scope_->get_synthetic(n.GetName());
-    if (s) { resolution_map_[&n] = ResolutionResult::from_synthetic(s); return; }
+    if (res.binding) resolution_map_[&n] = ResolutionResult::from_binding(res.binding);
+    else if (res.param) resolution_map_[&n] = ResolutionResult::from_param(res.param);
+    else if (res.synthetic) resolution_map_[&n] = ResolutionResult::from_synthetic(res.synthetic);
 }
 
 void SymbolResolver::visit(VariableBinding& n) {
@@ -504,14 +534,22 @@ void SymbolResolver::visit(LetIn& n) {
 // ─── Asignaciones ──────────────────────────────────────────────────────────
 
 void SymbolResolver::visit(DestructiveAssign& n) {
-    // Caso 14: self no puede ser target
-    if (n.GetName() == "self") {
-        report_raw(n.span, "'self' no es un target válido de asignación destructiva.");
+    if (const BuiltinConstInfo* bc = tables_.lookup_builtin_const(n.GetName())) {
+        report_raw(n.span, "No se puede asignar a la constante builtin '" + n.GetName() + "'.");
         resolve(n.GetValue());
         return;
     }
-    if (!scope_->contains(n.GetName()))
+
+    auto res = scope_->lookup(n.GetName());
+    if (!res.is_resolved()) {
         report(n.span, "SEM_UNDECLARED_VAR", n.GetName());
+    } else {
+        if (res.binding) resolution_map_[&n] = ResolutionResult::from_binding(res.binding);
+        else if (res.param) resolution_map_[&n] = ResolutionResult::from_param(res.param);
+        else if (res.synthetic) {
+            report_raw(n.span, "No se puede asignar al símbolo '" + n.GetName() + "'.");
+        }
+    }
     resolve(n.GetValue());
 }
 
@@ -557,6 +595,30 @@ void SymbolResolver::visit(For& n) {
 // ─── Funciones ─────────────────────────────────────────────────────────────
 
 void SymbolResolver::visit(FunctionCall& n) {
+    for (auto& arg : n.GetArgs()) resolve(arg.get());
+
+    if (n.GetName() == "base") {
+        if (context_ != ResolverContext::Method) {
+            report_raw(n.span, "'base()' solo puede usarse dentro de métodos de tipo.");
+            resolution_map_[&n] = ResolutionResult{};
+            return;
+        }
+        const SemanticTypeInfo* type_info = tables_.lookup_type(current_type_name_);
+        if (!type_info || type_info->parent_name.empty()) {
+            report_raw(n.span, "'base()' solo puede usarse en tipos con herencia.");
+            resolution_map_[&n] = ResolutionResult{};
+            return;
+        }
+        const SemanticMethodInfo* parent_method = tables_.find_method(type_info->parent_name, current_func_name_);
+        if (!parent_method) {
+            report_raw(n.span, "El método '" + current_func_name_ + "' no existe en el padre '" + type_info->parent_name + "'.");
+            resolution_map_[&n] = ResolutionResult{};
+            return;
+        }
+        resolution_map_[&n] = ResolutionResult::from_method(parent_method);
+        return;
+    }
+
     const SemanticFuncInfo* info = tables_.lookup_func(n.GetName());
     if (!info) {
         // Fallback: algunas funciones builtin (como 'range') se parsean como FunctionCall
@@ -584,7 +646,6 @@ void SymbolResolver::visit(FunctionCall& n) {
         }
         resolution_map_[&n] = ResolutionResult::from_func(info->decl);
     }
-    for (auto& arg : n.GetArgs()) resolve(arg.get());
 }
 
 void SymbolResolver::visit(Lambda& n) {
@@ -603,10 +664,11 @@ void SymbolResolver::visit(NewExpr& n) {
         report(n.span, "SEM_UNDECLARED_TYPE", n.GetTypeName());
         resolution_map_[&n] = ResolutionResult{};
     } else {
-        if (n.GetArgs().size() != info->ctor_params.size()) {
+        std::vector<Param> params = tables_.get_effective_constructor(n.GetTypeName());
+        if (n.GetArgs().size() != params.size()) {
             std::ostringstream oss;
             oss << "Constructor de '" << n.GetTypeName() << "' espera "
-                << info->ctor_params.size() << " argumento(s) pero recibió "
+                << params.size() << " argumento(s) pero recibió "
                 << n.GetArgs().size() << ".";
             report_raw(n.span, oss.str());
         }
@@ -619,9 +681,15 @@ void SymbolResolver::visit(NewExpr& n) {
 void SymbolResolver::visit(MemberAccess& n) {
     resolve(n.GetObject());
     auto* var_ref = dynamic_cast<VariableReference*>(n.GetObject());
-    if (var_ref && var_ref->GetName() == "self" && !current_type_name_.empty()) {
-        const SemanticAttrInfo* attr =
-            find_attribute_in_ancestors(current_type_name_, n.GetMemberName());
+    auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
+    
+    if ((var_ref && var_ref->GetName() == "self") || self_ref) {
+        if (current_type_name_.empty()) {
+            report_raw(n.span, "'self' no es válido en este contexto.");
+            resolution_map_[&n] = ResolutionResult{};
+            return;
+        }
+        const SemanticAttrInfo* attr = find_attribute_in_ancestors(current_type_name_, n.GetMemberName());
         if (!attr) {
             report_raw(n.span, "Atributo '" + n.GetMemberName() +
                        "' no existe en tipo '" + current_type_name_ + "'.");
@@ -629,6 +697,9 @@ void SymbolResolver::visit(MemberAccess& n) {
         } else {
             resolution_map_[&n] = ResolutionResult::from_attr(attr);
         }
+    } else {
+        report_raw(n.span, "Los atributos son privados. Solo se pueden acceder mediante 'self'.");
+        resolution_map_[&n] = ResolutionResult{};
     }
 }
 
@@ -691,6 +762,9 @@ void SymbolResolver::visit(BaseCall& n) {
                    current_method_name_ + "' en el padre.");
         return;
     }
+
+    // Registrar resolución para que el inferencer y checker puedan usarla
+    resolution_map_[&n] = ResolutionResult::from_method(parent_method);
 
     if (n.GetArgs().size() != parent_method->params.size()) {
         std::ostringstream oss;

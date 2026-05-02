@@ -44,6 +44,9 @@ namespace Hulk {
         // A conforma a B si A == B o A es subtipo de B.
         bool conforms_to(const HulkType& other, const class SemanticTables& tables) const;
 
+        // Versión permisiva para inferencia (Unknown es comodín)
+        bool can_unify(const HulkType& other, const class SemanticTables& tables) const;
+
         std::string to_string() const;
 
     private:

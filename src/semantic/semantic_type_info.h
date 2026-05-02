@@ -20,11 +20,12 @@ namespace Hulk {
 
     // SemanticMethodInfo — información estática de un método de tipo
     struct SemanticMethodInfo {
-        std::string         name;
-        std::vector<Param>  params;
-        std::string         return_type_annotation;  // "" si no tiene
-        Expr*               body;                    // puntero no-owning al AST
-        bool                is_override = false;
+        std::string              name;
+        std::vector<Param>       params;          // copia de los params (para acceso por valor)
+        std::vector<const Param*> ast_params;     // punteros a los Param en el AST (para param_types_ lookup)
+        std::string              return_type_annotation;  // "" si no tiene
+        Expr*                    body = nullptr;          // puntero no-owning al AST
+        bool                     is_override = false;
     };
 
     // SemanticTypeInfo — información estática de un TypeDecl completo.
@@ -39,6 +40,7 @@ namespace Hulk {
         std::unordered_map<std::string, SemanticMethodInfo>  methods;
         TypeDecl*           decl = nullptr;  // puntero al nodo original (para spans en errores)
         bool                is_builtin = false; // true para Object, Number, String, Boolean
+        bool                defines_constructor = false; // true si se definió ctor_params en el AST
     };
 
 } 

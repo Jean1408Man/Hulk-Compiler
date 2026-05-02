@@ -1,4 +1,4 @@
-// Corte 7 — Test ok_01: declaraciones válidas y referencias resueltas
+// Test ok_01: declaraciones válidas y referencias resueltas
 // Esperado: análisis semántico OK, 1 función y 2 tipos registrados
 
 function greet(name: String): String => "Hola " @ name;

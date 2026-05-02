@@ -11,8 +11,6 @@
 #include <stdexcept>
 
 // -----------------------------------------------------------------------
-// main_semantic.cpp — punto de entrada para probar el Corte 7 en aislamiento.
-//
 // Uso: hulk_semantic <archivo.hulk>
 //
 // Ejecuta solo el análisis semántico (sin evaluar) e imprime los errores
@@ -55,7 +53,7 @@ int main(int argc, char* argv[]) {
         auto* program = dynamic_cast<Hulk::Program*>(root);
         if (!program) { std::cerr << "El AST raíz no es un Program\n"; return 1; }
 
-        // --- Corte 7: análisis semántico ---
+        // --- análisis semántico ---
         Hulk::SemanticAnalyzer sem(engine);
         const bool ok = sem.analyze(*program);
 

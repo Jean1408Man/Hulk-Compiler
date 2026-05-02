@@ -25,6 +25,10 @@ namespace Hulk {
 
         // Mapa resultante de inferencia
         const std::unordered_map<Expr*, HulkType>& type_map() const { return type_map_; }
+        
+        const std::unordered_map<const Param*, HulkType>& param_types() const { return param_types_; }
+        const std::unordered_map<VariableBinding*, HulkType>& binding_types() const { return binding_types_; }
+        const std::unordered_map<const SyntheticSymbol*, HulkType>& synthetic_types() const { return synthetic_types_; }
 
         // Métodos del ExprVisitor
         void visit(Number& node) override;
@@ -76,6 +80,11 @@ namespace Hulk {
 
         std::unordered_map<Expr*, HulkType> type_map_;
 
+        // Tipos inferidos para los símbolos
+        std::unordered_map<const Param*, HulkType>           param_types_;
+        std::unordered_map<VariableBinding*, HulkType>       binding_types_;
+        std::unordered_map<const SyntheticSymbol*, HulkType> synthetic_types_;
+
         // Tipo de la última expresión visitada
         HulkType current_type_;
 
@@ -87,6 +96,7 @@ namespace Hulk {
 
         // Auxiliares
         void set_type(Expr& node, HulkType type);
+        void refine_type(Expr& node, const HulkType& type);
         HulkType get_lca(const HulkType& a, const HulkType& b);
         HulkType infer_expr(Expr& node);
 

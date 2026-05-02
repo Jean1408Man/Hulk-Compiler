@@ -17,13 +17,13 @@ namespace Hulk {
 namespace Hulk {
 
     // -----------------------------------------------------------------------
-    // SemanticAnalyzer — punto de entrada del Corte 7.
+    // SemanticAnalyzer
     //
     // Orquesta los tres pases del SymbolResolver y expone los resultados
-    // que el Corte 8 (TypeInferencer) necesita consumir:
+    // que el(TypeInferencer) necesita consumir:
     //
     //   - SemanticTables con todos los tipos y funciones registrados.
-    //   - El mapa de resolución (Expr* → ResolutionResult) del Corte 8.
+    //   - El mapa de resolución (Expr* → ResolutionResult)
     //
     // Uso típico en el pipeline:
     //

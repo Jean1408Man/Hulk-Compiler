@@ -59,37 +59,28 @@ namespace Hulk {
             synthetics_[name] = symbol;
         }
 
-        bool contains(const std::string& name) const {
-            if (bindings_.count(name) || params_.count(name) || synthetics_.count(name))
-                return true;
-            if (parent_) return parent_->contains(name);
-            return false;
-        }
+        struct ResolvedSymbol {
+            VariableBinding* binding   = nullptr;
+            const Param*     param     = nullptr;
+            SyntheticSymbol* synthetic = nullptr;
 
-        // Devuelve el VariableBinding* si el nombre fue declarado via let.
-        // nullptr si no existe en ningún scope o si fue declarado como param.
-        VariableBinding* get_binding(const std::string& name) const {
-            auto it = bindings_.find(name);
-            if (it != bindings_.end()) return it->second;
-            if (parent_) return parent_->get_binding(name);
-            return nullptr;
-        }
+            bool is_resolved() const { return binding || param || synthetic; }
+        };
 
-        // Devuelve el Param* si el nombre fue declarado como parámetro.
-        // nullptr si no existe en ningún scope o si fue declarado como binding.
-        const Param* get_param(const std::string& name) const {
-            auto it = params_.find(name);
-            if (it != params_.end()) return it->second;
-            if (parent_) return parent_->get_param(name);
-            return nullptr;
-        }
+        ResolvedSymbol lookup(const std::string& name) const {
+            // Buscar en el scope actual (todas las categorías)
+            auto it_b = bindings_.find(name);
+            if (it_b != bindings_.end()) return { .binding = it_b->second };
 
-        // Devuelve el SyntheticSymbol* si el nombre fue declarado sintéticamente.
-        SyntheticSymbol* get_synthetic(const std::string& name) const {
-            auto it = synthetics_.find(name);
-            if (it != synthetics_.end()) return it->second;
-            if (parent_) return parent_->get_synthetic(name);
-            return nullptr;
+            auto it_p = params_.find(name);
+            if (it_p != params_.end()) return { .param = it_p->second };
+
+            auto it_s = synthetics_.find(name);
+            if (it_s != synthetics_.end()) return { .synthetic = it_s->second };
+
+            // Si no está, buscar en el padre
+            if (parent_) return parent_->lookup(name);
+            return {};
         }
 
         std::shared_ptr<StaticScope> parent() const { return parent_; }

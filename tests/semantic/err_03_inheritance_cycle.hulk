@@ -1,4 +1,4 @@
-// Corte 7 — Test err_03: ciclo de herencia
+// Test err_03: ciclo de herencia
 // Esperado: error semántico "ciclo de herencia detectado en tipo A"
 
 type A(x) inherits B(x) {

@@ -13,13 +13,22 @@ SemanticAnalyzer::~SemanticAnalyzer() = default;
 
 bool SemanticAnalyzer::analyze(Program& program) {
     resolver_ = std::make_unique<SymbolResolver>(tables_, engine_);
-    const bool ok = resolver_->run(program);
-    has_errors_ = !ok;
-
+    resolver_->run(program);
+    // Continuamos a pesar de errores en el resolver para capturar errores de tipos
+    // a menos que el resolver haya fallado catastróficamente (sin tablas consistentes)
+    
     inferencer_ = std::make_unique<TypeInferencer>(tables_, resolver_->resolution_map(), engine_);
     inferencer_->infer(program);
     
-    type_checker_ = std::make_unique<TypeChecker>(tables_, inferencer_->type_map(), resolver_->resolution_map(), engine_);
+    type_checker_ = std::make_unique<TypeChecker>(
+        tables_, 
+        inferencer_->type_map(), 
+        resolver_->resolution_map(),
+        inferencer_->param_types(),
+        inferencer_->binding_types(),
+        inferencer_->synthetic_types(),
+        engine_
+    );
     type_checker_->check(program);
 
     if (engine_.has_errors()) {

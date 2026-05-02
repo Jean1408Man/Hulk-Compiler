@@ -54,7 +54,6 @@ EVAL_SRCS := \
 	src/objects/hulk_value.cpp \
 	src/eval/evaluator.cpp
 
-# Corte 7 — análisis semántico
 SEMANTIC_SRCS := \
 	src/objects/hulk_value.cpp \
 	src/semantic/semantic_tables.cpp \

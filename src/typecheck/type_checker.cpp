@@ -42,8 +42,13 @@ namespace Hulk {
     TypeChecker::TypeChecker(const SemanticTables& tables,
                              const std::unordered_map<Expr*, HulkType>& type_map,
                              const std::unordered_map<Expr*, ResolutionResult>& resolution_map,
+                             const std::unordered_map<const Param*, HulkType>& param_types,
+                             const std::unordered_map<VariableBinding*, HulkType>& binding_types,
+                             const std::unordered_map<const SyntheticSymbol*, HulkType>& synthetic_types,
                              hulk::common::DiagnosticEngine& engine)
-        : tables_(tables), type_map_(type_map), resolution_map_(resolution_map), engine_(engine) {}
+        : tables_(tables), type_map_(type_map), resolution_map_(resolution_map), 
+          param_types_(param_types), binding_types_(binding_types), synthetic_types_(synthetic_types),
+          engine_(engine) {}
 
     void TypeChecker::check(Program& program) {
         // Chequear declaraciones (funciones y tipos)
@@ -55,6 +60,20 @@ namespace Hulk {
                     check_conforms(fd->GetBody(), ret_type, "retorno de función '" + fd->GetName() + "'");
                 }
             } else if (auto* td = dynamic_cast<TypeDecl*>(decl.get())) {
+                if (td->HasParent()) {
+                    std::vector<Param> parent_params = tables_.get_effective_constructor(td->GetParentName());
+                    if (parent_params.size() == td->GetParentArgs().size()) {
+                        for (size_t i = 0; i < parent_params.size(); ++i) {
+                            td->GetParentArgs()[i]->accept(*this);
+                            HulkType ann = from_string_type(parent_params[i].typeAnnotation);
+                            if (!ann.is_unknown()) {
+                                check_conforms(td->GetParentArgs()[i].get(), ann, "argumento " + std::to_string(i+1) + " de herencia de '" + td->GetParentName() + "'");
+                            }
+                        }
+                    } else {
+                        for (auto& arg : td->GetParentArgs()) arg->accept(*this);
+                    }
+                }
                 for (auto& member : td->GetMembers()) {
                     if (member.kind == TypeMember::Kind::Attribute) {
                         auto* attr = static_cast<TypeMemberAttribute*>(member.node.get());
@@ -95,6 +114,8 @@ namespace Hulk {
 
     void TypeChecker::check_conforms(Expr* node, const HulkType& expected, const std::string& context) {
         HulkType found = get_type(node);
+        // Si no pudimos inferir el tipo (Unknown) o ya se reportó error (Error), no generar cascada
+        if (found.is_unknown() || found.is_error()) return;
         if (!found.conforms_to(expected, tables_)) {
             report_error(node->span, "Error de tipos en " + context + ": se esperaba '" + 
                          expected.to_string() + "' pero se encontró '" + found.to_string() + "'.");
@@ -176,11 +197,46 @@ namespace Hulk {
     // Asignaciones
     void TypeChecker::visit(DestructiveAssign& node) {
         node.GetValue()->accept(*this);
+        
+        auto it = resolution_map_.find(&node);
+        if (it != resolution_map_.end()) {
+            const ResolutionResult& res = it->second;
+            HulkType target_type = HulkType::make_unknown();
+            
+            if (res.kind == ResolutionKind::Variable) {
+                target_type = from_string_type(res.binding->GetTypeAnnotation());
+                if (target_type.is_unknown()) {
+                    auto b_it = binding_types_.find(res.binding);
+                    if (b_it != binding_types_.end()) target_type = b_it->second;
+                }
+            } else if (res.kind == ResolutionKind::Param) {
+                target_type = from_string_type(res.param->typeAnnotation);
+                if (target_type.is_unknown()) {
+                    auto p_it = param_types_.find(res.param);
+                    if (p_it != param_types_.end()) target_type = p_it->second;
+                }
+            }
+            
+            if (!target_type.is_unknown()) {
+                check_conforms(node.GetValue(), target_type, "asignación a '" + node.GetName() + "'");
+            }
+        }
     }
 
     void TypeChecker::visit(DestructiveAssignMember& node) {
         node.GetObject()->accept(*this);
         node.GetValue()->accept(*this);
+        
+        HulkType obj_type = get_type(node.GetObject());
+        if (obj_type.kind() == HulkType::Kind::Object) {
+            const SemanticAttrInfo* attr = tables_.find_attribute(obj_type.name(), node.GetMemberName());
+            if (attr) {
+                HulkType attr_type = from_string_type(attr->type_annotation);
+                if (!attr_type.is_unknown()) {
+                    check_conforms(node.GetValue(), attr_type, "asignación a atributo '" + node.GetMemberName() + "'");
+                }
+            }
+        }
     }
 
     // Control de flujo
@@ -212,13 +268,39 @@ namespace Hulk {
         for (auto& arg : node.GetArgs()) arg->accept(*this);
         
         auto it = resolution_map_.find(&node);
-        if (it != resolution_map_.end() && it->second.kind == ResolutionKind::Function) {
-            const FunctionDecl* decl = it->second.func_decl;
-            if (decl && decl->GetParams().size() == node.GetArgs().size()) {
-                for (size_t i = 0; i < decl->GetParams().size(); ++i) {
-                    HulkType ann = from_string_type(decl->GetParams()[i].typeAnnotation);
-                    if (!ann.is_unknown()) {
-                        check_conforms(node.GetArgs()[i].get(), ann, "argumento " + std::to_string(i+1) + " de función '" + node.GetName() + "'");
+        if (it != resolution_map_.end()) {
+            const ResolutionResult& res = it->second;
+            if (res.kind == ResolutionKind::Function) {
+                const FunctionDecl* decl = res.func_decl;
+                if (decl && decl->GetParams().size() == node.GetArgs().size()) {
+                    for (size_t i = 0; i < decl->GetParams().size(); ++i) {
+                        const Param& p = decl->GetParams()[i];
+                        HulkType ann = from_string_type(p.typeAnnotation);
+                        if (ann.is_unknown()) {
+                            auto p_it = param_types_.find(&p);
+                            if (p_it != param_types_.end()) ann = p_it->second;
+                        }
+                        
+                        if (!ann.is_unknown()) {
+                            check_conforms(node.GetArgs()[i].get(), ann, "argumento " + std::to_string(i+1) + " de función '" + node.GetName() + "'");
+                        }
+                    }
+                }
+            } else if (res.kind == ResolutionKind::Method) {
+                // Caso base() o resolución especial de función como método
+                const SemanticMethodInfo* info = res.method_info;
+                if (info && info->params.size() == node.GetArgs().size()) {
+                    for (size_t i = 0; i < info->params.size(); ++i) {
+                        const Param& p = info->params[i];
+                        HulkType ann = from_string_type(p.typeAnnotation);
+                        if (ann.is_unknown()) {
+                            auto p_it = param_types_.find(&p);
+                            if (p_it != param_types_.end()) ann = p_it->second;
+                        }
+                        
+                        if (!ann.is_unknown()) {
+                            check_conforms(node.GetArgs()[i].get(), ann, "argumento " + std::to_string(i+1) + " de llamada especial '" + node.GetName() + "'");
+                        }
                     }
                 }
             }
@@ -256,14 +338,44 @@ namespace Hulk {
 
     void TypeChecker::visit(BaseCall& node) {
         for (auto& arg : node.GetArgs()) arg->accept(*this);
+
+        // Validar tipos de args contra la firma del método padre
+        auto it = resolution_map_.find(&node);
+        if (it != resolution_map_.end() && it->second.kind == ResolutionKind::Method) {
+            const SemanticMethodInfo* info = it->second.method_info;
+            if (info && info->params.size() == node.GetArgs().size()) {
+                for (size_t i = 0; i < info->params.size(); ++i) {
+                    HulkType ann = from_string_type(info->params[i].typeAnnotation);
+                    if (!ann.is_unknown()) {
+                        check_conforms(node.GetArgs()[i].get(), ann,
+                            "argumento " + std::to_string(i+1) + " de base()");
+                    }
+                }
+            } else if (info && info->params.size() != node.GetArgs().size()) {
+                report_error(node.span, "Aridad incorrecta en base(): se esperaban " +
+                    std::to_string(info->params.size()) + " argumento(s), se recibieron " +
+                    std::to_string(node.GetArgs().size()) + ".");
+            }
+        }
     }
 
     void TypeChecker::visit(NewExpr& node) {
         for (auto& arg : node.GetArgs()) arg->accept(*this);
-        const SemanticTypeInfo* info = tables_.lookup_type(node.GetTypeName());
-        if (info && info->ctor_params.size() == node.GetArgs().size()) {
-            for (size_t i = 0; i < info->ctor_params.size(); ++i) {
-                HulkType ann = from_string_type(info->ctor_params[i].typeAnnotation);
+        
+        std::vector<Param> params = tables_.get_effective_constructor(node.GetTypeName());
+        if (params.size() != node.GetArgs().size()) {
+            report_error(node.span, "Constructor de '" + node.GetTypeName() + "' espera " + 
+                         std::to_string(params.size()) + " argumento(s) pero recibió " + 
+                         std::to_string(node.GetArgs().size()) + ".");
+        } else {
+            for (size_t i = 0; i < params.size(); ++i) {
+                const Param& p = params[i];
+                HulkType ann = from_string_type(p.typeAnnotation);
+                if (ann.is_unknown()) {
+                    auto p_it = param_types_.find(&p);
+                    if (p_it != param_types_.end()) ann = p_it->second;
+                }
+                
                 if (!ann.is_unknown()) {
                     check_conforms(node.GetArgs()[i].get(), ann, "argumento " + std::to_string(i+1) + " de constructor de '" + node.GetTypeName() + "'");
                 }
@@ -279,14 +391,38 @@ namespace Hulk {
         node.GetObject()->accept(*this);
         for (auto& arg : node.GetArgs()) arg->accept(*this);
 
+        HulkType obj_type = get_type(node.GetObject());
+        const SemanticMethodInfo* info = nullptr;
+
         auto it = resolution_map_.find(&node);
         if (it != resolution_map_.end() && it->second.kind == ResolutionKind::Method) {
-            const SemanticMethodInfo* info = it->second.method_info;
-            if (info && info->params.size() == node.GetArgs().size()) {
+            info = it->second.method_info;
+        } else if (obj_type.kind() == HulkType::Kind::Object) {
+            // Resolución dinámica basada en el tipo inferido (Corte 9)
+            info = tables_.find_method(obj_type.name(), node.GetMethodName());
+            // Si el tipo es Error o Unknown, no reportamos error de método no encontrado (evitar cascada)
+            if (!info && !obj_type.is_unknown() && !obj_type.is_error()) {
+                report_error(node.span, "Tipo '" + obj_type.name() + "' no tiene un método '" + node.GetMethodName() + "'.");
+            }
+        }
+
+        if (info) {
+            if (info->params.size() != node.GetArgs().size()) {
+                report_error(node.span, "Método '" + node.GetMethodName() + "' espera " + 
+                             std::to_string(info->params.size()) + " argumento(s) pero recibió " + 
+                             std::to_string(node.GetArgs().size()) + ".");
+            } else {
                 for (size_t i = 0; i < info->params.size(); ++i) {
+                    // Usar anotación de la copia (para el texto del tipo)
                     HulkType ann = from_string_type(info->params[i].typeAnnotation);
+                    if (ann.is_unknown() && i < info->ast_params.size()) {
+                        // Buscar con el puntero al AST original (mismo que usó el inferencer)
+                        auto p_it = param_types_.find(info->ast_params[i]);
+                        if (p_it != param_types_.end()) ann = p_it->second;
+                    }
                     if (!ann.is_unknown()) {
-                        check_conforms(node.GetArgs()[i].get(), ann, "argumento " + std::to_string(i+1) + " de método '" + node.GetMethodName() + "'");
+                        check_conforms(node.GetArgs()[i].get(), ann,
+                            "argumento " + std::to_string(i+1) + " de método '" + node.GetMethodName() + "'");
                     }
                 }
             }
@@ -295,10 +431,30 @@ namespace Hulk {
 
     void TypeChecker::visit(IsExpr& node) {
         node.GetExpr()->accept(*this);
+        HulkType expr_type = get_type(node.GetExpr());
+        HulkType target_type = from_string_type(node.GetTypeName());
+        
+        if (!expr_type.is_unknown() && !target_type.is_unknown() && !expr_type.is_error() && !target_type.is_error()) {
+            if (!expr_type.conforms_to(target_type, tables_) && 
+                !target_type.conforms_to(expr_type, tables_)) {
+                report_error(node.span, "Operación 'is' no plausible: tipo '" + expr_type.to_string() + 
+                             "' y '" + target_type.to_string() + "' no están relacionados.");
+            }
+        }
     }
 
     void TypeChecker::visit(AsExpr& node) {
         node.GetExpr()->accept(*this);
+        HulkType expr_type = get_type(node.GetExpr());
+        HulkType target_type = from_string_type(node.GetTypeName());
+        
+        if (!expr_type.is_unknown() && !target_type.is_unknown() && !expr_type.is_error() && !target_type.is_error()) {
+            if (!expr_type.conforms_to(target_type, tables_) && 
+                !target_type.conforms_to(expr_type, tables_)) {
+                report_error(node.span, "Operación 'as' no plausible: tipo '" + expr_type.to_string() + 
+                             "' y '" + target_type.to_string() + "' no están relacionados.");
+            }
+        }
     }
 
     void TypeChecker::visit(VectorLiteral& node) {

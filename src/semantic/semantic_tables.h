@@ -29,8 +29,8 @@ namespace Hulk {
     //
     // Construido por el SymbolResolver (Pase 1) y consumido por:
     //   - los chequeos semánticos del propio SymbolResolver (Pase 3),
-    //   - el TypeInferencer del Corte 8,
-    //   - el TypeChecker del Corte 9.
+    //   - el TypeInferencer,
+    //   - el TypeChecker.
     // -----------------------------------------------------------------------
     class SemanticTables {
     public:
@@ -86,6 +86,8 @@ namespace Hulk {
         // ¿Existe el atributo 'attr_name' en 'type_name' o en algún ancestro?
         const SemanticAttrInfo* find_attribute(const std::string& type_name,
                                                const std::string& attr_name) const;
+
+        std::vector<Param> get_effective_constructor(const std::string& type_name) const;
 
         // Iteración (para chequeos globales)
         const std::unordered_map<std::string, SemanticTypeInfo>& all_types() const;
