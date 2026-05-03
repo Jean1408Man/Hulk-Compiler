@@ -1,0 +1,12 @@
+type A {}
+type B inherits A {}
+
+type Parent {
+    f(): A => new A();
+}
+
+type Child inherits Parent {
+    f(): B => new B();
+}
+
+print(new Child().f());

@@ -1,0 +1,1 @@
+let x: Object = 1 in (x as Number) + 1;

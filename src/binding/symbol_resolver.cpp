@@ -1,4 +1,5 @@
 #include "symbol_resolver.h"
+#include "../inference/hulk_type.h"
 
 #include "../ast/others/program.h"
 #include "../ast/literales/number.h"
@@ -59,6 +60,29 @@ bool SymbolResolver::run(Program& program) {
     // Pase 1: registrar declaraciones
     for (auto& decl : program.GetDeclarations())
         decl->accept(*this);
+
+    // Pase 1.5: validar anotaciones
+    for (auto& decl : program.GetDeclarations()) {
+        if (auto* fd = dynamic_cast<FunctionDecl*>(decl.get())) {
+            for (const auto& p : fd->GetParams())
+                check_type_annotation(fd->span, p.typeAnnotation);
+            check_type_annotation(fd->span, fd->GetReturnTypeAnnotation());
+        } else if (auto* td = dynamic_cast<TypeDecl*>(decl.get())) {
+            for (const auto& p : td->GetCtorParams())
+                check_type_annotation(td->span, p.typeAnnotation);
+            for (auto& member : td->GetMembers()) {
+                if (member.kind == TypeMember::Kind::Attribute) {
+                    auto* attr = static_cast<TypeMemberAttribute*>(member.node.get());
+                    check_type_annotation(attr->span, attr->GetTypeAnnotation());
+                } else if (member.kind == TypeMember::Kind::Method) {
+                    auto* method = static_cast<TypeMemberMethod*>(member.node.get());
+                    for (const auto& p : method->GetParams())
+                        check_type_annotation(method->span, p.typeAnnotation);
+                    check_type_annotation(method->span, method->GetReturnTypeAnnotation());
+                }
+            }
+        }
+    }
 
     // Pase 3: chequeos estructurales
     run_checks();
@@ -248,10 +272,7 @@ const SemanticAttrInfo* SymbolResolver::find_attribute_in_ancestors(
 // ─── Pase 1 — Registro de declaraciones ───────────────────────────────────
 
 void SymbolResolver::visit(FunctionDecl& n) {
-    // Caso 8: validar anotaciones de tipo en parámetros y retorno
-    for (const auto& p : n.GetParams())
-        check_type_annotation(n.span, p.typeAnnotation);
-    check_type_annotation(n.span, n.GetReturnTypeAnnotation());
+    // Validaciones movidas a Pase 1.5
 
     SemanticFuncInfo info;
     info.name                   = n.GetName();
@@ -285,9 +306,7 @@ void SymbolResolver::visit(TypeDecl& n) {
     check_duplicate_params(n.GetCtorParams(), n.span,
                            "constructor de '" + n.GetName() + "'");
 
-    // Caso 8: anotaciones de tipo en ctor params
-    for (const auto& p : n.GetCtorParams())
-        check_type_annotation(n.span, p.typeAnnotation);
+    // Caso 8: anotaciones validadas en Pase 1.5
 
     // Caso 10: detectar atributos duplicados; caso 8: anotar tipos
     std::unordered_set<std::string> attr_names;
@@ -307,8 +326,7 @@ void SymbolResolver::visit(TypeDecl& n) {
                            "' duplicado en tipo '" + n.GetName() + "'.");
             member_names.insert(ai.name);
 
-            // Caso 8
-            check_type_annotation(attr->span, ai.type_annotation);
+            // Caso 8: validadas en Pase 1.5
             info.attributes.push_back(std::move(ai));
         } else {
             auto* method = static_cast<TypeMemberMethod*>(member.node.get());
@@ -328,10 +346,7 @@ void SymbolResolver::visit(TypeDecl& n) {
                 // Caso 12: params duplicados en método
                 check_duplicate_params(mi.params, method->span,
                                        "método '" + mi.name + "'");
-                // Caso 8: anotaciones
-                for (const auto& p : mi.params)
-                    check_type_annotation(method->span, p.typeAnnotation);
-                check_type_annotation(method->span, mi.return_type_annotation);
+                // Caso 8: anotaciones validadas en Pase 1.5
                 member_names.insert(mi.name);
                 info.methods[mi.name] = std::move(mi);
             }
@@ -412,9 +427,25 @@ void SymbolResolver::check_methods() {
             // Tipo de retorno
             const auto& cr = method_info.return_type_annotation;
             const auto& pr = parent_method->return_type_annotation;
-            if (!cr.empty() && !pr.empty() && cr != pr)
-                report_raw(sp, "Método '" + method_name + "' redefine el retorno con tipo distinto ('" +
-                           cr + "' vs '" + pr + "').");
+            if (!cr.empty() && !pr.empty() && cr != pr) {
+                // Verificar si cr conforma a pr en lugar de exigir igualdad estricta
+                HulkType child_ret = HulkType::make_unknown();
+                if (cr == "Number") child_ret = HulkType::make_number();
+                else if (cr == "String") child_ret = HulkType::make_string();
+                else if (cr == "Boolean") child_ret = HulkType::make_boolean();
+                else child_ret = HulkType::make_object(cr);
+
+                HulkType parent_ret = HulkType::make_unknown();
+                if (pr == "Number") parent_ret = HulkType::make_number();
+                else if (pr == "String") parent_ret = HulkType::make_string();
+                else if (pr == "Boolean") parent_ret = HulkType::make_boolean();
+                else parent_ret = HulkType::make_object(pr);
+
+                if (!child_ret.conforms_to(parent_ret, tables_)) {
+                    report_raw(sp, "Método '" + method_name + "' redefine el retorno con tipo incompatible ('" +
+                               cr + "' no conforma a '" + pr + "').");
+                }
+            }
         }
     }
 }
@@ -534,7 +565,7 @@ void SymbolResolver::visit(LetIn& n) {
 // ─── Asignaciones ──────────────────────────────────────────────────────────
 
 void SymbolResolver::visit(DestructiveAssign& n) {
-    if (const BuiltinConstInfo* bc = tables_.lookup_builtin_const(n.GetName())) {
+    if (tables_.lookup_builtin_const(n.GetName())) {
         report_raw(n.span, "No se puede asignar a la constante builtin '" + n.GetName() + "'.");
         resolve(n.GetValue());
         return;
@@ -555,6 +586,15 @@ void SymbolResolver::visit(DestructiveAssign& n) {
 
 void SymbolResolver::visit(DestructiveAssignMember& n) {
     resolve(n.GetObject());
+    
+    auto* var_ref = dynamic_cast<VariableReference*>(n.GetObject());
+    auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
+    
+    if (!((var_ref && var_ref->GetName() == "self") || self_ref)) {
+        report_raw(n.span, "Los atributos son privados. Solo se pueden modificar mediante 'self'.");
+        resolution_map_[&n] = ResolutionResult{};
+    }
+    
     resolve(n.GetValue());
 }
 

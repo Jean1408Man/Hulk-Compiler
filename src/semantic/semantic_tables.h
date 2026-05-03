@@ -16,6 +16,8 @@ namespace Hulk {
     struct BuiltinFuncInfo {
         std::string name;
         int         arity;   // -1 = variadic
+        std::vector<std::string> param_types;
+        std::string return_type;
     };
 
     // Información de constantes builtin (PI, E)

@@ -97,7 +97,9 @@ namespace Hulk {
         // Auxiliares
         void set_type(Expr& node, HulkType type);
         void refine_type(Expr& node, const HulkType& type);
+        void refine_param_type(const Param* param, const HulkType& type);
         HulkType get_lca(const HulkType& a, const HulkType& b);
+
         HulkType infer_expr(Expr& node);
 
         // Mapeo desde notación textual a HulkType

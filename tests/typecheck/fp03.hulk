@@ -1,0 +1,9 @@
+type A {
+    name(): String => "A";
+}
+
+type B inherits A {
+    name(): String => base() @@ "B";
+}
+
+print(new B().name());

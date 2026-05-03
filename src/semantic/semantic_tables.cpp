@@ -11,22 +11,24 @@ SemanticTables::SemanticTables() {
     register_builtin_type("String",  "Object");
     register_builtin_type("Boolean", "Object");
 
-    // Funciones builtin (nombre → aridad)
-    //   arity -1 = variadic (no se chequea aridad)
-    for (auto& [n, a] : std::initializer_list<std::pair<const char*, int>>{
-            {"print",  1},
-            {"sqrt",   1},
-            {"sin",    1},
-            {"cos",    1},
-            {"exp",    1},
-            {"log",    2},
-            {"rand",   0},
-            {"range",  2},
+    // Funciones builtin (nombre, aridad, param_types, return_type)
+    struct BuiltinDef { const char* name; int arity; std::vector<std::string> param_types; const char* return_type; };
+    for (auto& def : std::initializer_list<BuiltinDef>{
+            {"print",  1, {"Object"}, "String"}, // o vacío según preferencia
+            {"sqrt",   1, {"Number"}, "Number"},
+            {"sin",    1, {"Number"}, "Number"},
+            {"cos",    1, {"Number"}, "Number"},
+            {"exp",    1, {"Number"}, "Number"},
+            {"log",    2, {"Number", "Number"}, "Number"},
+            {"rand",   0, {}, "Number"},
+            {"range",  2, {"Number", "Number"}, "Iterable"},
         })
     {
         BuiltinFuncInfo bfi;
-        bfi.name  = n;
-        bfi.arity = a;
+        bfi.name  = def.name;
+        bfi.arity = def.arity;
+        bfi.param_types = def.param_types;
+        bfi.return_type = def.return_type;
         builtin_funcs_[bfi.name] = bfi;
     }
 

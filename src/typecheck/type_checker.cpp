@@ -89,6 +89,20 @@ namespace Hulk {
                         if (!ret_type.is_unknown()) {
                             check_conforms(method->GetBody(), ret_type, "retorno de método '" + method->GetName() + "'");
                         }
+                        
+                        // FN06: Chequear override post-inferencia
+                        if (td->HasParent()) {
+                            if (const SemanticMethodInfo* parent_method = tables_.find_method(td->GetParentName(), method->GetName())) {
+                                HulkType parent_ret = from_string_type(parent_method->return_type_annotation);
+                                HulkType child_ret = ret_type.is_unknown() ? get_type(method->GetBody()) : ret_type;
+                                if (!parent_ret.is_unknown() && !child_ret.is_unknown() && !child_ret.is_error()) {
+                                    if (!child_ret.conforms_to(parent_ret, tables_)) {
+                                        report_error(method->span, "Método '" + method->GetName() + "' redefine el retorno con tipo incompatible ('" +
+                                            child_ret.to_string() + "' no conforma a '" + parent_ret.to_string() + "').");
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -114,8 +128,11 @@ namespace Hulk {
 
     void TypeChecker::check_conforms(Expr* node, const HulkType& expected, const std::string& context) {
         HulkType found = get_type(node);
-        // Si no pudimos inferir el tipo (Unknown) o ya se reportó error (Error), no generar cascada
-        if (found.is_unknown() || found.is_error()) return;
+        if (found.is_error()) return;
+        if (found.is_unknown()) {
+            report_error(node->span, "No se pudo inferir el tipo para " + context + ". Se requiere anotación explícita.");
+            return;
+        }
         if (!found.conforms_to(expected, tables_)) {
             report_error(node->span, "Error de tipos en " + context + ": se esperaba '" + 
                          expected.to_string() + "' pero se encontró '" + found.to_string() + "'.");
@@ -235,6 +252,8 @@ namespace Hulk {
                 if (!attr_type.is_unknown()) {
                     check_conforms(node.GetValue(), attr_type, "asignación a atributo '" + node.GetMemberName() + "'");
                 }
+            } else if (!obj_type.is_unknown() && !obj_type.is_error()) {
+                report_error(node.span, "Tipo '" + obj_type.name() + "' no tiene atributo '" + node.GetMemberName() + "'.");
             }
         }
     }
@@ -300,6 +319,16 @@ namespace Hulk {
                         
                         if (!ann.is_unknown()) {
                             check_conforms(node.GetArgs()[i].get(), ann, "argumento " + std::to_string(i+1) + " de llamada especial '" + node.GetName() + "'");
+                        }
+                    }
+                }
+            } else if (res.kind == ResolutionKind::BuiltinFunction) {
+                const BuiltinFuncInfo* bfi = res.builtin_func;
+                if (bfi && bfi->param_types.size() == node.GetArgs().size()) {
+                    for (size_t i = 0; i < bfi->param_types.size(); ++i) {
+                        HulkType ann = from_string_type(bfi->param_types[i]);
+                        if (!ann.is_unknown()) {
+                            check_conforms(node.GetArgs()[i].get(), ann, "argumento " + std::to_string(i+1) + " de función builtin '" + node.GetName() + "'");
                         }
                     }
                 }

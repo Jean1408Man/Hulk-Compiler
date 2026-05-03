@@ -60,7 +60,6 @@ namespace Hulk {
                     
                     HulkType body_type = infer_expr(*func_decl->GetBody());
                     
-                    // Solo reportar errores de inferencia en la última iteración
                     if (iteration == max_iterations || !changed_) {
                         if (!func_decl->HasReturnTypeAnnotation()) {
                             if (body_type.is_error() || body_type.is_unknown()) {
@@ -72,13 +71,24 @@ namespace Hulk {
                 } else if (auto* type_decl = dynamic_cast<TypeDecl*>(decl.get())) {
                     current_type_decl_ = type_decl->GetName();
                     current_func_decl_ = "";
+                    
+                    // Visitar argumentos de herencia
+                    if (type_decl->HasParent()) {
+                        for (auto& arg : type_decl->GetParentArgs()) {
+                            infer_expr(*arg);
+                        }
+                    }
+
                     for (auto& member : type_decl->GetMembers()) {
+
                         if (member.kind == TypeMember::Kind::Attribute) {
                             auto* attr = static_cast<TypeMemberAttribute*>(member.node.get());
                             infer_expr(*attr->GetInitializer());
                         } else if (member.kind == TypeMember::Kind::Method) {
                             auto* method = static_cast<TypeMemberMethod*>(member.node.get());
+                            current_func_decl_ = method->GetName();
                             HulkType body_type = infer_expr(*method->GetBody());
+                            current_func_decl_ = "";
                             if (iteration == max_iterations || !changed_) {
                                 if (!method->HasReturnTypeAnnotation()) {
                                     if (body_type.is_error() || body_type.is_unknown()) {
@@ -129,32 +139,61 @@ namespace Hulk {
         if (type.is_unknown() || type.is_error()) return;
         
         auto it = resolution_map_.find(&node);
-        if (it == resolution_map_.end()) return;
+        if (it != resolution_map_.end()) {
+            const ResolutionResult& res = it->second;
+            if (res.kind == ResolutionKind::Variable) {
+                if (res.binding->HasTypeAnnotation()) return;
+                auto& current = binding_types_[res.binding];
+                if (current.is_unknown()) {
+                    current = type;
+                    changed_ = true;
+                }
+            } else if (res.kind == ResolutionKind::Param) {
+                if (res.param->HasTypeAnnotation()) return;
+                auto& current = param_types_[res.param];
+                if (current.is_unknown()) {
+                    current = type;
+                    changed_ = true;
+                }
+            } else if (res.kind == ResolutionKind::Synthetic) {
+                if (!res.synthetic->type_name.empty()) return;
+                auto& current = synthetic_types_[res.synthetic];
+                if (current.is_unknown() || (current.kind() == HulkType::Kind::Object && current.name() == "Object" && type.kind() == HulkType::Kind::Object && type.name() != "Object")) {
+                    current = type;
+                    changed_ = true;
+                }
+            }
+        }
+
+        // Propagación recursiva para MemberAccess
+        if (auto* mem = dynamic_cast<MemberAccess*>(&node)) {
+            HulkType obj_type = type_map_[mem->GetObject()];
+            if (obj_type.kind() == HulkType::Kind::Object) {
+                if (const SemanticAttrInfo* attr = tables_.find_attribute(obj_type.name(), mem->GetMemberName())) {
+                    if (attr->initializer && attr->type_annotation.empty()) {
+                        refine_type(*attr->initializer, type);
+                    }
+                }
+            }
+        }
+    }
+    void TypeInferencer::refine_param_type(const Param* param, const HulkType& type) {
+        if (type.is_unknown() || type.is_error()) return;
+        if (param->HasTypeAnnotation()) return;
         
-        const ResolutionResult& res = it->second;
-        if (res.kind == ResolutionKind::Variable) {
-            if (res.binding->HasTypeAnnotation()) return;
-            auto& current = binding_types_[res.binding];
-            if (current.is_unknown()) {
-                current = type;
-                changed_ = true;
-            }
-        } else if (res.kind == ResolutionKind::Param) {
-            if (res.param->HasTypeAnnotation()) return;
-            auto& current = param_types_[res.param];
-            if (current.is_unknown()) {
-                current = type;
-                changed_ = true;
-            }
-        } else if (res.kind == ResolutionKind::Synthetic) {
-            if (!res.synthetic->type_name.empty()) return;
-            auto& current = synthetic_types_[res.synthetic];
-            if (current.is_unknown() || (current.kind() == HulkType::Kind::Object && current.name() == "Object" && type.kind() == HulkType::Kind::Object && type.name() != "Object")) {
-                current = type;
+        auto& current = param_types_[param];
+        if (current.is_unknown()) {
+            current = type;
+            changed_ = true;
+        } else if (!current.is_unknown() && !type.is_unknown() && current != type) {
+            HulkType lca = get_lca(current, type);
+            if (lca != current) {
+                current = lca;
                 changed_ = true;
             }
         }
     }
+
 
     HulkType TypeInferencer::from_string_type(const std::string& type_name) {
         if (type_name.empty()) return HulkType::make_unknown();
@@ -368,6 +407,24 @@ namespace Hulk {
         if (it != resolution_map_.end()) {
             const ResolutionResult& res = it->second;
             if (res.kind == ResolutionKind::Function) {
+                // Propagación hacia parámetros
+                const FunctionDecl* decl = res.func_decl;
+                for (size_t i = 0; i < node.GetArgs().size() && i < decl->GetParams().size(); ++i) {
+                    HulkType arg_type = type_map_[node.GetArgs()[i].get()];
+                    if (!arg_type.is_unknown() && !arg_type.is_error()) {
+                        refine_param_type(&decl->GetParams()[i], arg_type);
+                    }
+                    
+                    HulkType param_type = from_string_type(decl->GetParams()[i].typeAnnotation);
+                    if (param_type.is_unknown()) {
+                        auto p_it = param_types_.find(&decl->GetParams()[i]);
+                        if (p_it != param_types_.end()) param_type = p_it->second;
+                    }
+                    if (!param_type.is_unknown()) {
+                        refine_type(*node.GetArgs()[i], param_type);
+                    }
+                }
+
                 if (res.func_decl->HasReturnTypeAnnotation()) {
                     set_type(node, from_string_type(res.func_decl->GetReturnTypeAnnotation()));
                     return;
@@ -377,8 +434,46 @@ namespace Hulk {
                     set_type(node, body_it->second);
                     return;
                 }
+            } else if (res.kind == ResolutionKind::Method) {
+                const SemanticMethodInfo* info = res.method_info;
+                // Propagación hacia parámetros
+                for (size_t i = 0; i < node.GetArgs().size() && i < info->ast_params.size(); ++i) {
+                    HulkType arg_type = type_map_[node.GetArgs()[i].get()];
+                    if (!arg_type.is_unknown() && !arg_type.is_error()) {
+                        refine_param_type(info->ast_params[i], arg_type);
+                    }
+                    
+                    HulkType param_type = from_string_type(info->params[i].typeAnnotation);
+                    if (param_type.is_unknown()) {
+                        auto p_it = param_types_.find(info->ast_params[i]);
+                        if (p_it != param_types_.end()) param_type = p_it->second;
+                    }
+                    if (!param_type.is_unknown()) {
+                        refine_type(*node.GetArgs()[i], param_type);
+                    }
+                }
+
+                if (!info->return_type_annotation.empty()) {
+                    set_type(node, from_string_type(info->return_type_annotation));
+                    return;
+                }
+                if (info->body) {
+                    auto body_it = type_map_.find(info->body);
+                    if (body_it != type_map_.end()) {
+                        set_type(node, body_it->second);
+                        return;
+                    }
+                }
             } else if (res.kind == ResolutionKind::BuiltinFunction) {
-                if (res.builtin_func->name == "print") set_type(node, HulkType::make_string());
+
+                if (res.builtin_func->name == "print") {
+                    if (!node.GetArgs().empty()) {
+                        auto arg_it = type_map_.find(node.GetArgs()[0].get());
+                        set_type(node, (arg_it != type_map_.end()) ? arg_it->second : HulkType::make_object("Object"));
+                    } else {
+                        set_type(node, HulkType::make_object("Object"));
+                    }
+                }
                 else if (res.builtin_func->name == "range") set_type(node, HulkType::make_object("Iterable"));
                 else set_type(node, HulkType::make_number());
                 return;
@@ -386,6 +481,7 @@ namespace Hulk {
         }
         set_type(node, HulkType::make_unknown());
     }
+
 
     void TypeInferencer::visit(Lambda& node) {
         // Lambdas are out of scope for core inference
@@ -395,8 +491,8 @@ namespace Hulk {
     }
 
     void TypeInferencer::visit(Print& node) {
-        infer_expr(*node.GetExpr());
-        set_type(node, HulkType::make_string()); // print retorna String o Void según HULK? Hacemos String como default seguro
+        HulkType arg_type = infer_expr(*node.GetExpr());
+        set_type(node, arg_type); // Retorno identidad
     }
 
     void TypeInferencer::visit(BuiltinCall& node) {
@@ -437,31 +533,24 @@ namespace Hulk {
         for (auto& arg : node.GetArgs()) {
             infer_expr(*arg);
         }
-        // base() invoca al método padre con el mismo nombre que el método actual.
-        // Su tipo debe ser el tipo de RETORNO del método padre, no el tipo del padre.
-        if (!current_type_decl_.empty() && !current_func_decl_.empty()) {
-            if (const SemanticTypeInfo* t_info = tables_.lookup_type(current_type_decl_)) {
-                if (!t_info->parent_name.empty()) {
-                    const SemanticMethodInfo* parent_method =
-                        tables_.find_method(t_info->parent_name, current_func_decl_);
-                    if (parent_method) {
-                        if (!parent_method->return_type_annotation.empty()) {
-                            set_type(node, from_string_type(parent_method->return_type_annotation));
-                            return;
-                        }
-                        if (parent_method->body) {
-                            auto it = type_map_.find(parent_method->body);
-                            if (it != type_map_.end() && !it->second.is_unknown()) {
-                                set_type(node, it->second);
-                                return;
-                            }
-                        }
-                        // Retorno aún no inferido — dejar Unknown para siguiente iteración
-                        set_type(node, HulkType::make_unknown());
-                        return;
-                    }
+        
+        auto it = resolution_map_.find(&node);
+        if (it != resolution_map_.end() && it->second.kind == ResolutionKind::Method) {
+            const SemanticMethodInfo* parent_method = it->second.method_info;
+            if (!parent_method->return_type_annotation.empty()) {
+                set_type(node, from_string_type(parent_method->return_type_annotation));
+                return;
+            }
+            if (parent_method->body) {
+                auto body_it = type_map_.find(parent_method->body);
+                if (body_it != type_map_.end() && !body_it->second.is_unknown()) {
+                    set_type(node, body_it->second);
+                    return;
                 }
             }
+            // Retorno aún no inferido — dejar Unknown para siguiente iteración
+            set_type(node, HulkType::make_unknown());
+            return;
         }
         set_type(node, HulkType::make_error());
     }
@@ -470,8 +559,21 @@ namespace Hulk {
         for (auto& arg : node.GetArgs()) {
             infer_expr(*arg);
         }
+        
+        const SemanticTypeInfo* info = tables_.lookup_type(node.GetTypeName());
+        if (info && info->decl) {
+            const auto& ast_params = info->decl->GetCtorParams();
+            for (size_t i = 0; i < node.GetArgs().size() && i < ast_params.size(); ++i) {
+                HulkType arg_type = type_map_[node.GetArgs()[i].get()];
+                if (!arg_type.is_unknown() && !arg_type.is_error()) {
+                    refine_param_type(&ast_params[i], arg_type);
+                }
+            }
+        }
+        
         set_type(node, HulkType::make_object(node.GetTypeName()));
     }
+
 
     void TypeInferencer::visit(MemberAccess& node) {
         HulkType obj_type = infer_expr(*node.GetObject());
@@ -500,39 +602,49 @@ namespace Hulk {
         }
         
         auto it = resolution_map_.find(&node);
+        const SemanticMethodInfo* info = nullptr;
         if (it != resolution_map_.end()) {
             const ResolutionResult& res = it->second;
             if (res.kind == ResolutionKind::Method) {
-                if (!res.method_info->return_type_annotation.empty()) {
-                    set_type(node, from_string_type(res.method_info->return_type_annotation));
-                    return;
-                }
-                if (res.method_info->body) {
-                    auto body_it = type_map_.find(res.method_info->body);
-                    if (body_it != type_map_.end()) {
-                        set_type(node, body_it->second);
-                        return;
-                    }
-                }
+                info = res.method_info;
             }
         } else if (obj_type.kind() == HulkType::Kind::Object) {
-            // Si no hay resolución (no es self o es dinámico), buscar en el tipo inferido
-            if (const SemanticMethodInfo* method = tables_.find_method(obj_type.name(), node.GetMethodName())) {
-                if (!method->return_type_annotation.empty()) {
-                    set_type(node, from_string_type(method->return_type_annotation));
-                    return;
+            info = tables_.find_method(obj_type.name(), node.GetMethodName());
+        }
+
+        if (info) {
+            // Propagación hacia parámetros
+            for (size_t i = 0; i < node.GetArgs().size() && i < info->ast_params.size(); ++i) {
+                HulkType arg_type = type_map_[node.GetArgs()[i].get()];
+                if (!arg_type.is_unknown() && !arg_type.is_error()) {
+                    refine_param_type(info->ast_params[i], arg_type);
                 }
-                if (method->body) {
-                    auto body_it = type_map_.find(method->body);
-                    if (body_it != type_map_.end()) {
-                        set_type(node, body_it->second);
-                        return;
-                    }
+                
+                HulkType param_type = from_string_type(info->params[i].typeAnnotation);
+                if (param_type.is_unknown()) {
+                    auto p_it = param_types_.find(info->ast_params[i]);
+                    if (p_it != param_types_.end()) param_type = p_it->second;
+                }
+                if (!param_type.is_unknown()) {
+                    refine_type(*node.GetArgs()[i], param_type);
+                }
+            }
+
+            if (!info->return_type_annotation.empty()) {
+                set_type(node, from_string_type(info->return_type_annotation));
+                return;
+            }
+            if (info->body) {
+                auto body_it = type_map_.find(info->body);
+                if (body_it != type_map_.end()) {
+                    set_type(node, body_it->second);
+                    return;
                 }
             }
         }
         set_type(node, HulkType::make_unknown());
     }
+
 
     void TypeInferencer::visit(IsExpr& node) {
         infer_expr(*node.GetExpr());
@@ -541,7 +653,7 @@ namespace Hulk {
 
     void TypeInferencer::visit(AsExpr& node) {
         infer_expr(*node.GetExpr());
-        set_type(node, HulkType::make_object(node.GetTypeName()));
+        set_type(node, from_string_type(node.GetTypeName()));
     }
 
     void TypeInferencer::visit(VectorLiteral& node) {
