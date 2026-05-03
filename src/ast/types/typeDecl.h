@@ -31,6 +31,7 @@ namespace Hulk {
         std::string parentName;
         std::vector<std::unique_ptr<Expr>> parentArgs;
         std::vector<TypeMember> members;
+        bool hasExplicitConstructor;
 
     public:
         TypeDecl(const std::string& name,
@@ -57,6 +58,7 @@ namespace Hulk {
         bool HasParent() const;
         const std::vector<std::unique_ptr<Expr>>& GetParentArgs() const;
         const std::vector<TypeMember>& GetMembers() const;
+        bool HasExplicitConstructor() const;
 
         std::string ToString() const override;
         void accept(DeclVisitor& v) override;

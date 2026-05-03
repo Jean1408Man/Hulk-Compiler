@@ -1,0 +1,23 @@
+//falsos negativos
+type Point(x: Number, y: Number) {
+    x: Number = x;
+    y: Number = y;
+}
+
+type PolarPoint inherits Point {
+    rho(): Number => sqrt(self.x ^ 2 + self.y ^ 2);
+}
+
+let p = new PolarPoint(3, 4) in p.rho();
+
+
+type A {
+    f(): Number => 1;
+}
+
+type B inherits A {
+    f(): Number => base();
+}
+
+new B().f();
+

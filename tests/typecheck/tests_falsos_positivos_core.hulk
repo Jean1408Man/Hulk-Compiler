@@ -1,0 +1,61 @@
+// ============================================================
+// FALSOS POSITIVOS — programas que DEBERÍAN ACEPTARSE,
+// pero el semántico actual probablemente rechaza.
+//
+// Ejecutar cada bloque por separado en un archivo .hulk limpio.
+// Se excluyen protocolos, iterables, vectores, lambdas/functores y macros.
+// ============================================================
+
+// ------------------------------------------------------------
+// FP01 — Tipo usado antes de declararse.
+// Esperado: aceptar.
+// Actual probable: error de tipo no declarado 'A'.
+// ------------------------------------------------------------
+function make(): A => new A();
+
+type A {}
+
+print(make());
+
+
+// ------------------------------------------------------------
+// FP02 — Override con retorno covariante.
+// Esperado: aceptar, porque B hereda de A y B conforma a A.
+// Actual probable: error porque compara 'B' != 'A'.
+// ------------------------------------------------------------
+// type A {}
+// type B inherits A {}
+//
+// type Parent {
+//     f(): A => new A();
+// }
+//
+// type Child inherits Parent {
+//     f(): B => new B();
+// }
+//
+// print(new Child().f());
+
+
+// ------------------------------------------------------------
+// FP03 — base() válido dentro de método redefinido.
+// Esperado: aceptar; base() debe tener tipo String.
+// Actual probable: base() queda Error/Unknown durante inferencia.
+// ------------------------------------------------------------
+// type A {
+//     name(): String => "A";
+// }
+//
+// type B inherits A {
+//     name(): String => base() @@ "B";
+// }
+//
+// print(new B().name());
+
+
+// ------------------------------------------------------------
+// FP04 — as hacia builtin Number.
+// Esperado: aceptar si el cast es permitido; (x as Number) debe ser Number.
+// Actual probable: se infiere como Object("Number") y falla la suma.
+// ------------------------------------------------------------
+// let x: Object = 1 in (x as Number) + 1;

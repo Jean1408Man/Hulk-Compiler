@@ -1,0 +1,4 @@
+type A {
+    f() => self.noExiste();
+}
+new A().f();

@@ -1,0 +1,84 @@
+// ============================================================
+// FALSOS NEGATIVOS — programas que DEBERÍAN RECHAZARSE,
+// pero el semántico actual probablemente acepta.
+//
+// Ejecutar cada bloque por separado en un archivo .hulk limpio.
+// Se excluyen protocolos, iterables, vectores, lambdas/functores y macros.
+// ============================================================
+
+// ------------------------------------------------------------
+// FN01 — Escritura externa a atributo privado.
+// Esperado: error; los atributos solo se modifican desde self dentro del tipo.
+// Actual probable: acepta si el tipo del valor conforma.
+// ------------------------------------------------------------
+// type A {
+//     x: Number = 0;
+// }
+
+// let a = new A() in a.x := 1;
+
+
+// ------------------------------------------------------------
+// FN02 — Escritura a atributo inexistente.
+// Esperado: error; A no tiene atributo x.
+// Actual probable: no reporta nada si find_attribute devuelve nullptr.
+// ------------------------------------------------------------
+// type A {}
+//
+// let a = new A() in a.x := 1;
+
+
+// ------------------------------------------------------------
+// FN03 — Constructor no anotado restringido por atributo anotado.
+// Esperado: error; x debe ser Number por value: Number = x.
+// Actual probable: acepta new Box("hola").
+// ------------------------------------------------------------
+// type Box(x) {
+//     value: Number = x;
+// }
+//
+// let b = new Box("hola") in 0;
+
+
+// ------------------------------------------------------------
+// FN04 — Builtin parseada como FunctionCall sin chequeo de tipos.
+// Esperado: error; range espera Number, Number.
+// Actual probable: solo se chequea aridad y se acepta.
+// ------------------------------------------------------------
+// range("a", 10);
+
+
+// ------------------------------------------------------------
+// FN05 — print inferido como String.
+// Esperado: error; print(1) no debería conformar a String.
+// Actual probable: acepta porque print se infiere como String.
+// ------------------------------------------------------------
+// function f(): String => print(1);
+//
+// print(f());
+
+
+// ------------------------------------------------------------
+// FN06 — Override no anotado con retorno incompatible.
+// Esperado: error; Child.f retorna String pero Parent.f exige Number.
+// Actual probable: acepta porque no compara retorno inferido contra padre.
+// ------------------------------------------------------------
+// type Parent {
+//     f(): Number => 1;
+// }
+//
+// type Child inherits Parent {
+//     f() => "hola";
+// }
+//
+// print(new Child().f());
+
+
+// ------------------------------------------------------------
+// FN07 — Unknown como escape de errores.
+// Esperado: error claro si un tipo no puede inferirse o una operación queda Unknown.
+// Actual probable: depende del camino, pero check_conforms no reporta Unknown.
+// ------------------------------------------------------------
+type A {}
+
+let a = new A() in a.noExiste();

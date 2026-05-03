@@ -1,0 +1,6 @@
+// Test err_04: aridad incorrecta en llamada a función
+// Esperado: error semántico "función 'suma' espera 2 argumento(s) pero recibió 1"
+
+function suma(x: Number, y: Number): Number => x + y;
+
+print(suma(1));

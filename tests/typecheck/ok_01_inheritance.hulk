@@ -1,0 +1,4 @@
+type A() {}
+type B() inherits A() {}
+function f(a : A) => print("ok");
+f(new B());

@@ -1,0 +1,2 @@
+type Bad inherits Number {}
+new Bad();

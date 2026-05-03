@@ -82,6 +82,30 @@ namespace Hulk {
         }
 
         // ------------------------------------------------------------------
+        // Helper para reportar un error y lanzar EvalError
+        // ------------------------------------------------------------------
+        template<typename... Args>
+        [[noreturn]] void report_error(const hulk::common::Span& span,
+                                       const std::string& error_id,
+                                       Args&&... args) {
+            engine_.report(error_id,
+                           hulk::common::DiagnosticLevel::Semantic,
+                           hulk::common::Severity::Error,
+                           span,
+                           std::forward<Args>(args)...);
+            throw EvalError{};
+        }
+
+        [[noreturn]] void report_error_raw(const hulk::common::Span& span,
+                                           const std::string& msg) {
+            engine_.report_raw(hulk::common::DiagnosticLevel::Semantic,
+                               hulk::common::Severity::Error,
+                               span,
+                               msg);
+            throw EvalError{};
+        }
+
+        // ------------------------------------------------------------------
         // Helpers internos
         // ------------------------------------------------------------------
         HulkValue eval(Expr* node);
