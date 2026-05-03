@@ -229,6 +229,7 @@ Token Lexer::scan_operator_or_delimiter() {
         case ';': return make_token(TokenKind::Semicolon, ";", start, end);
         case ':': return make_token(TokenKind::Colon, ":", start, end);
         case '.': return make_token(TokenKind::Dot, ".", start, end);
+        case '_': return make_token(TokenKind::Identifier, "_", start, end);
 
         default:
             return error_token("INVALID_CHAR", start, end, std::string(1, c));

@@ -13,7 +13,9 @@ namespace Hulk {
 
     const std::string& TypeMemberAttribute::GetName() const { return name; }
     const std::string& TypeMemberAttribute::GetTypeAnnotation() const { return typeAnnotation; }
-    bool TypeMemberAttribute::HasTypeAnnotation() const { return !typeAnnotation.empty(); }
+    bool TypeMemberAttribute::HasTypeAnnotation() const { 
+        return !typeAnnotation.empty() && typeAnnotation != "auto" && typeAnnotation != "_"; 
+    }
     Expr* TypeMemberAttribute::GetInitializer() const { return initializer.get(); }
 
     std::string TypeMemberAttribute::ToString() const {

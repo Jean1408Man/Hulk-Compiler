@@ -1,0 +1,8 @@
+// Caso válido: type holes anidados con tipos compatibles
+type Container(val: _) {
+    val: _ = val;
+    get(): Number => 42;
+}
+
+let c: _ = new Container(99) in
+print(c.get());

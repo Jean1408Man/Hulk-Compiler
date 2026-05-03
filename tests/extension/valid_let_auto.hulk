@@ -1,0 +1,1 @@
+let s: auto = "hello" in print(s);

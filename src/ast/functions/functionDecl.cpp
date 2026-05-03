@@ -16,7 +16,9 @@ namespace Hulk {
     const std::string& FunctionDecl::GetName() const { return name; }
     const std::vector<Param>& FunctionDecl::GetParams() const { return params; }
     const std::string& FunctionDecl::GetReturnTypeAnnotation() const { return returnTypeAnnotation; }
-    bool FunctionDecl::HasReturnTypeAnnotation() const { return !returnTypeAnnotation.empty(); }
+    bool FunctionDecl::HasReturnTypeAnnotation() const { 
+        return !returnTypeAnnotation.empty() && returnTypeAnnotation != "auto" && returnTypeAnnotation != "_"; 
+    }
     Expr* FunctionDecl::GetBody() const { return body.get(); }
 
     std::string FunctionDecl::ToString() const {

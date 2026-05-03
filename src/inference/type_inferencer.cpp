@@ -193,7 +193,7 @@ namespace Hulk {
 
 
     HulkType TypeInferencer::from_string_type(const std::string& type_name) {
-        if (type_name.empty()) return HulkType::make_unknown();
+        if (type_name.empty() || type_name == "auto" || type_name == "_") return HulkType::make_unknown();
         if (type_name == "Number") return HulkType::make_number();
         if (type_name == "String") return HulkType::make_string();
         if (type_name == "Boolean") return HulkType::make_boolean();

@@ -1,0 +1,9 @@
+// Caso inválido: incompatibilidad directa en operación con type hole
+// x debe ser Number (por x + 1) pero también debe ser Boolean (por !x)
+function bad_infer(x: _): _ => {
+    x + 1;
+    !x;
+    42
+};
+
+print(bad_infer(5));
