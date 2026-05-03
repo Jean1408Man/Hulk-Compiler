@@ -1,0 +1,24 @@
+=== AST ===
+type A { ... }
+let x = NumberLiteral: 10.000000, a = new A() in Variable(a).m()
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      members
+        TypeMemberMethod(name=m)
+          body
+            VariableReference(name=x)
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=x)
+          Number(value=10)
+        VariableBinding(name=a)
+          NewExpr(type=A)
+      body
+        MethodCall(name=m)
+          object
+            VariableReference(name=a)
+          args

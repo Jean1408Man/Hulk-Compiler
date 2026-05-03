@@ -1,0 +1,1 @@
+error [2:3 - 2:10]: Error de tipos en argumento 1 de función 'f': se esperaba 'Number' pero se encontró 'String'.

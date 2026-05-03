@@ -1,0 +1,29 @@
+=== AST ===
+type A(x) inherits B(Variable(x)) { ... }
+type B(x) inherits A(Variable(x)) { ... }
+print(StringLiteral: no debería llegar aquí)
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      ctorParams
+        Param(name=x)
+      inherits=B
+      parentArgs
+        VariableReference(name=x)
+      members
+        TypeMemberAttribute(name=val)
+          VariableReference(name=x)
+    TypeDecl(name=B)
+      ctorParams
+        Param(name=x)
+      inherits=A
+      parentArgs
+        VariableReference(name=x)
+      members
+        TypeMemberAttribute(name=val)
+          VariableReference(name=x)
+  globalExpr
+    Print
+      String(value="no debería llegar aquí")

@@ -1,0 +1,8 @@
+=== AST ===
+z := NumberLiteral: 42.000000
+
+=== TREE ===
+Program
+  globalExpr
+    DestructiveAssign(name=z)
+      Number(value=42)

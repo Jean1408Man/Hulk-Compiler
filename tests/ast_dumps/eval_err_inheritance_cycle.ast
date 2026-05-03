@@ -1,0 +1,20 @@
+=== AST ===
+type A inherits B { ... }
+type B inherits A { ... }
+let a = new A() in print(Variable(a))
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      inherits=B
+    TypeDecl(name=B)
+      inherits=A
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=a)
+          NewExpr(type=A)
+      body
+        Print
+          VariableReference(name=a)

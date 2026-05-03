@@ -1,0 +1,17 @@
+=== AST ===
+function f(n : Number) => (Variable(n) + NumberLiteral: 1.000000)
+f(StringLiteral: hello)
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=f)
+      params
+        Param(name=n, type=Number)
+      body
+        ArithmeticBinOp(op=Plus)
+          VariableReference(name=n)
+          Number(value=1)
+  globalExpr
+    FunctionCall(name=f)
+      String(value="hello")

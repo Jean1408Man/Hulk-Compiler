@@ -1,0 +1,42 @@
+=== AST ===
+{ print((BooleanLiteral: true & BooleanLiteral: false)); print((BooleanLiteral: true | BooleanLiteral: false)); print(!(BooleanLiteral: true)); print((NumberLiteral: 3.000000 > NumberLiteral: 2.000000)); print((NumberLiteral: 3.000000 < NumberLiteral: 2.000000)); print((NumberLiteral: 3.000000 >= NumberLiteral: 3.000000)); print((NumberLiteral: 2.000000 <= NumberLiteral: 1.000000)); print((NumberLiteral: 3.000000 == NumberLiteral: 3.000000)); print((NumberLiteral: 3.000000 != NumberLiteral: 4.000000)); }
+
+=== TREE ===
+Program
+  globalExpr
+    ExprBlock
+      Print
+        LogicBinOp(op=And)
+          Boolean(value=true)
+          Boolean(value=false)
+      Print
+        LogicBinOp(op=Or)
+          Boolean(value=true)
+          Boolean(value=false)
+      Print
+        LogicUnaryOp
+          Boolean(value=true)
+      Print
+        LogicBinOp(op=Greater)
+          Number(value=3)
+          Number(value=2)
+      Print
+        LogicBinOp(op=Less)
+          Number(value=3)
+          Number(value=2)
+      Print
+        LogicBinOp(op=GreaterEqual)
+          Number(value=3)
+          Number(value=3)
+      Print
+        LogicBinOp(op=LessEqual)
+          Number(value=2)
+          Number(value=1)
+      Print
+        LogicBinOp(op=Equal)
+          Number(value=3)
+          Number(value=3)
+      Print
+        LogicBinOp(op=NotEqual)
+          Number(value=3)
+          Number(value=4)

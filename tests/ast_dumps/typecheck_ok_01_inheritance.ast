@@ -1,0 +1,21 @@
+=== AST ===
+type A { ... }
+type B inherits A { ... }
+function f(a : A) => print(StringLiteral: ok)
+f(new B())
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+    TypeDecl(name=B)
+      inherits=A
+    FunctionDecl(name=f)
+      params
+        Param(name=a, type=A)
+      body
+        Print
+          String(value="ok")
+  globalExpr
+    FunctionCall(name=f)
+      NewExpr(type=B)

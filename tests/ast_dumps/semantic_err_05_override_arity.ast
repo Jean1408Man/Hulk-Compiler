@@ -1,0 +1,28 @@
+=== AST ===
+type A { ... }
+type B inherits A { ... }
+new B().f()
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      members
+        TypeMemberMethod(name=f)
+          params
+            Param(name=x, type=Number)
+          return=Number
+          body
+            VariableReference(name=x)
+    TypeDecl(name=B)
+      inherits=A
+      members
+        TypeMemberMethod(name=f)
+          return=Number
+          body
+            Number(value=0)
+  globalExpr
+    MethodCall(name=f)
+      object
+        NewExpr(type=B)
+      args

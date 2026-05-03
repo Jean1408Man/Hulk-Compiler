@@ -1,0 +1,20 @@
+=== AST ===
+type A(x) { ... }
+new A(NumberLiteral: 1.000000).f()
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      ctorParams
+        Param(name=x)
+      members
+        TypeMemberMethod(name=f)
+          body
+            VariableReference(name=x)
+  globalExpr
+    MethodCall(name=f)
+      object
+        NewExpr(type=A)
+          Number(value=1)
+      args

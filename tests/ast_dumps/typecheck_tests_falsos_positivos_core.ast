@@ -1,0 +1,16 @@
+=== AST ===
+function make() : A => new A()
+type A { ... }
+print(make())
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=make)
+      return=A
+      body
+        NewExpr(type=A)
+    TypeDecl(name=A)
+  globalExpr
+    Print
+      FunctionCall(name=make)

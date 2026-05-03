@@ -1,0 +1,18 @@
+=== AST ===
+function f() => Variable(x)
+let x = NumberLiteral: 10.000000 in print(f())
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=f)
+      body
+        VariableReference(name=x)
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=x)
+          Number(value=10)
+      body
+        Print
+          FunctionCall(name=f)

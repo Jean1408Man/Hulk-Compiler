@@ -1,0 +1,56 @@
+=== AST ===
+type Animal(name) { ... }
+type Perro(name) inherits Animal(Variable(name)) { ... }
+type Gato(name) inherits Animal(Variable(name)) { ... }
+let g = new Gato(StringLiteral: Mishi) in let p = Variable(g) as Perro in print(StringLiteral: no debe llegar aqui)
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=Animal)
+      ctorParams
+        Param(name=name)
+      members
+        TypeMemberAttribute(name=name)
+          VariableReference(name=name)
+        TypeMemberMethod(name=speak)
+          body
+            Print
+              String(value="...")
+    TypeDecl(name=Perro)
+      ctorParams
+        Param(name=name)
+      inherits=Animal
+      parentArgs
+        VariableReference(name=name)
+      members
+        TypeMemberMethod(name=speak)
+          body
+            Print
+              String(value="Woof!")
+    TypeDecl(name=Gato)
+      ctorParams
+        Param(name=name)
+      inherits=Animal
+      parentArgs
+        VariableReference(name=name)
+      members
+        TypeMemberMethod(name=speak)
+          body
+            Print
+              String(value="Miau!")
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=g)
+          NewExpr(type=Gato)
+            String(value="Mishi")
+      body
+        LetIn
+          bindings
+            VariableBinding(name=p)
+              AsExpr(type=Perro)
+                VariableReference(name=g)
+          body
+            Print
+              String(value="no debe llegar aqui")

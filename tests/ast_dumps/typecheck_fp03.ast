@@ -1,0 +1,29 @@
+=== AST ===
+type A { ... }
+type B inherits A { ... }
+print(new B().name())
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      members
+        TypeMemberMethod(name=name)
+          return=String
+          body
+            String(value="A")
+    TypeDecl(name=B)
+      inherits=A
+      members
+        TypeMemberMethod(name=name)
+          return=String
+          body
+            StringBinOp(op=SpaceConcat)
+              FunctionCall(name=base)
+              String(value="B")
+  globalExpr
+    Print
+      MethodCall(name=name)
+        object
+          NewExpr(type=B)
+        args

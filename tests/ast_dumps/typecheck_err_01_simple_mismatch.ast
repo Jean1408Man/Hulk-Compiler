@@ -1,0 +1,13 @@
+=== AST ===
+let x : Number = StringLiteral: string in print(Variable(x))
+
+=== TREE ===
+Program
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=x, type=Number)
+          String(value="string")
+      body
+        Print
+          VariableReference(name=x)

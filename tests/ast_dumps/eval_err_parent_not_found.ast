@@ -1,0 +1,17 @@
+=== AST ===
+type Dog inherits Animal { ... }
+let d = new Dog() in print(Variable(d))
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=Dog)
+      inherits=Animal
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=d)
+          NewExpr(type=Dog)
+      body
+        Print
+          VariableReference(name=d)

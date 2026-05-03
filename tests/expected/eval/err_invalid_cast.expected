@@ -1,0 +1,1 @@
+error [14:14 - 14:24]: Cast inválido: el objeto de tipo 'Gato' no es compatible con 'Perro'.

@@ -1,0 +1,2 @@
+error [8:1 - 10:2]: Ciclo de herencia detectado en el tipo 'B'.
+error [4:1 - 6:2]: Ciclo de herencia detectado en el tipo 'A'.

@@ -1,0 +1,53 @@
+=== AST ===
+type Counter(start) { ... }
+let c = new Counter(NumberLiteral: 0.000000) in { Variable(c).increment(); Variable(c).increment(); Variable(c).increment(); print(Variable(c).get()); }
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=Counter)
+      ctorParams
+        Param(name=start)
+      members
+        TypeMemberAttribute(name=count)
+          VariableReference(name=start)
+        TypeMemberMethod(name=increment)
+          body
+            ExprBlock
+              DestructiveAssignMember(member=count)
+                object
+                  VariableReference(name=self)
+                value
+                  ArithmeticBinOp(op=Plus)
+                    MemberAccess(name=count)
+                      VariableReference(name=self)
+                    Number(value=1)
+        TypeMemberMethod(name=get)
+          body
+            MemberAccess(name=count)
+              VariableReference(name=self)
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=c)
+          NewExpr(type=Counter)
+            Number(value=0)
+      body
+        ExprBlock
+          MethodCall(name=increment)
+            object
+              VariableReference(name=c)
+            args
+          MethodCall(name=increment)
+            object
+              VariableReference(name=c)
+            args
+          MethodCall(name=increment)
+            object
+              VariableReference(name=c)
+            args
+          Print
+            MethodCall(name=get)
+              object
+                VariableReference(name=c)
+              args

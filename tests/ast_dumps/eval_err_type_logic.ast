@@ -1,0 +1,10 @@
+=== AST ===
+print((StringLiteral: hola >= NumberLiteral: 1.000000))
+
+=== TREE ===
+Program
+  globalExpr
+    Print
+      LogicBinOp(op=GreaterEqual)
+        String(value="hola")
+        Number(value=1)

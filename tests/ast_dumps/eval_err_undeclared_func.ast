@@ -1,0 +1,9 @@
+=== AST ===
+foo(NumberLiteral: 1.000000, NumberLiteral: 2.000000)
+
+=== TREE ===
+Program
+  globalExpr
+    FunctionCall(name=foo)
+      Number(value=1)
+      Number(value=2)

@@ -1,0 +1,19 @@
+=== AST ===
+type A { ... }
+type A { ... }
+print(NumberLiteral: 1.000000)
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      members
+        TypeMemberAttribute(name=x)
+          Number(value=1)
+    TypeDecl(name=A)
+      members
+        TypeMemberAttribute(name=x)
+          Number(value=2)
+  globalExpr
+    Print
+      Number(value=1)

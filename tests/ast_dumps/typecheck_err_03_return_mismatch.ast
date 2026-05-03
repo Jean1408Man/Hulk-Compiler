@@ -1,0 +1,13 @@
+=== AST ===
+function f() : Number => StringLiteral: not a number
+f()
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=f)
+      return=Number
+      body
+        String(value="not a number")
+  globalExpr
+    FunctionCall(name=f)

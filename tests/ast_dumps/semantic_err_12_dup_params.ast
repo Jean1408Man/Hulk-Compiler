@@ -1,0 +1,18 @@
+=== AST ===
+function f(x, x) => Variable(x)
+print(f(NumberLiteral: 1.000000, NumberLiteral: 2.000000))
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=f)
+      params
+        Param(name=x)
+        Param(name=x)
+      body
+        VariableReference(name=x)
+  globalExpr
+    Print
+      FunctionCall(name=f)
+        Number(value=1)
+        Number(value=2)

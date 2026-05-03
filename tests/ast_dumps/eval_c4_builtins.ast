@@ -1,0 +1,23 @@
+=== AST ===
+{ print(sqrt(NumberLiteral: 16.000000)); print(sin(NumberLiteral: 0.000000)); print(cos(NumberLiteral: 0.000000)); print(exp(NumberLiteral: 1.000000)); print(log(NumberLiteral: 10.000000, NumberLiteral: 100.000000)); }
+
+=== TREE ===
+Program
+  globalExpr
+    ExprBlock
+      Print
+        BuiltinCall(func=Sqrt)
+          Number(value=16)
+      Print
+        BuiltinCall(func=Sin)
+          Number(value=0)
+      Print
+        BuiltinCall(func=Cos)
+          Number(value=0)
+      Print
+        BuiltinCall(func=Exp)
+          Number(value=1)
+      Print
+        BuiltinCall(func=Log)
+          Number(value=10)
+          Number(value=100)

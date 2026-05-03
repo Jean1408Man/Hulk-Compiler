@@ -1,0 +1,1 @@
+error [3:7 - 3:18]: Operación aritmética requiere Number, se obtuvo hola.

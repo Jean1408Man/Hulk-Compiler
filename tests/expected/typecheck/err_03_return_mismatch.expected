@@ -1,0 +1,1 @@
+error [1:26 - 1:40]: Error de tipos en retorno de función 'f': se esperaba 'Number' pero se encontró 'String'.

@@ -1,0 +1,1 @@
+error [1:5 - 1:7]: Error de tipos en condición de 'if': se esperaba 'Boolean' pero se encontró 'Number'.

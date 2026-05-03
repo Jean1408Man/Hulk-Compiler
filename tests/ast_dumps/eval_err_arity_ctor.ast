@@ -1,0 +1,36 @@
+=== AST ===
+type Punto(x, y) { ... }
+let p = new Punto(NumberLiteral: 3.000000) in print(Variable(p).getX())
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=Punto)
+      ctorParams
+        Param(name=x)
+        Param(name=y)
+      members
+        TypeMemberMethod(name=getX)
+          body
+            MemberAccess(name=x)
+              VariableReference(name=self)
+        TypeMemberMethod(name=getY)
+          body
+            MemberAccess(name=y)
+              VariableReference(name=self)
+        TypeMemberAttribute(name=x)
+          VariableReference(name=x)
+        TypeMemberAttribute(name=y)
+          VariableReference(name=y)
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=p)
+          NewExpr(type=Punto)
+            Number(value=3)
+      body
+        Print
+          MethodCall(name=getX)
+            object
+              VariableReference(name=p)
+            args

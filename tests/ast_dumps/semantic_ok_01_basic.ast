@@ -1,0 +1,56 @@
+=== AST ===
+function greet(name : String) : String => (StringLiteral: Hola @Variable(name))
+type Animal(name) { ... }
+type Dog(name) inherits Animal(Variable(name)) { ... }
+{ let d = new Dog(StringLiteral: Rex) in Variable(d).speak(); print(greet(StringLiteral: mundo)); }
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=greet)
+      params
+        Param(name=name, type=String)
+      return=String
+      body
+        StringBinOp(op=Concat)
+          String(value="Hola ")
+          VariableReference(name=name)
+    TypeDecl(name=Animal)
+      ctorParams
+        Param(name=name)
+      members
+        TypeMemberAttribute(name=name)
+          VariableReference(name=name)
+        TypeMemberMethod(name=speak)
+          body
+            Print
+              String(value="...")
+    TypeDecl(name=Dog)
+      ctorParams
+        Param(name=name)
+      inherits=Animal
+      parentArgs
+        VariableReference(name=name)
+      members
+        TypeMemberMethod(name=speak)
+          body
+            Print
+              StringBinOp(op=Concat)
+                String(value="Woof! I am ")
+                MemberAccess(name=name)
+                  VariableReference(name=self)
+  globalExpr
+    ExprBlock
+      LetIn
+        bindings
+          VariableBinding(name=d)
+            NewExpr(type=Dog)
+              String(value="Rex")
+        body
+          MethodCall(name=speak)
+            object
+              VariableReference(name=d)
+            args
+      Print
+        FunctionCall(name=greet)
+          String(value="mundo")

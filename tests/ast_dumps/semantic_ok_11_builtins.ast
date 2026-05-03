@@ -1,0 +1,11 @@
+=== AST ===
+{ print(NumberLiteral: 3.141593); print(NumberLiteral: 2.718282); }
+
+=== TREE ===
+Program
+  globalExpr
+    ExprBlock
+      Print
+        Number(value=3.14159)
+      Print
+        Number(value=2.71828)

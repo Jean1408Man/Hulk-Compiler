@@ -1,0 +1,17 @@
+=== AST ===
+function f() => NumberLiteral: 1.000000
+function f() => NumberLiteral: 2.000000
+print(f())
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=f)
+      body
+        Number(value=1)
+    FunctionDecl(name=f)
+      body
+        Number(value=2)
+  globalExpr
+    Print
+      FunctionCall(name=f)

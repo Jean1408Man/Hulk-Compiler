@@ -1,0 +1,2 @@
+error [2:12 - 2:13]: La variable 'x' no ha sido declarada en este ámbito.
+error [2:5 - 2:14]: Cannot infer return type for method 'f'. Explicit type annotation required.

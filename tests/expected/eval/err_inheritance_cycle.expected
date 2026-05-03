@@ -1,0 +1,1 @@
+error [1:1 - 1:1]: Ciclo de herencia detectado: 'A' -> 'B'.

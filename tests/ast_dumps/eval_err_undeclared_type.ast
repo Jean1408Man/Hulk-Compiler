@@ -1,0 +1,13 @@
+=== AST ===
+let x = new Fantasma() in print(Variable(x))
+
+=== TREE ===
+Program
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=x)
+          NewExpr(type=Fantasma)
+      body
+        Print
+          VariableReference(name=x)

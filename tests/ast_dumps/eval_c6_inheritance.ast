@@ -1,0 +1,85 @@
+=== AST ===
+type Animal(name) { ... }
+type Dog(name) inherits Animal(Variable(name)) { ... }
+type Cat(name) inherits Animal(Variable(name)) { ... }
+{ let d = new Dog(StringLiteral: Rex) in Variable(d).speak(); let c = new Cat(StringLiteral: Mishi) in Variable(c).speak(); let a = new Dog(StringLiteral: Buddy) in { print(Variable(a) is Dog); print(Variable(a) is Animal); print(Variable(a) is Cat); }; }
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=Animal)
+      ctorParams
+        Param(name=name)
+      members
+        TypeMemberAttribute(name=name)
+          VariableReference(name=name)
+        TypeMemberMethod(name=speak)
+          body
+            Print
+              String(value="...")
+    TypeDecl(name=Dog)
+      ctorParams
+        Param(name=name)
+      inherits=Animal
+      parentArgs
+        VariableReference(name=name)
+      members
+        TypeMemberMethod(name=speak)
+          body
+            Print
+              StringBinOp(op=Concat)
+                String(value="Woof! Soy ")
+                MemberAccess(name=name)
+                  VariableReference(name=self)
+    TypeDecl(name=Cat)
+      ctorParams
+        Param(name=name)
+      inherits=Animal
+      parentArgs
+        VariableReference(name=name)
+      members
+        TypeMemberMethod(name=speak)
+          body
+            Print
+              StringBinOp(op=Concat)
+                String(value="Miau! Soy ")
+                MemberAccess(name=name)
+                  VariableReference(name=self)
+  globalExpr
+    ExprBlock
+      LetIn
+        bindings
+          VariableBinding(name=d)
+            NewExpr(type=Dog)
+              String(value="Rex")
+        body
+          MethodCall(name=speak)
+            object
+              VariableReference(name=d)
+            args
+      LetIn
+        bindings
+          VariableBinding(name=c)
+            NewExpr(type=Cat)
+              String(value="Mishi")
+        body
+          MethodCall(name=speak)
+            object
+              VariableReference(name=c)
+            args
+      LetIn
+        bindings
+          VariableBinding(name=a)
+            NewExpr(type=Dog)
+              String(value="Buddy")
+        body
+          ExprBlock
+            Print
+              IsExpr(type=Dog)
+                VariableReference(name=a)
+            Print
+              IsExpr(type=Animal)
+                VariableReference(name=a)
+            Print
+              IsExpr(type=Cat)
+                VariableReference(name=a)

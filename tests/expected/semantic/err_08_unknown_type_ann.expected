@@ -1,0 +1,2 @@
+error [1:1 - 1:37]: El tipo 'Missing' no ha sido definido.
+error [2:9 - 2:10]: Error de tipos en argumento 1 de función 'f': se esperaba 'Missing' pero se encontró 'Number'.

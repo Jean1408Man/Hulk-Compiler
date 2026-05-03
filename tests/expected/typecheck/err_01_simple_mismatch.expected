@@ -1,0 +1,1 @@
+error [1:18 - 1:26]: Error de tipos en inicialización de variable 'x': se esperaba 'Number' pero se encontró 'String'.

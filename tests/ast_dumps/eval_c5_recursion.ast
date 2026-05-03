@@ -1,0 +1,64 @@
+=== AST ===
+function fib(n) => if ((Variable(n) <= NumberLiteral: 1.000000)) Variable(n) else (fib((Variable(n) - NumberLiteral: 1.000000)) + fib((Variable(n) - NumberLiteral: 2.000000)))
+function factorial(n) => if ((Variable(n) <= NumberLiteral: 1.000000)) NumberLiteral: 1.000000 else (Variable(n) * factorial((Variable(n) - NumberLiteral: 1.000000)))
+{ print(fib(NumberLiteral: 0.000000)); print(fib(NumberLiteral: 1.000000)); print(fib(NumberLiteral: 10.000000)); print(factorial(NumberLiteral: 5.000000)); print(factorial(NumberLiteral: 10.000000)); }
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=fib)
+      params
+        Param(name=n)
+      body
+        IfStmt
+          condition
+            LogicBinOp(op=LessEqual)
+              VariableReference(name=n)
+              Number(value=1)
+          then
+            VariableReference(name=n)
+          else
+            ArithmeticBinOp(op=Plus)
+              FunctionCall(name=fib)
+                ArithmeticBinOp(op=Minus)
+                  VariableReference(name=n)
+                  Number(value=1)
+              FunctionCall(name=fib)
+                ArithmeticBinOp(op=Minus)
+                  VariableReference(name=n)
+                  Number(value=2)
+    FunctionDecl(name=factorial)
+      params
+        Param(name=n)
+      body
+        IfStmt
+          condition
+            LogicBinOp(op=LessEqual)
+              VariableReference(name=n)
+              Number(value=1)
+          then
+            Number(value=1)
+          else
+            ArithmeticBinOp(op=Mult)
+              VariableReference(name=n)
+              FunctionCall(name=factorial)
+                ArithmeticBinOp(op=Minus)
+                  VariableReference(name=n)
+                  Number(value=1)
+  globalExpr
+    ExprBlock
+      Print
+        FunctionCall(name=fib)
+          Number(value=0)
+      Print
+        FunctionCall(name=fib)
+          Number(value=1)
+      Print
+        FunctionCall(name=fib)
+          Number(value=10)
+      Print
+        FunctionCall(name=factorial)
+          Number(value=5)
+      Print
+        FunctionCall(name=factorial)
+          Number(value=10)

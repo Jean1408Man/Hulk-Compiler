@@ -1,0 +1,98 @@
+=== AST ===
+function f(x) : Number => (Variable(x) + NumberLiteral: 1.000000)
+type A { ... }
+type Point { ... }
+function inc(x) => (Variable(x) + NumberLiteral: 1.000000)
+{ print(f(StringLiteral: hola)); let x = NumberLiteral: 100.000000 in for x in range(NumberLiteral: 0.000000, NumberLiteral: 3.000000):
+print(Variable(x)); let a = new A() in Variable(a).f(StringLiteral: hola); let p = new Point() in print(Variable(p).x); let x : Number = NumberLiteral: 1.000000 in { x := StringLiteral: hola; (Variable(x) + NumberLiteral: 1.000000); }; print(inc(NumberLiteral: 5.000000)); print(inc(StringLiteral: hola)); let x = NumberLiteral: 5.000000 in Variable(x) as String; }
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=f)
+      params
+        Param(name=x)
+      return=Number
+      body
+        ArithmeticBinOp(op=Plus)
+          VariableReference(name=x)
+          Number(value=1)
+    TypeDecl(name=A)
+      members
+        TypeMemberMethod(name=f)
+          params
+            Param(name=x, type=Number)
+          return=Number
+          body
+            VariableReference(name=x)
+    TypeDecl(name=Point)
+      members
+        TypeMemberAttribute(name=x, type=Number)
+          Number(value=0)
+    FunctionDecl(name=inc)
+      params
+        Param(name=x)
+      body
+        ArithmeticBinOp(op=Plus)
+          VariableReference(name=x)
+          Number(value=1)
+  globalExpr
+    ExprBlock
+      Print
+        FunctionCall(name=f)
+          String(value="hola")
+      LetIn
+        bindings
+          VariableBinding(name=x)
+            Number(value=100)
+        body
+          For(var=x)
+            iterable
+              FunctionCall(name=range)
+                Number(value=0)
+                Number(value=3)
+            body
+              Print
+                VariableReference(name=x)
+      LetIn
+        bindings
+          VariableBinding(name=a)
+            NewExpr(type=A)
+        body
+          MethodCall(name=f)
+            object
+              VariableReference(name=a)
+            args
+              String(value="hola")
+      LetIn
+        bindings
+          VariableBinding(name=p)
+            NewExpr(type=Point)
+        body
+          Print
+            MemberAccess(name=x)
+              VariableReference(name=p)
+      LetIn
+        bindings
+          VariableBinding(name=x, type=Number)
+            Number(value=1)
+        body
+          ExprBlock
+            DestructiveAssign(name=x)
+              String(value="hola")
+            ArithmeticBinOp(op=Plus)
+              VariableReference(name=x)
+              Number(value=1)
+      Print
+        FunctionCall(name=inc)
+          Number(value=5)
+      Print
+        FunctionCall(name=inc)
+          String(value="hola")
+      LetIn
+        bindings
+          VariableBinding(name=x)
+            Number(value=5)
+        body
+          AsExpr(type=String)
+            VariableReference(name=x)

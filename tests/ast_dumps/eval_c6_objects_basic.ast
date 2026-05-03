@@ -1,0 +1,50 @@
+=== AST ===
+type Point(x, y) { ... }
+let p = new Point(NumberLiteral: 3.000000, NumberLiteral: 4.000000) in { print(Variable(p).x); print(Variable(p).y); print(Variable(p).distance()); }
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=Point)
+      ctorParams
+        Param(name=x)
+        Param(name=y)
+      members
+        TypeMemberAttribute(name=x)
+          VariableReference(name=x)
+        TypeMemberAttribute(name=y)
+          VariableReference(name=y)
+        TypeMemberMethod(name=distance)
+          body
+            BuiltinCall(func=Sqrt)
+              ArithmeticBinOp(op=Plus)
+                ArithmeticBinOp(op=Mult)
+                  MemberAccess(name=x)
+                    VariableReference(name=self)
+                  MemberAccess(name=x)
+                    VariableReference(name=self)
+                ArithmeticBinOp(op=Mult)
+                  MemberAccess(name=y)
+                    VariableReference(name=self)
+                  MemberAccess(name=y)
+                    VariableReference(name=self)
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=p)
+          NewExpr(type=Point)
+            Number(value=3)
+            Number(value=4)
+      body
+        ExprBlock
+          Print
+            MemberAccess(name=x)
+              VariableReference(name=p)
+          Print
+            MemberAccess(name=y)
+              VariableReference(name=p)
+          Print
+            MethodCall(name=distance)
+              object
+                VariableReference(name=p)
+              args

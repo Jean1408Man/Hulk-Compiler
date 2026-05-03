@@ -1,0 +1,7 @@
+
+=== Análisis semántico OK ===
+Funciones registradas e inferidas:
+  function sum(2 params) : Number
+Tipos registrados:
+Tipo de expresión global: Number
+Referencias resueltas: 3

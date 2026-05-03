@@ -1,0 +1,1 @@
+error [1:1 - 1:28]: No se puede heredar del tipo builtin 'Number'.

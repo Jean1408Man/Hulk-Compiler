@@ -1,0 +1,10 @@
+=== AST ===
+print((BooleanLiteral: true + NumberLiteral: 1.000000))
+
+=== TREE ===
+Program
+  globalExpr
+    Print
+      ArithmeticBinOp(op=Plus)
+        Boolean(value=true)
+        Number(value=1)

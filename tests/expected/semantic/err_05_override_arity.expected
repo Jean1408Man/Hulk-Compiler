@@ -1,0 +1,1 @@
+error [6:20 - 6:21]: Método 'f' en tipo 'B' redefine un método heredado con distinta cantidad de parámetros.

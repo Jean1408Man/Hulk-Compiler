@@ -1,0 +1,6 @@
+error [22:11 - 22:14]: Los atributos son privados. Solo se pueden acceder mediante 'self'.
+error [2:26 - 2:27]: Error de tipos en operando izquierdo de operador aritmético: se esperaba 'Number' pero se encontró 'Object'.
+error [29:20 - 29:21]: Error de tipos en operando izquierdo de operador aritmético: se esperaba 'Number' pero se encontró 'Object'.
+error [15:9 - 15:15]: Error de tipos en argumento 1 de método 'f': se esperaba 'Number' pero se encontró 'String'.
+error [25:10 - 25:16]: Error de tipos en asignación a 'x': se esperaba 'Number' pero se encontró 'String'.
+error [35:5 - 35:16]: Operación 'as' no plausible: tipo 'Number' y 'String' no están relacionados.
