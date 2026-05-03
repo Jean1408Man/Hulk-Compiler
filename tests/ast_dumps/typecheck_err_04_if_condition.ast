@@ -1,0 +1,15 @@
+=== AST ===
+if (NumberLiteral: 42.000000) print(StringLiteral: bad) else print(StringLiteral: ok)
+
+=== TREE ===
+Program
+  globalExpr
+    IfStmt
+      condition
+        Number(value=42)
+      then
+        Print
+          String(value="bad")
+      else
+        Print
+          String(value="ok")

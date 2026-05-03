@@ -1,0 +1,14 @@
+=== AST ===
+let x = NumberLiteral: 42.000000 in print(Variable(x).algo)
+
+=== TREE ===
+Program
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=x)
+          Number(value=42)
+      body
+        Print
+          MemberAccess(name=algo)
+            VariableReference(name=x)

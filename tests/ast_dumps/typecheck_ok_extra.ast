@@ -1,0 +1,65 @@
+=== AST ===
+type Point(x : Number, y : Number) { ... }
+type PolarPoint inherits Point { ... }
+type A { ... }
+type B inherits A { ... }
+{ let p = new PolarPoint(NumberLiteral: 3.000000, NumberLiteral: 4.000000) in Variable(p).rho(); new B().f(); }
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=Point)
+      ctorParams
+        Param(name=x, type=Number)
+        Param(name=y, type=Number)
+      members
+        TypeMemberAttribute(name=x, type=Number)
+          VariableReference(name=x)
+        TypeMemberAttribute(name=y, type=Number)
+          VariableReference(name=y)
+    TypeDecl(name=PolarPoint)
+      inherits=Point
+      members
+        TypeMemberMethod(name=rho)
+          return=Number
+          body
+            BuiltinCall(func=Sqrt)
+              ArithmeticBinOp(op=Plus)
+                ArithmeticBinOp(op=Pow)
+                  MemberAccess(name=x)
+                    VariableReference(name=self)
+                  Number(value=2)
+                ArithmeticBinOp(op=Pow)
+                  MemberAccess(name=y)
+                    VariableReference(name=self)
+                  Number(value=2)
+    TypeDecl(name=A)
+      members
+        TypeMemberMethod(name=f)
+          return=Number
+          body
+            Number(value=1)
+    TypeDecl(name=B)
+      inherits=A
+      members
+        TypeMemberMethod(name=f)
+          return=Number
+          body
+            FunctionCall(name=base)
+  globalExpr
+    ExprBlock
+      LetIn
+        bindings
+          VariableBinding(name=p)
+            NewExpr(type=PolarPoint)
+              Number(value=3)
+              Number(value=4)
+        body
+          MethodCall(name=rho)
+            object
+              VariableReference(name=p)
+            args
+      MethodCall(name=f)
+        object
+          NewExpr(type=B)
+        args

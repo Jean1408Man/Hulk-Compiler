@@ -97,6 +97,17 @@
         }
         return lexeme;
     }
+
+    static hulk::common::Span to_span(const hulk::parser::Parser::location_type& loc) {
+        return hulk::common::Span {
+            .start = { .index = 0,
+                       .line   = static_cast<std::size_t>(loc.begin.line),
+                       .column = static_cast<std::size_t>(loc.begin.column) },
+            .end   = { .index = 0,
+                       .line   = static_cast<std::size_t>(loc.end.line),
+                       .column = static_cast<std::size_t>(loc.end.column) },
+        };
+    }
 }
 
 %token <std::string> IDENTIFIER STRING_LITERAL ERROR_TOKEN
@@ -226,6 +237,7 @@ function_decl
           } else {
               $$ = std::make_unique<Hulk::FunctionDecl>($2, std::move($4), $6, std::move($8));
           }
+          $$->span = to_span(@$);
       }
     | FUNCTION IDENTIFIER LPAREN params_opt RPAREN return_ann_opt block
       {
@@ -234,6 +246,7 @@ function_decl
           } else {
               $$ = std::make_unique<Hulk::FunctionDecl>($2, std::move($4), $6, std::move($7));
           }
+          $$->span = to_span(@$);
       }
     ;
 
@@ -255,6 +268,7 @@ type_decl
                   std::move($6)
               );
           }
+          $$->span = to_span(@$);
       }
     ;
 
@@ -317,6 +331,7 @@ type_member
                   std::make_unique<Hulk::TypeMemberAttribute>($1, $2, std::move($4))
               );
           }
+          $$.node->span = to_span(@$);
       }
     | IDENTIFIER LPAREN params_opt RPAREN return_ann_opt FATARROW expr SEMICOLON
       {
@@ -331,6 +346,7 @@ type_member
                   std::make_unique<Hulk::TypeMemberMethod>($1, std::move($3), $5, std::move($7))
               );
           }
+          $$.node->span = to_span(@$);
       }
     | IDENTIFIER LPAREN params_opt RPAREN return_ann_opt block
       {
@@ -345,6 +361,7 @@ type_member
                   std::make_unique<Hulk::TypeMemberMethod>($1, std::move($3), $5, std::move($6))
               );
           }
+          $$.node->span = to_span(@$);
       }
     ;
 
@@ -448,6 +465,7 @@ let_expr
     : LET binding_list IN expr
       {
           $$ = std::make_unique<Hulk::LetIn>(std::move($2), std::move($4));
+          $$->span = to_span(@$);
       }
     ;
 
@@ -473,6 +491,7 @@ binding
           } else {
               $$ = std::make_unique<Hulk::VariableBinding>($1, $2, std::move($4));
           }
+          $$->span = to_span(@$);
       }
     ;
 
@@ -480,6 +499,7 @@ if_expr
     : IF LPAREN expr RPAREN expr elif_clauses ELSE expr
       {
           $$ = std::make_unique<Hulk::IfStmt>(std::move($3), std::move($5), std::move($6), std::move($8));
+          $$->span = to_span(@$);
       }
     ;
 
@@ -499,6 +519,7 @@ while_expr
     : WHILE LPAREN expr RPAREN expr
       {
           $$ = std::make_unique<Hulk::WhileStmt>(std::move($3), std::move($5));
+          $$->span = to_span(@$);
       }
     ;
 
@@ -506,6 +527,7 @@ for_expr
     : FOR LPAREN IDENTIFIER IN expr RPAREN expr
       {
           $$ = std::make_unique<Hulk::For>($3, std::move($5), std::move($7));
+          $$->span = to_span(@$);
       }
     ;
 
@@ -517,6 +539,7 @@ assign_expr
           } else {
               $$ = std::make_unique<Hulk::DestructiveAssign>($1.name, std::move($3));
           }
+          $$->span = to_span(@$);
       }
     | logic_or
       {
@@ -541,6 +564,7 @@ logic_or
           $$ = std::make_unique<Hulk::LogicBinOp>(
               std::move($1), Hulk::LogicOp::Or, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | logic_and
       {
@@ -554,6 +578,7 @@ logic_and
           $$ = std::make_unique<Hulk::LogicBinOp>(
               std::move($1), Hulk::LogicOp::And, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | equality
       {
@@ -567,12 +592,14 @@ equality
           $$ = std::make_unique<Hulk::LogicBinOp>(
               std::move($1), Hulk::LogicOp::Equal, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | equality NOT_EQUAL relation
       {
           $$ = std::make_unique<Hulk::LogicBinOp>(
               std::move($1), Hulk::LogicOp::NotEqual, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | relation
       {
@@ -586,24 +613,28 @@ relation
           $$ = std::make_unique<Hulk::LogicBinOp>(
               std::move($1), Hulk::LogicOp::Less, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | relation LESS_EQUAL type_test_expr
       {
           $$ = std::make_unique<Hulk::LogicBinOp>(
               std::move($1), Hulk::LogicOp::LessEqual, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | relation GREATER type_test_expr
       {
           $$ = std::make_unique<Hulk::LogicBinOp>(
               std::move($1), Hulk::LogicOp::Greater, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | relation GREATER_EQUAL type_test_expr
       {
           $$ = std::make_unique<Hulk::LogicBinOp>(
               std::move($1), Hulk::LogicOp::GreaterEqual, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | type_test_expr
       {
@@ -619,10 +650,12 @@ type_test_expr
     | concat IS type_expr
       {
           $$ = std::make_unique<Hulk::IsExpr>(std::move($1), $3);
+          $$->span = to_span(@$);
       }
     | concat AS type_expr
       {
           $$ = std::make_unique<Hulk::AsExpr>(std::move($1), $3);
+          $$->span = to_span(@$);
       }
     ;
 
@@ -632,12 +665,14 @@ concat
           $$ = std::make_unique<Hulk::StringBinOp>(
               std::move($1), Hulk::StringOp::Concat, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | concat DOUBLECONCAT additive
       {
           $$ = std::make_unique<Hulk::StringBinOp>(
               std::move($1), Hulk::StringOp::SpaceConcat, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | additive
       {
@@ -651,12 +686,14 @@ additive
           $$ = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move($1), Hulk::ArithmeticOp::Plus, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | additive MINUS multiplicative
       {
           $$ = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move($1), Hulk::ArithmeticOp::Minus, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | multiplicative
       {
@@ -670,18 +707,21 @@ multiplicative
           $$ = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move($1), Hulk::ArithmeticOp::Mult, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | multiplicative SLASH power
       {
           $$ = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move($1), Hulk::ArithmeticOp::Div, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | multiplicative PERCENT power
       {
           $$ = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move($1), Hulk::ArithmeticOp::Mod, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | power
       {
@@ -695,6 +735,7 @@ power
           $$ = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move($1), Hulk::ArithmeticOp::Pow, std::move($3)
           );
+          $$->span = to_span(@$);
       }
     | unary
       {
@@ -708,10 +749,12 @@ unary
           $$ = std::make_unique<Hulk::ArithmeticUnaryOp>(
               Hulk::ArithUnaryType::Minus, std::move($2)
           );
+          $$->span = to_span(@$);
       }
     | NOT unary
       {
           $$ = std::make_unique<Hulk::LogicUnaryOp>(std::move($2));
+          $$->span = to_span(@$);
       }
     | postfix
       {
@@ -736,10 +779,12 @@ postfix
               driver.report_syntax_error("solo se pueden invocar identificadores o accesos a metodo");
               $$ = std::move($1);
           }
+          $$->span = to_span(@$);
       }
     | postfix DOT IDENTIFIER
       {
           $$ = std::make_unique<Hulk::MemberAccess>(std::move($1), $3);
+          $$->span = to_span(@$);
       }
     ;
 
@@ -747,26 +792,32 @@ primary
     : NUMBER_LITERAL
       {
           $$ = std::make_unique<Hulk::Number>($1);
+          $$->span = to_span(@$);
       }
     | STRING_LITERAL
       {
           $$ = std::make_unique<Hulk::String>(unquote_string_literal($1));
+          $$->span = to_span(@$);
       }
     | TRUE
       {
           $$ = std::make_unique<Hulk::Boolean>(true);
+          $$->span = to_span(@$);
       }
     | FALSE
       {
           $$ = std::make_unique<Hulk::Boolean>(false);
+          $$->span = to_span(@$);
       }
     | IDENTIFIER
       {
           $$ = std::make_unique<Hulk::VariableReference>($1);
+          $$->span = to_span(@$);
       }
     | NEW IDENTIFIER LPAREN args_opt RPAREN
       {
           $$ = std::make_unique<Hulk::NewExpr>($2, std::move($4));
+          $$->span = to_span(@$);
       }
     | LPAREN expr RPAREN
       {
@@ -779,35 +830,41 @@ primary
     | PRINT LPAREN expr RPAREN
       {
           $$ = std::make_unique<Hulk::Print>(std::move($3));
+          $$->span = to_span(@$);
       }
     | SQRT LPAREN expr RPAREN
       {
           ExprList args;
           args.push_back(std::move($3));
           $$ = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Sqrt, std::move(args));
+          $$->span = to_span(@$);
       }
     | SIN LPAREN expr RPAREN
       {
           ExprList args;
           args.push_back(std::move($3));
           $$ = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Sin, std::move(args));
+          $$->span = to_span(@$);
       }
     | COS LPAREN expr RPAREN
       {
           ExprList args;
           args.push_back(std::move($3));
           $$ = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Cos, std::move(args));
+          $$->span = to_span(@$);
       }
     | RAND LPAREN RPAREN
       {
           ExprList args;
           $$ = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Rand, std::move(args));
+          $$->span = to_span(@$);
       }
     | EXP LPAREN expr RPAREN
       {
           ExprList args;
           args.push_back(std::move($3));
           $$ = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Exp, std::move(args));
+          $$->span = to_span(@$);
       }
     | LOG LPAREN expr COMMA expr RPAREN
       {
@@ -815,14 +872,17 @@ primary
           args.push_back(std::move($3));
           args.push_back(std::move($5));
           $$ = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Log, std::move(args));
+          $$->span = to_span(@$);
       }
     | PI_CONST
       {
           $$ = std::make_unique<Hulk::Number>(3.14159265358979323846);
+          $$->span = to_span(@$);
       }
     | E_CONST
       {
           $$ = std::make_unique<Hulk::Number>(2.71828182845904523536);
+          $$->span = to_span(@$);
       }
     ;
 
@@ -855,6 +915,7 @@ block
     : LBRACE block_body_opt RBRACE
       {
           $$ = std::make_unique<Hulk::ExprBlock>(std::move($2));
+          $$->span = to_span(@$);
       }
     ;
 

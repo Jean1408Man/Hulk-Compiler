@@ -1,0 +1,15 @@
+=== AST ===
+let x : Object = NumberLiteral: 1.000000 in (Variable(x) as Number + NumberLiteral: 1.000000)
+
+=== TREE ===
+Program
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=x, type=Object)
+          Number(value=1)
+      body
+        ArithmeticBinOp(op=Plus)
+          AsExpr(type=Number)
+            VariableReference(name=x)
+          Number(value=1)

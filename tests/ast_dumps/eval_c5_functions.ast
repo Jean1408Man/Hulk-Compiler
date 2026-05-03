@@ -1,0 +1,37 @@
+=== AST ===
+function square(x) => (Variable(x) * Variable(x))
+function add(a, b) => (Variable(a) + Variable(b))
+{ print(square(NumberLiteral: 5.000000)); print(add(NumberLiteral: 3.000000, NumberLiteral: 4.000000)); print(square(add(NumberLiteral: 2.000000, NumberLiteral: 3.000000))); }
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=square)
+      params
+        Param(name=x)
+      body
+        ArithmeticBinOp(op=Mult)
+          VariableReference(name=x)
+          VariableReference(name=x)
+    FunctionDecl(name=add)
+      params
+        Param(name=a)
+        Param(name=b)
+      body
+        ArithmeticBinOp(op=Plus)
+          VariableReference(name=a)
+          VariableReference(name=b)
+  globalExpr
+    ExprBlock
+      Print
+        FunctionCall(name=square)
+          Number(value=5)
+      Print
+        FunctionCall(name=add)
+          Number(value=3)
+          Number(value=4)
+      Print
+        FunctionCall(name=square)
+          FunctionCall(name=add)
+            Number(value=2)
+            Number(value=3)

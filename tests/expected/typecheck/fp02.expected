@@ -1,0 +1,10 @@
+
+=== Análisis semántico OK ===
+Funciones registradas e inferidas:
+Tipos registrados:
+  type Child inherits Parent { 0 attrs, 1 methods }
+  type B inherits A { 0 attrs, 0 methods }
+  type Parent inherits Object { 0 attrs, 1 methods }
+  type A inherits Object { 0 attrs, 0 methods }
+Tipo de expresión global: B
+Referencias resueltas: 3

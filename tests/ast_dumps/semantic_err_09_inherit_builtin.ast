@@ -1,0 +1,11 @@
+=== AST ===
+type Bad inherits Number { ... }
+new Bad()
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=Bad)
+      inherits=Number
+  globalExpr
+    NewExpr(type=Bad)

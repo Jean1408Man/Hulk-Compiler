@@ -1,0 +1,18 @@
+=== AST ===
+type A { ... }
+let a = new A() in Variable(a).noExiste()
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=a)
+          NewExpr(type=A)
+      body
+        MethodCall(name=noExiste)
+          object
+            VariableReference(name=a)
+          args

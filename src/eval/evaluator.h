@@ -49,10 +49,13 @@ namespace Hulk {
         // ------------------------------------------------------------------
         hulk::common::DiagnosticEngine& engine_;                // diagnósticos compartidos
         HulkValue result_;                                      // registro de retorno
+        std::shared_ptr<Environment> global_env_;               // scope global (nunca cambia)
         std::shared_ptr<Environment> env_;                      // scope actual
         std::unordered_map<std::string, FunctionDecl*> funcs_; // tabla global de funciones
         std::unordered_map<std::string, TypeDef> types_;        // tabla global de tipos
         HulkValue self_;                                        // instancia actual en métodos
+        std::string current_type_name_;                         // tipo del método en ejecución
+        std::string current_method_name_;                       // nombre del método en ejecución
 
         // ------------------------------------------------------------------
         // Helper para reportar un error y lanzar EvalError
@@ -89,6 +92,8 @@ namespace Hulk {
         // Busca un método en el tipo y sus ancestros (para herencia)
         const MethodDef* find_method(const std::string& type_name,
                                      const std::string& method_name) const;
+        // Valida que padres existen y no hay ciclos (DFS con 3 colores)
+        void validate_type_hierarchy();
         // Inicializa los atributos de un objeto según su TypeDef (y la del padre)
         void init_object(HulkObject& obj, const TypeDef& def,
                          const std::vector<HulkValue>& ctor_args);
@@ -146,10 +151,6 @@ namespace Hulk {
         void visit(IsExpr& n)           override;
         void visit(AsExpr& n)           override;
 
-        // Vectores
-        void visit(VectorLiteral& n)    override;
-        void visit(VectorIndex& n)      override;
-        void visit(VectorGenerator& n)  override;
     };
 
 } // namespace Hulk

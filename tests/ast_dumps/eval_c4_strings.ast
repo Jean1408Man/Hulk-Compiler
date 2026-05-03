@@ -1,0 +1,19 @@
+=== AST ===
+{ print((StringLiteral: hola@StringLiteral:  mundo)); print((StringLiteral: foo @@ StringLiteral: bar)); print((StringLiteral: numero: @NumberLiteral: 42.000000)); }
+
+=== TREE ===
+Program
+  globalExpr
+    ExprBlock
+      Print
+        StringBinOp(op=Concat)
+          String(value="hola")
+          String(value=" mundo")
+      Print
+        StringBinOp(op=SpaceConcat)
+          String(value="foo")
+          String(value="bar")
+      Print
+        StringBinOp(op=Concat)
+          String(value="numero: ")
+          Number(value=42)

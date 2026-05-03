@@ -1,0 +1,1 @@
+error [1:1 - 1:23]: Cannot infer return type for function 'f'. Explicit type annotation required.

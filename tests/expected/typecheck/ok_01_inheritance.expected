@@ -1,0 +1,9 @@
+
+=== Análisis semántico OK ===
+Funciones registradas e inferidas:
+  function f(1 params) : String
+Tipos registrados:
+  type B inherits A { 0 attrs, 0 methods }
+  type A inherits Object { 0 attrs, 0 methods }
+Tipo de expresión global: String
+Referencias resueltas: 2

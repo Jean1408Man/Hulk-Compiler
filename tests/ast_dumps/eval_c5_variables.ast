@@ -1,0 +1,38 @@
+=== AST ===
+{ let x = NumberLiteral: 10.000000 in { let x = NumberLiteral: 20.000000 in print(Variable(x)); print(Variable(x)); }; let y = NumberLiteral: 1.000000 in { y := (Variable(y) + NumberLiteral: 1.000000); y := (Variable(y) + NumberLiteral: 1.000000); print(Variable(y)); }; }
+
+=== TREE ===
+Program
+  globalExpr
+    ExprBlock
+      LetIn
+        bindings
+          VariableBinding(name=x)
+            Number(value=10)
+        body
+          ExprBlock
+            LetIn
+              bindings
+                VariableBinding(name=x)
+                  Number(value=20)
+              body
+                Print
+                  VariableReference(name=x)
+            Print
+              VariableReference(name=x)
+      LetIn
+        bindings
+          VariableBinding(name=y)
+            Number(value=1)
+        body
+          ExprBlock
+            DestructiveAssign(name=y)
+              ArithmeticBinOp(op=Plus)
+                VariableReference(name=y)
+                Number(value=1)
+            DestructiveAssign(name=y)
+              ArithmeticBinOp(op=Plus)
+                VariableReference(name=y)
+                Number(value=1)
+            Print
+              VariableReference(name=y)

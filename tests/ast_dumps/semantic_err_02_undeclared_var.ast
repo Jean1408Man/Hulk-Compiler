@@ -1,0 +1,8 @@
+=== AST ===
+print(Variable(y))
+
+=== TREE ===
+Program
+  globalExpr
+    Print
+      VariableReference(name=y)

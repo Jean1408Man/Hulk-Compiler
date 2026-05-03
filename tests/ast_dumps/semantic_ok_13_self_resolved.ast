@@ -1,0 +1,17 @@
+=== AST ===
+type A { ... }
+new A().f()
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      members
+        TypeMemberMethod(name=f)
+          body
+            VariableReference(name=self)
+  globalExpr
+    MethodCall(name=f)
+      object
+        NewExpr(type=A)
+      args

@@ -1,0 +1,15 @@
+
+=== Análisis semántico OK ===
+Funciones registradas e inferidas:
+  function fib(1 params) : Number
+  function first(0 params) : Number
+  function second(0 params) : Number
+  function get_a(1 params) : A
+Tipos registrados:
+  type Calculator inherits Object { 0 attrs, 1 methods }
+  type Point inherits Object { 2 attrs, 1 methods }
+  type B inherits A { 0 attrs, 0 methods }
+  type C inherits A { 0 attrs, 0 methods }
+  type A inherits Object { 0 attrs, 0 methods }
+Tipo de expresión global: String
+Referencias resueltas: 43

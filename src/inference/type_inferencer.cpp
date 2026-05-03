@@ -33,9 +33,6 @@
 #include "../ast/types/typeDecl.h"
 #include "../ast/types/typeMemberAttribute.h"
 #include "../ast/types/typeMemberMethod.h"
-#include "../ast/vectors/vectorLiteral.h"
-#include "../ast/vectors/vectorIndex.h"
-#include "../ast/vectors/vectorGenerator.h"
 
 namespace Hulk {
 
@@ -654,25 +651,6 @@ namespace Hulk {
     void TypeInferencer::visit(AsExpr& node) {
         infer_expr(*node.GetExpr());
         set_type(node, from_string_type(node.GetTypeName()));
-    }
-
-    void TypeInferencer::visit(VectorLiteral& node) {
-        for (auto& elem : node.GetElements()) {
-            infer_expr(*elem);
-        }
-        set_type(node, HulkType::make_object("Iterable"));
-    }
-
-    void TypeInferencer::visit(VectorIndex& node) {
-        infer_expr(*node.GetVector());
-        infer_expr(*node.GetIndex());
-        set_type(node, HulkType::make_unknown());
-    }
-
-    void TypeInferencer::visit(VectorGenerator& node) {
-        infer_expr(*node.GetIterable());
-        infer_expr(*node.GetBody());
-        set_type(node, HulkType::make_object("Iterable"));
     }
 
 } // namespace Hulk

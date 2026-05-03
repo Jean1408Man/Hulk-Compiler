@@ -1,0 +1,42 @@
+=== AST ===
+{ print((NumberLiteral: 1.000000 + NumberLiteral: 2.000000)); print((NumberLiteral: 10.000000 - NumberLiteral: 3.000000)); print((NumberLiteral: 4.000000 * NumberLiteral: 5.000000)); print((NumberLiteral: 10.000000 / NumberLiteral: 4.000000)); print((NumberLiteral: 10.000000 % NumberLiteral: 3.000000)); print((NumberLiteral: 2.000000 ^ NumberLiteral: 10.000000)); print(-(NumberLiteral: 5.000000 + NumberLiteral: 3.000000)); print((NumberLiteral: 2.000000 ^ (NumberLiteral: 2.000000 ^ NumberLiteral: 3.000000))); }
+
+=== TREE ===
+Program
+  globalExpr
+    ExprBlock
+      Print
+        ArithmeticBinOp(op=Plus)
+          Number(value=1)
+          Number(value=2)
+      Print
+        ArithmeticBinOp(op=Minus)
+          Number(value=10)
+          Number(value=3)
+      Print
+        ArithmeticBinOp(op=Mult)
+          Number(value=4)
+          Number(value=5)
+      Print
+        ArithmeticBinOp(op=Div)
+          Number(value=10)
+          Number(value=4)
+      Print
+        ArithmeticBinOp(op=Mod)
+          Number(value=10)
+          Number(value=3)
+      Print
+        ArithmeticBinOp(op=Pow)
+          Number(value=2)
+          Number(value=10)
+      Print
+        ArithmeticUnaryOp(op=Minus)
+          ArithmeticBinOp(op=Plus)
+            Number(value=5)
+            Number(value=3)
+      Print
+        ArithmeticBinOp(op=Pow)
+          Number(value=2)
+          ArithmeticBinOp(op=Pow)
+            Number(value=2)
+            Number(value=3)

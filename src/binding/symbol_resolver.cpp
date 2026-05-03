@@ -32,9 +32,6 @@
 #include "../ast/types/methodCall.h"
 #include "../ast/types/isExpr.h"
 #include "../ast/types/asExpr.h"
-#include "../ast/vectors/vectorLiteral.h"
-#include "../ast/vectors/vectorIndex.h"
-#include "../ast/vectors/vectorGenerator.h"
 #include "../ast/types/typeDecl.h"
 #include "../ast/types/typeMemberAttribute.h"
 #include "../ast/types/typeMemberMethod.h"
@@ -827,32 +824,5 @@ void SymbolResolver::visit(AsExpr& n) {
     check_type_annotation(n.span, n.GetTypeName());
 }
 
-// ─── Vectores ──────────────────────────────────────────────────────────────
-
-void SymbolResolver::visit(VectorLiteral& n) {
-    for (auto& e : n.GetElements()) resolve(e.get());
-}
-
-void SymbolResolver::visit(VectorIndex& n) {
-    resolve(n.GetVector());
-    resolve(n.GetIndex());
-}
-
-// Caso 7: variable sintética del VectorGenerator
-void SymbolResolver::visit(VectorGenerator& n) {
-    resolve(n.GetIterable());
-    push_scope();
-
-    auto syn = std::make_unique<SyntheticSymbol>();
-    syn->name      = n.GetVarName();
-    syn->kind      = SyntheticKind::VectorGeneratorVariable;
-    syn->type_name = "";
-    SyntheticSymbol* ptr = syn.get();
-    synthetic_symbols_.push_back(std::move(syn));
-    scope_->define_synthetic(n.GetVarName(), ptr);
-
-    resolve(n.GetBody());
-    pop_scope();
-}
 
 } // namespace Hulk

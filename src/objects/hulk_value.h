@@ -4,7 +4,6 @@
 #include <string>
 #include <variant>
 #include <memory>
-#include <vector>
 #include <stdexcept>
 
 namespace Hulk {
@@ -13,9 +12,6 @@ namespace Hulk {
 
     // Nil representa la ausencia de valor (while sin iteraciones, void, etc.)
     struct Nil {};
-
-    // Vector de valores HULK
-    using HulkVector = std::vector<class HulkValue>;
 
     // -----------------------------------------------------------------------
     // HulkValue — unión tipada de todos los valores posibles en runtime
@@ -27,8 +23,7 @@ namespace Hulk {
             double,
             std::string,
             bool,
-            std::shared_ptr<HulkObject>,
-            std::shared_ptr<HulkVector>
+            std::shared_ptr<HulkObject>
         >;
 
         Inner inner;
@@ -39,20 +34,17 @@ namespace Hulk {
         explicit HulkValue(std::string&& v)      : inner(std::move(v)) {}
         explicit HulkValue(bool v)               : inner(v) {}
         explicit HulkValue(std::shared_ptr<HulkObject> v) : inner(std::move(v)) {}
-        explicit HulkValue(std::shared_ptr<HulkVector> v) : inner(std::move(v)) {}
 
         bool is_nil()    const { return std::holds_alternative<Nil>(inner); }
         bool is_number() const { return std::holds_alternative<double>(inner); }
         bool is_string() const { return std::holds_alternative<std::string>(inner); }
         bool is_bool()   const { return std::holds_alternative<bool>(inner); }
         bool is_object() const { return std::holds_alternative<std::shared_ptr<HulkObject>>(inner); }
-        bool is_vector() const { return std::holds_alternative<std::shared_ptr<HulkVector>>(inner); }
 
         double      as_number() const { return std::get<double>(inner); }
         const std::string& as_string() const { return std::get<std::string>(inner); }
         bool        as_bool()   const { return std::get<bool>(inner); }
         std::shared_ptr<HulkObject> as_object() const { return std::get<std::shared_ptr<HulkObject>>(inner); }
-        std::shared_ptr<HulkVector> as_vector() const { return std::get<std::shared_ptr<HulkVector>>(inner); }
 
         // Representación textual para print() — implementado en hulk_value.cpp
         std::string to_string() const;

@@ -1,0 +1,2 @@
+// let múltiple: el segundo binding ve el primero
+let a = 7, a = a * 6 in print(a);

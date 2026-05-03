@@ -1,0 +1,7 @@
+
+=== Análisis semántico OK ===
+Funciones registradas e inferidas:
+Tipos registrados:
+  type A inherits Object { 0 attrs, 1 methods }
+Tipo de expresión global: A
+Referencias resueltas: 2

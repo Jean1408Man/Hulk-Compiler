@@ -69,10 +69,6 @@ namespace Hulk {
         void visit(IsExpr& node) override;
         void visit(AsExpr& node) override;
 
-        void visit(VectorLiteral& node) override;
-        void visit(VectorIndex& node) override;
-        void visit(VectorGenerator& node) override;
-
     private:
         const SemanticTables& tables_;
         const std::unordered_map<Expr*, ResolutionResult>& resolution_map_;

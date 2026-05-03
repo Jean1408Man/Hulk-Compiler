@@ -1,0 +1,15 @@
+=== AST ===
+for x in range(NumberLiteral: 0.000000, NumberLiteral: 3.000000):
+print(Variable(x))
+
+=== TREE ===
+Program
+  globalExpr
+    For(var=x)
+      iterable
+        FunctionCall(name=range)
+          Number(value=0)
+          Number(value=3)
+      body
+        Print
+          VariableReference(name=x)

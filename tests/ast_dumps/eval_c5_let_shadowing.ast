@@ -1,0 +1,17 @@
+=== AST ===
+let a = NumberLiteral: 7.000000, a = (Variable(a) * NumberLiteral: 6.000000) in print(Variable(a))
+
+=== TREE ===
+Program
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=a)
+          Number(value=7)
+        VariableBinding(name=a)
+          ArithmeticBinOp(op=Mult)
+            VariableReference(name=a)
+            Number(value=6)
+      body
+        Print
+          VariableReference(name=a)

@@ -37,9 +37,6 @@ LEXER_AST_SRCS := \
 	src/ast/others/group.cpp \
 	src/ast/others/program.cpp \
 	src/ast/others/selfRef.cpp \
-	src/ast/vectors/vectorLiteral.cpp \
-	src/ast/vectors/vectorIndex.cpp \
-	src/ast/vectors/vectorGenerator.cpp \
 	src/ast/types/asExpr.cpp \
 	src/ast/types/isExpr.cpp \
 	src/ast/types/memberAccess.cpp \
@@ -72,7 +69,7 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests clean
+.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
 
@@ -206,6 +203,35 @@ extension-tests: semantic
 		./hulk_semantic $$f 1>/dev/null; \
 		echo; \
 	done
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test runner unificado con expected y AST dumps
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Ejecuta todos los tests (o una suite: eval | semantic | typecheck)
+run-tests: eval parser-demo semantic
+	@bash tests/run_tests.sh $(SUITE)
+
+# Regenera todos los archivos .expected con la salida actual (usar tras cambios intencionales)
+update-expected: eval semantic
+	@echo "=== Actualizando archivos .expected ==="; \
+	mkdir -p tests/expected/eval tests/expected/semantic tests/expected/typecheck; \
+	for f in tests/eval/c4_*.hulk tests/eval/c5_*.hulk tests/eval/c6_*.hulk tests/eval/err_*.hulk; do \
+		name=$$(basename $$f .hulk); \
+		{ ./hulk_eval $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
+		echo "  updated eval/$${name}.expected"; \
+	done; \
+	for f in tests/semantic/ok_*.hulk tests/semantic/err_*.hulk; do \
+		name=$$(basename $$f .hulk); \
+		{ ./hulk_semantic $$f 2>&1; } > tests/expected/semantic/$${name}.expected || true; \
+		echo "  updated semantic/$${name}.expected"; \
+	done; \
+	for f in tests/typecheck/*.hulk; do \
+		name=$$(basename $$f .hulk); \
+		{ ./hulk_semantic $$f 2>&1; } > tests/expected/typecheck/$${name}.expected || true; \
+		echo "  updated typecheck/$${name}.expected"; \
+	done; \
+	echo "=== Done ==="
 
 clean:
 	rm -rf $(OBJDIR) hulk_lexer hulk_parser_demo hulk_eval hulk_semantic

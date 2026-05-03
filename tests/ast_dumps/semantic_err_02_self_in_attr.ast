@@ -1,0 +1,13 @@
+=== AST ===
+type A { ... }
+new A()
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      members
+        TypeMemberAttribute(name=x)
+          VariableReference(name=self)
+  globalExpr
+    NewExpr(type=A)

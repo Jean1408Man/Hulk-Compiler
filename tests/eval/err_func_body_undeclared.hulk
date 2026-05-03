@@ -1,0 +1,5 @@
+// NOTA B2: f() usa x no declarada, pero como f() nunca se llama
+// el evaluador no lo detecta. El Binder (corte 7) debe rechazarlo.
+// Por ahora el evaluador ejecuta print(1) sin error.
+function f() => x;
+print(1);

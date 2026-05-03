@@ -30,9 +30,6 @@
 #include "../ast/types/methodCall.h"
 #include "../ast/types/isExpr.h"
 #include "../ast/types/asExpr.h"
-#include "../ast/vectors/vectorLiteral.h"
-#include "../ast/vectors/vectorIndex.h"
-#include "../ast/vectors/vectorGenerator.h"
 #include "../ast/types/typeDecl.h"
 #include "../ast/types/typeMemberAttribute.h"
 #include "../ast/types/typeMemberMethod.h"
@@ -492,21 +489,6 @@ namespace Hulk {
                              "' y '" + target_type.to_string() + "' no están relacionados.");
             }
         }
-    }
-
-    void TypeChecker::visit(VectorLiteral& node) {
-        for (auto& e : node.GetElements()) e->accept(*this);
-    }
-
-    void TypeChecker::visit(VectorIndex& node) {
-        node.GetVector()->accept(*this);
-        node.GetIndex()->accept(*this);
-        check_conforms(node.GetIndex(), HulkType::make_number(), "índice de vector");
-    }
-
-    void TypeChecker::visit(VectorGenerator& node) {
-        node.GetIterable()->accept(*this);
-        node.GetBody()->accept(*this);
     }
 
 }

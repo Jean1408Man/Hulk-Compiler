@@ -1,0 +1,17 @@
+=== AST ===
+function f(x : Missing) : Number => NumberLiteral: 1.000000
+print(f(NumberLiteral: 0.000000))
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=f)
+      params
+        Param(name=x, type=Missing)
+      return=Number
+      body
+        Number(value=1)
+  globalExpr
+    Print
+      FunctionCall(name=f)
+        Number(value=0)

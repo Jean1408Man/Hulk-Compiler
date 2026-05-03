@@ -1,0 +1,8 @@
+=== AST ===
+sqrt(NumberLiteral: 2.000000)
+
+=== TREE ===
+Program
+  globalExpr
+    BuiltinCall(func=Sqrt)
+      Number(value=2)

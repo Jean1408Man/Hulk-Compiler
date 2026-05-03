@@ -1,0 +1,10 @@
+
+=== Análisis semántico OK ===
+Funciones registradas e inferidas:
+Tipos registrados:
+  type PolarPoint inherits Point { 0 attrs, 1 methods }
+  type B inherits A { 0 attrs, 1 methods }
+  type Point inherits Object { 2 attrs, 0 methods }
+  type A inherits Object { 0 attrs, 1 methods }
+Tipo de expresión global: Number
+Referencias resueltas: 11

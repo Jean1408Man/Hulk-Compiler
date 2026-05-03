@@ -1,0 +1,20 @@
+=== AST ===
+function suma(x : Number, y : Number) : Number => (Variable(x) + Variable(y))
+print(suma(NumberLiteral: 1.000000))
+
+=== TREE ===
+Program
+  declarations
+    FunctionDecl(name=suma)
+      params
+        Param(name=x, type=Number)
+        Param(name=y, type=Number)
+      return=Number
+      body
+        ArithmeticBinOp(op=Plus)
+          VariableReference(name=x)
+          VariableReference(name=y)
+  globalExpr
+    Print
+      FunctionCall(name=suma)
+        Number(value=1)

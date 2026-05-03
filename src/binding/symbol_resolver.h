@@ -41,9 +41,6 @@ namespace Hulk {
     class MethodCall;
     class IsExpr;
     class AsExpr;
-    class VectorLiteral;
-    class VectorIndex;
-    class VectorGenerator;
     class Number;
     class String;
     class Boolean;
@@ -286,11 +283,6 @@ namespace Hulk {
         void visit(BaseCall& n)           override;
         void visit(IsExpr& n)             override;
         void visit(AsExpr& n)             override;
-
-        // Vectores
-        void visit(VectorLiteral& n)      override;
-        void visit(VectorIndex& n)        override;
-        void visit(VectorGenerator& n)    override;
 
         // Helper: resolver una expresión (como eval() en el Evaluator)
         void resolve(Expr* node);

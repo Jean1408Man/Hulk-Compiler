@@ -1,0 +1,10 @@
+=== AST ===
+print((NumberLiteral: 10.000000 / NumberLiteral: 0.000000))
+
+=== TREE ===
+Program
+  globalExpr
+    Print
+      ArithmeticBinOp(op=Div)
+        Number(value=10)
+        Number(value=0)

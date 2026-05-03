@@ -1,0 +1,20 @@
+=== AST ===
+type A { ... }
+let a = new A() in print(Variable(a).x)
+
+=== TREE ===
+Program
+  declarations
+    TypeDecl(name=A)
+      members
+        TypeMemberAttribute(name=x)
+          Number(value=1)
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=a)
+          NewExpr(type=A)
+      body
+        Print
+          MemberAccess(name=x)
+            VariableReference(name=a)

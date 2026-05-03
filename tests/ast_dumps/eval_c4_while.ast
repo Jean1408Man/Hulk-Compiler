@@ -1,0 +1,25 @@
+=== AST ===
+let i = NumberLiteral: 0.000000 in { while ((Variable(i) < NumberLiteral: 5.000000)) { print(Variable(i)); i := (Variable(i) + NumberLiteral: 1.000000); }; }
+
+=== TREE ===
+Program
+  globalExpr
+    LetIn
+      bindings
+        VariableBinding(name=i)
+          Number(value=0)
+      body
+        ExprBlock
+          WhileStmt
+            condition
+              LogicBinOp(op=Less)
+                VariableReference(name=i)
+                Number(value=5)
+            body
+              ExprBlock
+                Print
+                  VariableReference(name=i)
+                DestructiveAssign(name=i)
+                  ArithmeticBinOp(op=Plus)
+                    VariableReference(name=i)
+                    Number(value=1)
