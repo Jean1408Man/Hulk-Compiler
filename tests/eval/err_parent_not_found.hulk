@@ -1,0 +1,4 @@
+// Error: padre no definido
+// Esperado: error de padre inexistente
+type Dog inherits Animal { }
+let d = new Dog() in print(d);

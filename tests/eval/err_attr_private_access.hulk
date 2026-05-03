@@ -1,0 +1,5 @@
+// Error: acceso directo a atributo privado desde fuera del tipo
+// Esperado: (en esta versión aún no se bloquea — es responsabilidad de B2)
+// Este test documenta el comportamiento actual
+type A { x = 1; }
+let a = new A() in print(a.x);

@@ -37,9 +37,6 @@ LEXER_AST_SRCS := \
 	src/ast/others/group.cpp \
 	src/ast/others/program.cpp \
 	src/ast/others/selfRef.cpp \
-	src/ast/vectors/vectorLiteral.cpp \
-	src/ast/vectors/vectorIndex.cpp \
-	src/ast/vectors/vectorGenerator.cpp \
 	src/ast/types/asExpr.cpp \
 	src/ast/types/isExpr.cpp \
 	src/ast/types/memberAccess.cpp \
@@ -72,7 +69,7 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests clean
+.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests clean
 
 all: lexer parser-demo eval semantic
 

@@ -1,0 +1,4 @@
+// Error: función no puede ver variable del caller
+// Esperado: EVAL_UNDECLARED_VAR
+function f() => x;
+let x = 10 in print(f());

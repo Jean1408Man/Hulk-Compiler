@@ -16,14 +16,6 @@ std::string HulkValue::to_string() const {
         std::string operator()(const std::shared_ptr<HulkObject>& o) const {
             return "<" + o->type_name + " object>";
         }
-        std::string operator()(const std::shared_ptr<HulkVector>& vec) const {
-            std::string s = "[";
-            for (size_t i = 0; i < vec->size(); ++i) {
-                if (i) s += ", ";
-                s += (*vec)[i].to_string();
-            }
-            return s + "]";
-        }
     };
     return std::visit(Visitor{}, inner);
 }

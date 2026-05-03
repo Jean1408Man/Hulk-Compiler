@@ -1,0 +1,4 @@
+// Error: tipo duplicado
+type A { x = 1; }
+type A { x = 2; }
+print(1);

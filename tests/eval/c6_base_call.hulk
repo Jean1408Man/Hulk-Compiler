@@ -1,0 +1,2 @@
+// PENDIENTE: base() requiere soporte en el parser (no implementado aún)
+print("base() pendiente de soporte en parser");

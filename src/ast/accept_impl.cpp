@@ -55,11 +55,6 @@
 #include "ast/types/typeMemberAttribute.h"
 #include "ast/types/typeMemberMethod.h"
 
-// Vectores
-#include "ast/vectors/vectorLiteral.h"
-#include "ast/vectors/vectorIndex.h"
-#include "ast/vectors/vectorGenerator.h"
-
 // Protocolos
 #include "ast/protocols/protocolDecl.h"
 
@@ -106,10 +101,6 @@ void MemberAccess::accept(ExprVisitor& v)         { v.visit(*this); }
 void MethodCall::accept(ExprVisitor& v)           { v.visit(*this); }
 void IsExpr::accept(ExprVisitor& v)               { v.visit(*this); }
 void AsExpr::accept(ExprVisitor& v)               { v.visit(*this); }
-
-void VectorLiteral::accept(ExprVisitor& v)        { v.visit(*this); }
-void VectorIndex::accept(ExprVisitor& v)          { v.visit(*this); }
-void VectorGenerator::accept(ExprVisitor& v)      { v.visit(*this); }
 
 // ---------------------------------------------------------------------------
 // Decl nodes
