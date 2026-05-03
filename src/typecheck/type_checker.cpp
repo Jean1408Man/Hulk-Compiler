@@ -129,10 +129,18 @@ namespace Hulk {
     void TypeChecker::check_conforms(Expr* node, const HulkType& expected, const std::string& context) {
         HulkType found = get_type(node);
         if (found.is_error()) return;
+        
+        // Si el tipo encontrado es Unknown (type hole), permite que conforme a cualquier tipo esperado
+        // Esto ocurre cuando se usa `_` o `auto` en una expresión
         if (found.is_unknown()) {
-            report_error(node->span, "No se pudo inferir el tipo para " + context + ". Se requiere anotación explícita.");
             return;
         }
+        
+        // Si el tipo esperado es "auto" o "_", aceptar cualquier tipo (son type holes)
+        if (expected.is_unknown()) {
+            return;
+        }
+        
         if (!found.conforms_to(expected, tables_)) {
             report_error(node->span, "Error de tipos en " + context + ": se esperaba '" + 
                          expected.to_string() + "' pero se encontró '" + found.to_string() + "'.");
@@ -140,7 +148,7 @@ namespace Hulk {
     }
 
     HulkType TypeChecker::from_string_type(const std::string& name) {
-        if (name.empty()) return HulkType::make_unknown();
+        if (name.empty() || name == "auto" || name == "_") return HulkType::make_unknown();
         if (name == "Number") return HulkType::make_number();
         if (name == "String") return HulkType::make_string();
         if (name == "Boolean") return HulkType::make_boolean();

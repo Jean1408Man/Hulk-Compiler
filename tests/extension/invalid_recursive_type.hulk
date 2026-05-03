@@ -1,0 +1,4 @@
+// Caso inválido: recursión sin retorno explícito
+function infinite(x: _): _ => infinite(x);
+
+print(infinite(5));

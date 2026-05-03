@@ -1,0 +1,2 @@
+function not_value(x: auto): auto => !x;
+print(not_value(false));

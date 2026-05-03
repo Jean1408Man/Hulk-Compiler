@@ -1,0 +1,4 @@
+// Caso válido: comparación entre auto y _ (son equivalentes)
+function max_val(a: auto, b: _): _ => if (a < b) b else a;
+
+print(max_val(3, 7));

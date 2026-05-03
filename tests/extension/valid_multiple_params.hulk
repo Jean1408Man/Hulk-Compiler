@@ -1,0 +1,4 @@
+// Caso válido: múltiples parámetros con type holes
+function compare(a: _, b: _): auto => a < b;
+
+print(compare(5, 10));

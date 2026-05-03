@@ -1,0 +1,6 @@
+function bad(x: _): _ => {
+    x + 1;
+    !x;
+};
+
+print(bad(5));

@@ -18,7 +18,9 @@ namespace Hulk {
         Param(const std::string& name, const std::string& typeAnnotation)
             : name(name), typeAnnotation(typeAnnotation) {}
 
-        bool HasTypeAnnotation() const { return !typeAnnotation.empty(); }
+        bool HasTypeAnnotation() const { 
+            return !typeAnnotation.empty() && typeAnnotation != "auto" && typeAnnotation != "_"; 
+        }
     };
 
 }

@@ -13,7 +13,9 @@ namespace Hulk {
 
     const std::string& VariableBinding::GetName() const { return name; }
     const std::string& VariableBinding::GetTypeAnnotation() const { return typeAnnotation; }
-    bool VariableBinding::HasTypeAnnotation() const { return !typeAnnotation.empty(); }
+    bool VariableBinding::HasTypeAnnotation() const { 
+        return !typeAnnotation.empty() && typeAnnotation != "auto" && typeAnnotation != "_"; 
+    }
     Expr* VariableBinding::GetInitializer() const { return initializer.get(); }
 
     std::string VariableBinding::ToString() const {

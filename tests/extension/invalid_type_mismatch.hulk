@@ -1,0 +1,4 @@
+// Caso inválido: type hole esperado Number pero se proporciona String
+function add(x: _): _ => x + 1;
+
+print(add("hello"));

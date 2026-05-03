@@ -1,0 +1,9 @@
+// Caso inválido: ambigüedad en type holes - parámetro inferido de formas incompatibles
+function id(x: _): _ => x;
+
+// id(2) infiere x como Number
+// id("text") infiere x como String
+// Pero ambas usan la misma función - CONFLICTO
+let n = id(2) in
+let s = id("hello") in
+print(n + s);  // ERROR: Number + String no está permitido

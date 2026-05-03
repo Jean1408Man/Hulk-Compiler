@@ -411,6 +411,14 @@ type_expr
       {
           $$ = std::move($1);
       }
+    | AUTO
+      {
+          $$ = "auto";
+      }
+    | UNDERSCORE_TYPE
+      {
+          $$ = "_";
+      }
     ;
 
 expr

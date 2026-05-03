@@ -234,6 +234,8 @@ void SymbolResolver::report_raw(const hulk::common::Span& span, const std::strin
 
 bool SymbolResolver::is_known_type_name(const std::string& name) const {
     if (name.empty()) return true;
+    // "auto" y "_" son anotaciones de inferencia de tipos válidas (type holes)
+    if (name == "auto" || name == "_") return true;
     return tables_.lookup_type(name) != nullptr;
 }
 

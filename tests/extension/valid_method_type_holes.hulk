@@ -1,0 +1,7 @@
+// Caso válido: type hole en method con inferencia correcta
+type Calculator {
+    compute(x: _, y: _): _ => x + y;
+}
+
+let calc: _ = new Calculator() in
+print(calc.compute(3, 4));

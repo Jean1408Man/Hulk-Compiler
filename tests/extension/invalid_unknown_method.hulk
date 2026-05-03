@@ -1,0 +1,4 @@
+// Caso inválido: acceso a método inexistente en tipo primitivo
+function f(x: _): _ => x.foo();
+
+print(f(5));

@@ -1,0 +1,8 @@
+// Caso inválido: operación con type hole resulta en conflicto
+// x es Number desde x + 1, pero se intenta usar como Boolean
+function conflicting(x: _): _ => {
+    let y = x + 1 in
+    !x;
+};
+
+print(conflicting(5));

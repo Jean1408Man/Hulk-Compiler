@@ -1,0 +1,7 @@
+// Caso inválido: type hole completamente ambiguo - no hay forma de inferir el tipo
+function unknown_return(_: _): _ => 42;
+
+// Aquí el retorno siempre es 42 (Number), pero el parámetro es _
+// El retorno infiere correctamente a Number
+// Pero el parámetro _ sin uso no puede ser inferido
+unknown_return("anything");

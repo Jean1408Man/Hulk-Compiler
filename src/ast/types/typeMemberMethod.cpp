@@ -16,7 +16,9 @@ namespace Hulk {
     const std::string& TypeMemberMethod::GetName() const { return name; }
     const std::vector<Param>& TypeMemberMethod::GetParams() const { return params; }
     const std::string& TypeMemberMethod::GetReturnTypeAnnotation() const { return returnTypeAnnotation; }
-    bool TypeMemberMethod::HasReturnTypeAnnotation() const { return !returnTypeAnnotation.empty(); }
+    bool TypeMemberMethod::HasReturnTypeAnnotation() const { 
+        return !returnTypeAnnotation.empty() && returnTypeAnnotation != "auto" && returnTypeAnnotation != "_"; 
+    }
     Expr* TypeMemberMethod::GetBody() const { return body.get(); }
 
     std::string TypeMemberMethod::ToString() const {

@@ -72,7 +72,7 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests clean
+.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests clean
 
 all: lexer parser-demo eval semantic
 
@@ -188,6 +188,20 @@ semantic-tests: semantic
 	done; \
 	echo "=== chequeos semánticos de tipo ==="; \
 	for f in tests/typecheck/*.hulk; do \
+		echo "----- $$f -----"; \
+		./hulk_semantic $$f 1>/dev/null; \
+		echo; \
+	done
+
+extension-tests: semantic
+	@echo "=== Tests de extensión — casos válidos ==="; \
+	for f in tests/extension/valid_*.hulk; do \
+		echo "----- $$f -----"; \
+		./hulk_semantic $$f || true; \
+		echo; \
+	done; \
+	echo "=== Tests de extensión — casos inválidos (deben fallar) ==="; \
+	for f in tests/extension/invalid_*.hulk; do \
 		echo "----- $$f -----"; \
 		./hulk_semantic $$f 1>/dev/null; \
 		echo; \
