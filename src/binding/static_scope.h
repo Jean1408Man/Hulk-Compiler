@@ -17,12 +17,11 @@ namespace Hulk {
     // SyntheticSymbol — símbolo introducido implícitamente por el compilador,
     // sin un nodo VariableBinding ni Param en el AST.
     //
-    // Ejemplos: variable del for, variable del VectorGenerator, self.
+    // Ejemplos: variable del for, self.
     // -----------------------------------------------------------------------
     enum class SyntheticKind {
-        ForVariable,             // variable del for (x in ...)
-        VectorGeneratorVariable, // variable del [e | x in ...]
-        Self                     // self dentro de un método
+        ForVariable, // variable del for (x in ...)
+        Self         // self dentro de un método
     };
 
     struct SyntheticSymbol {

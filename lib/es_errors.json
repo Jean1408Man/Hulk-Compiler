@@ -34,7 +34,7 @@
   "RUNTIME_DIV_ZERO":       "División por cero.",
   "RUNTIME_MOD_ZERO":       "Módulo por cero.",
   "RUNTIME_INVALID_CAST":   "Cast inválido: el objeto de tipo '{}' no es compatible con '{}'.",
-  "RUNTIME_INDEX_OOB":      "Índice {} fuera de rango (tamaño: {})."
+  "RUNTIME_INDEX_OOB":      "Índice {} fuera de rango (tamaño: {}).",
   "EVAL_UNDECLARED_VAR":    "Variable no declarada: '{}'.",
   "EVAL_UNDECLARED_FUNC":   "Función no definida: '{}'.",
   "EVAL_UNDECLARED_TYPE":   "Tipo no definido: '{}'.",
