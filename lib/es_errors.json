@@ -23,5 +23,9 @@
   "EVAL_INDEX_OUT_OF_RANGE":"Índice {} fuera de rango (tamaño: {}).",
   "EVAL_INVALID_CAST":      "Cast inválido: el objeto de tipo '{}' no es compatible con '{}'.",
   "EVAL_NO_PARENT":         "El tipo '{}' no tiene tipo padre.",
-  "EVAL_ASSIGN_UNDECLARED": "No se puede asignar: la variable '{}' no fue declarada."
+  "EVAL_ASSIGN_UNDECLARED": "No se puede asignar: la variable '{}' no fue declarada.",
+  "SEM_UNDECLARED_VAR":     "La variable '{}' no ha sido declarada en este ámbito.",
+  "SEM_UNDECLARED_FUNC":    "La función '{}' no ha sido definida.",
+  "SEM_UNDECLARED_TYPE":    "El tipo '{}' no ha sido definido.",
+  "SEM_UNDECLARED_PARENT":  "El tipo '{}' hereda de un tipo inexistente '{}'."
 }

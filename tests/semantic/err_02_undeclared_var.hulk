@@ -1,0 +1,4 @@
+// Test err_02: variable no declarada
+// Esperado: error semántico "variable 'y' no declarada"
+
+print(y);

@@ -1,0 +1,9 @@
+type A {
+    f(): Object => 1;
+}
+
+type B inherits A {
+    f(): Object => base();
+}
+
+new B().f();

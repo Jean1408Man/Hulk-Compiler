@@ -29,6 +29,7 @@ LEXER_AST_SRCS := \
 	src/ast/domainFunctions/builtinCall.cpp \
 	src/ast/functions/functionCall.cpp \
 	src/ast/functions/functionDecl.cpp \
+	src/ast/functions/lambda.cpp \
 	src/ast/loops/for.cpp \
 	src/ast/loops/while.cpp \
 	src/ast/others/baseCall.cpp \
@@ -53,6 +54,17 @@ EVAL_SRCS := \
 	src/objects/hulk_value.cpp \
 	src/eval/evaluator.cpp
 
+SEMANTIC_SRCS := \
+	src/objects/hulk_value.cpp \
+	src/semantic/semantic_tables.cpp \
+	src/semantic/analyzer.cpp \
+	src/binding/symbol_resolver.cpp \
+	src/inference/hulk_type.cpp \
+	src/inference/type_inferencer.cpp \
+	src/typecheck/type_checker.cpp
+
+SEMANTIC_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SEMANTIC_SRCS))
+
 # Objetos pre-compilados (se reusan entre targets para no recompilar Bison)
 LEXER_AST_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(LEXER_AST_SRCS))
 PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
@@ -60,9 +72,9 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests clean
+.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests clean
 
-all: lexer parser-demo eval
+all: lexer parser-demo eval semantic
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Directorios de objetos
@@ -153,5 +165,33 @@ err-tests: eval
 		echo; \
 	done
 
+semantic: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS)
+	@mkdir -p $(OBJDIR)/semantic_main
+	$(CXX) $(CXXFLAGS) -c src/semantic/main_semantic.cpp -o $(OBJDIR)/semantic_main/main.o
+	$(CXX) $(CXXFLAGS) \
+		$(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) \
+		$(OBJDIR)/semantic_main/main.o \
+		-o hulk_semantic
+
+semantic-tests: semantic
+	@echo "=== chequeos semánticos — programas válidos ==="; \
+	for f in tests/semantic/ok_*.hulk; do \
+		echo "----- $$f -----"; \
+		./hulk_semantic $$f || true; \
+		echo; \
+	done; \
+	echo "=== chequeos semánticos — programas con error ==="; \
+	for f in tests/semantic/err_*.hulk; do \
+		echo "----- $$f -----"; \
+		./hulk_semantic $$f 1>/dev/null; \
+		echo; \
+	done; \
+	echo "=== chequeos semánticos de tipo ==="; \
+	for f in tests/typecheck/*.hulk; do \
+		echo "----- $$f -----"; \
+		./hulk_semantic $$f 1>/dev/null; \
+		echo; \
+	done
+
 clean:
-	rm -rf $(OBJDIR) hulk_lexer hulk_parser_demo hulk_eval
+	rm -rf $(OBJDIR) hulk_lexer hulk_parser_demo hulk_eval hulk_semantic

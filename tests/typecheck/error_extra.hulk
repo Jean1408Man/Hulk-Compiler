@@ -1,0 +1,35 @@
+//falsos positivos
+function f(x): Number => x + 1;
+
+print(f("hola"));
+
+let x = 100 in
+    for (x in range(0, 3))
+        print(x);
+
+type A {
+    f(x: Number): Number => x;
+}
+
+let a = new A() in
+    a.f("hola");
+
+type Point {
+    x: Number = 0;
+}
+
+let p = new Point() in
+    print(p.x);
+
+let x: Number = 1 in {
+    x := "hola";
+    x + 1;
+};
+
+function inc(x) => x + 1;
+
+print(inc(5));
+print(inc("hola"));
+
+let x = 5 in
+    x as String;

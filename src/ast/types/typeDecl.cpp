@@ -4,17 +4,17 @@ namespace Hulk {
 
     TypeDecl::TypeDecl(const std::string& name,
                        std::vector<TypeMember> members)
-        : name(name), ctorParams(), parentName(""), parentArgs(), members(std::move(members)) {}
+        : name(name), ctorParams(), parentName(""), parentArgs(), members(std::move(members)), hasExplicitConstructor(false) {}
 
     TypeDecl::TypeDecl(const std::string& name,
                        std::vector<Param> ctorParams,
                        std::vector<TypeMember> members)
-        : name(name), ctorParams(std::move(ctorParams)), parentName(""), parentArgs(), members(std::move(members)) {}
+        : name(name), ctorParams(std::move(ctorParams)), parentName(""), parentArgs(), members(std::move(members)), hasExplicitConstructor(true) {}
 
     TypeDecl::TypeDecl(const std::string& name,
                        const std::string& parentName,
                        std::vector<TypeMember> members)
-        : name(name), ctorParams(), parentName(parentName), parentArgs(), members(std::move(members)) {}
+        : name(name), ctorParams(), parentName(parentName), parentArgs(), members(std::move(members)), hasExplicitConstructor(false) {}
 
     TypeDecl::TypeDecl(const std::string& name,
                        std::vector<Param> ctorParams,
@@ -22,7 +22,9 @@ namespace Hulk {
                        std::vector<std::unique_ptr<Expr>> parentArgs,
                        std::vector<TypeMember> members)
         : name(name), ctorParams(std::move(ctorParams)), parentName(parentName),
-          parentArgs(std::move(parentArgs)), members(std::move(members)) {}
+          parentArgs(std::move(parentArgs)), members(std::move(members)), hasExplicitConstructor(true) {}
+
+    bool TypeDecl::HasExplicitConstructor() const { return hasExplicitConstructor; }
 
     const std::string& TypeDecl::GetName() const { return name; }
     const std::vector<Param>& TypeDecl::GetCtorParams() const { return ctorParams; }
