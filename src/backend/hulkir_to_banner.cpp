@@ -2,38 +2,15 @@
 
 #include "codegen_error.h"
 
+#include <functional>
+#include <unordered_map>
+
 namespace Hulk::Backend {
 
 Banner::BannerProgram HulkIRToBanner::lower(const IR::IRProgram& program) const {
     Banner::BannerProgram out;
     out.entry_function = program.entry_function;
-
-    for (const auto& type : program.types) {
-        Banner::BannerType lowered;
-        lowered.name = type.name;
-        lowered.parent = type.parent;
-        lowered.init_name = type.init_name;
-        lowered.ctor_name = type.ctor_name;
-        for (const auto& field : type.fields) {
-            lowered.fields.push_back(Banner::BannerField{
-                field.owner_type,
-                field.name,
-                field.lowered_name,
-                field.type_name,
-                field.slot,
-            });
-        }
-        for (const auto& method : type.methods) {
-            lowered.methods.push_back(Banner::BannerMethod{
-                method.owner_type,
-                method.name,
-                method.function_name,
-                method.arity,
-                method.slot,
-            });
-        }
-        out.types.push_back(std::move(lowered));
-    }
+    out.types = lower_types(program);
 
     for (const auto& data : program.data) {
         out.data.push_back(Banner::BannerData{data.label, data.value});
@@ -53,6 +30,86 @@ Banner::BannerProgram HulkIRToBanner::lower(const IR::IRProgram& program) const 
     }
 
     return out;
+}
+
+std::vector<Banner::BannerType> HulkIRToBanner::lower_types(const IR::IRProgram& program) const {
+    std::unordered_map<std::string, const IR::IRType*> source_types;
+    for (const auto& type : program.types) {
+        source_types.emplace(type.name, &type);
+    }
+
+    std::unordered_map<std::string, Banner::BannerType> lowered_by_name;
+
+    std::function<const Banner::BannerType&(const std::string&)> lower_one =
+        [&](const std::string& type_name) -> const Banner::BannerType& {
+            auto existing = lowered_by_name.find(type_name);
+            if (existing != lowered_by_name.end()) return existing->second;
+
+            auto source_it = source_types.find(type_name);
+            if (source_it == source_types.end()) {
+                throw CodegenError("Banner lowerer: tipo no encontrado '" + type_name + "'.");
+            }
+
+            const IR::IRType& source = *source_it->second;
+            Banner::BannerType lowered;
+            lowered.name = source.name;
+            lowered.parent = source.parent;
+            lowered.init_name = source.init_name;
+            lowered.ctor_name = source.ctor_name;
+
+            if (!source.parent.empty() && source.parent != "Object") {
+                const auto& parent = lower_one(source.parent);
+                lowered.fields = parent.fields;
+                lowered.methods = parent.methods;
+            }
+
+            for (const auto& field : source.fields) {
+                Banner::BannerField lowered_field{
+                    field.owner_type,
+                    field.name,
+                    field.lowered_name,
+                    field.type_name,
+                    static_cast<int>(lowered.fields.size()),
+                };
+                lowered.fields.push_back(std::move(lowered_field));
+            }
+
+            for (const auto& method : source.methods) {
+                bool replaced = false;
+                for (auto& inherited : lowered.methods) {
+                    if (inherited.name == method.name) {
+                        inherited.owner_type = method.owner_type;
+                        inherited.function_name = method.function_name;
+                        inherited.arity = method.arity;
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) {
+                    lowered.methods.push_back(Banner::BannerMethod{
+                        method.owner_type,
+                        method.name,
+                        method.function_name,
+                        method.arity,
+                        static_cast<int>(lowered.methods.size()),
+                    });
+                }
+            }
+
+            for (std::size_t i = 0; i < lowered.methods.size(); ++i) {
+                lowered.methods[i].slot = static_cast<int>(i);
+            }
+
+            auto [it, _] = lowered_by_name.emplace(type_name, std::move(lowered));
+            return it->second;
+        };
+
+    std::vector<Banner::BannerType> ordered;
+    ordered.reserve(program.types.size());
+    for (const auto& type : program.types) {
+        ordered.push_back(lower_one(type.name));
+    }
+    return ordered;
 }
 
 Banner::BannerInstr HulkIRToBanner::lower_instr(const IR::IRInstr& instr,
@@ -106,8 +163,24 @@ Banner::BannerInstr HulkIRToBanner::lower_instr(const IR::IRInstr& instr,
         case IR::IROp::SetField:
             lowered.op = Banner::Op::SetAttr;
             break;
-        case IR::IROp::VCall: lowered.op = Banner::Op::VCall; break;
-        case IR::IROp::SCallMethod: lowered.op = Banner::Op::SCall; break;
+        case IR::IROp::VCall:
+            for (const auto& arg : instr.args) {
+                Banner::BannerInstr param;
+                param.op = Banner::Op::Param;
+                param.src1 = arg;
+                out.push_back(std::move(param));
+            }
+            lowered.op = Banner::Op::VCall;
+            break;
+        case IR::IROp::SCallMethod:
+            for (const auto& arg : instr.args) {
+                Banner::BannerInstr param;
+                param.op = Banner::Op::Param;
+                param.src1 = arg;
+                out.push_back(std::move(param));
+            }
+            lowered.op = Banner::Op::SCall;
+            break;
         case IR::IROp::IsType: lowered.op = Banner::Op::IsType; break;
         case IR::IROp::AsType: lowered.op = Banner::Op::AsType; break;
         case IR::IROp::BuiltinPrint: lowered.op = Banner::Op::Print; break;

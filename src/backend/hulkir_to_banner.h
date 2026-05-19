@@ -11,6 +11,7 @@ public:
     Banner::BannerProgram lower(const IR::IRProgram& program) const;
 
 private:
+    std::vector<Banner::BannerType> lower_types(const IR::IRProgram& program) const;
     Banner::BannerInstr lower_instr(const IR::IRInstr& instr,
                                     std::vector<Banner::BannerInstr>& out) const;
 };

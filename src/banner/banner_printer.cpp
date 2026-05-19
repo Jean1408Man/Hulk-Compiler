@@ -116,13 +116,17 @@ std::string BannerPrinter::print_instr(const BannerInstr& instr) const {
             out << "GETATTR " << instr.dest << " " << instr.src1 << " " << instr.field_name;
             break;
         case Op::SetAttr:
-            out << "SETATTR " << instr.src1 << " " << instr.field_name << " " << instr.src2;
+            out << "SETATTR ";
+            if (!instr.dest.empty()) out << instr.dest << " ";
+            out << instr.src1 << " " << instr.field_name << " " << instr.src2;
             break;
         case Op::VCall:
             out << "VCALL " << instr.dest << " " << instr.src1 << " " << instr.method_name;
+            if (!instr.args.empty()) out << " " << join_args(instr.args);
             break;
         case Op::SCall:
             out << "SCALL " << instr.dest << " " << instr.type_name << " " << instr.method_name;
+            if (!instr.args.empty()) out << " " << join_args(instr.args);
             break;
         case Op::IsType:
         case Op::AsType:

@@ -332,6 +332,22 @@ for f in "$ROOT"/tests/eval/c4_*.hulk; do
     run_banner_one "$f" "run"
 done
 
+suite_header "BACKEND BANNER C5"
+for f in "$ROOT"/tests/eval/c5_*.hulk; do
+    [[ -f "$f" ]] || continue
+    run_emit_banner_one "$f"
+    run_banner_one "$f" "default"
+    run_banner_one "$f" "run"
+done
+
+suite_header "BACKEND BANNER C6"
+for f in "$ROOT"/tests/eval/c6_*.hulk; do
+    [[ -f "$f" ]] || continue
+    run_emit_banner_one "$f"
+    run_banner_one "$f" "default"
+    run_banner_one "$f" "run"
+done
+
 suite_header "BACKEND IR SNAPSHOTS"
 for f in "$ROOT"/tests/backend/ir_cases/*.hulk; do
     [[ -f "$f" ]] || continue

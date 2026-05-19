@@ -73,6 +73,7 @@ BACKEND_SRCS := \
 	src/backend/ir_to_cpp.cpp \
 	src/backend/name_mangler.cpp \
 	src/vm/banner_vm.cpp \
+	src/vm/vm_heap.cpp \
 	src/vm/vm_value.cpp
 
 SEMANTIC_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SEMANTIC_SRCS))
