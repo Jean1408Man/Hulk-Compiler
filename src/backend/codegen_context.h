@@ -19,6 +19,6 @@ private:
     std::vector<std::unordered_map<const void*, std::string>> scopes_;
 };
 
-} // namespace Hulk::Backend
+}
 
 #endif

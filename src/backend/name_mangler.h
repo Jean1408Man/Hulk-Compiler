@@ -15,6 +15,6 @@ private:
     std::size_t counter_ = 0;
 };
 
-} // namespace Hulk::Backend
+}
 
 #endif

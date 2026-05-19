@@ -7,4 +7,4 @@ BackendResult run_backend(const BackendOptions& options) {
     return driver.run(options);
 }
 
-} // namespace Hulk::Backend
+}

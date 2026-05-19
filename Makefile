@@ -70,7 +70,6 @@ BACKEND_SRCS := \
 	src/backend/codegen_context.cpp \
 	src/backend/hulkir_to_banner.cpp \
 	src/backend/ir_gen.cpp \
-	src/backend/ir_to_cpp.cpp \
 	src/backend/name_mangler.cpp \
 	src/vm/banner_vm.cpp \
 	src/vm/vm_heap.cpp \

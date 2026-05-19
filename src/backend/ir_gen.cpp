@@ -873,4 +873,4 @@ void IRGen::visit(ProtocolDecl&) {
     unsupported("protocol");
 }
 
-} // namespace Hulk::Backend
+}

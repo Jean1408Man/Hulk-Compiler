@@ -3,7 +3,6 @@
 #include "codegen_error.h"
 #include "hulkir_to_banner.h"
 #include "ir_gen.h"
-#include "ir_to_cpp.h"
 
 #include "../banner/banner_printer.h"
 #include "../ast/others/program.h"
@@ -16,9 +15,6 @@
 #include "../semantic/analyzer.h"
 #include "../vm/banner_vm.h"
 
-#include <chrono>
-#include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -104,37 +100,8 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
             return result;
         }
 
-        if (options.run_banner || !options.emit_cpp) {
-            VM::BannerVM vm;
-            (void)vm.run(banner);
-            result.ok = true;
-            return result;
-        }
-
-        const IRToCppEmitter emitter;
-        const std::string cpp = emitter.emit(ir);
-
-        result.generated_cpp_path = options.emit_cpp ? default_output_path(options) : temp_cpp_path();
-        if (!write_file(result.generated_cpp_path, cpp)) {
-            std::cerr << "Backend: no se pudo escribir " << result.generated_cpp_path << "\n";
-            return result;
-        }
-
-        if (options.emit_cpp) {
-            result.ok = true;
-            return result;
-        }
-
-        result.executable_path = default_output_path(options);
-        if (!compile_cpp(result.generated_cpp_path, result.executable_path)) {
-            return result;
-        }
-
-        if (!options.keep_temp) {
-            std::error_code ec;
-            std::filesystem::remove(result.generated_cpp_path, ec);
-        }
-
+        VM::BannerVM vm;
+        (void)vm.run(banner);
         result.ok = true;
         return result;
     } catch (const CodegenError& err) {
@@ -161,20 +128,10 @@ std::string BackendDriver::default_output_path(const BackendOptions& options) co
     if (options.emit_ir) {
         return options.input_path + ".hir";
     }
-    if (options.emit_cpp) {
-        return options.input_path + ".cpp";
-    }
     if (options.emit_banner) {
         return options.input_path + ".banner";
     }
-    return "a.out";
-}
-
-std::string BackendDriver::temp_cpp_path() const {
-    const auto now = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    std::filesystem::path path = std::filesystem::temp_directory_path();
-    path /= "hulk_backend_" + std::to_string(now) + ".cpp";
-    return path.string();
+    return {};
 }
 
 bool BackendDriver::write_file(const std::string& path, const std::string& content) const {
@@ -182,30 +139,6 @@ bool BackendDriver::write_file(const std::string& path, const std::string& conte
     if (!output) return false;
     output << content;
     return static_cast<bool>(output);
-}
-
-bool BackendDriver::compile_cpp(const std::string& cpp_path, const std::string& output_path) const {
-    const std::string cmd = "g++ -std=c++20 -Isrc " + shell_quote(cpp_path) +
-                            " -o " + shell_quote(output_path);
-    const int rc = std::system(cmd.c_str());
-    if (rc != 0) {
-        std::cerr << "Backend: fallo la compilacion C++.\n";
-        return false;
-    }
-    return true;
-}
-
-std::string BackendDriver::shell_quote(const std::string& value) const {
-    std::string out = "'";
-    for (char ch : value) {
-        if (ch == '\'') {
-            out += "'\\''";
-        } else {
-            out.push_back(ch);
-        }
-    }
-    out.push_back('\'');
-    return out;
 }
 
 }

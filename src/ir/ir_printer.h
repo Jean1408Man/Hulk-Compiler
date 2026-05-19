@@ -17,6 +17,6 @@ private:
     std::string join_args(const std::vector<std::string>& args) const;
 };
 
-} // namespace Hulk::IR
+}
 
 #endif

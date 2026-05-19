@@ -126,6 +126,6 @@ struct IRProgram {
 std::string op_name(IROp op);
 std::string function_kind_name(IRFunctionKind kind);
 
-} // namespace Hulk::IR
+}
 
 #endif

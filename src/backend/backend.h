@@ -4,9 +4,7 @@
 #include "backend_driver.h"
 
 namespace Hulk::Backend {
-
 BackendResult run_backend(const BackendOptions& options);
-
-} // namespace Hulk::Backend
+} 
 
 #endif

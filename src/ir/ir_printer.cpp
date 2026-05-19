@@ -182,4 +182,4 @@ std::string IRPrinter::join_args(const std::vector<std::string>& args) const {
     return out.str();
 }
 
-} // namespace Hulk::IR
+}

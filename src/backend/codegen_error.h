@@ -11,6 +11,6 @@ public:
     explicit CodegenError(const std::string& msg) : std::runtime_error(msg) {}
 };
 
-} // namespace Hulk::Backend
+}
 
 #endif

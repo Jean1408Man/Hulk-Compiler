@@ -135,6 +135,5 @@ private:
     void visit(ProtocolDecl& node) override;
 };
 
-} // namespace Hulk::Backend
-
+}
 #endif

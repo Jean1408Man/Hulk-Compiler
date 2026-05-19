@@ -63,4 +63,4 @@ std::string function_kind_name(IRFunctionKind kind) {
     return "unknown";
 }
 
-} // namespace Hulk::IR
+}

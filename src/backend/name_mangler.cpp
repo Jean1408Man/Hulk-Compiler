@@ -25,4 +25,4 @@ std::string NameMangler::make_unique(const std::string& prefix, const std::strin
     return prefix + "_" + sanitize(hint) + "_" + std::to_string(counter_++);
 }
 
-} // namespace Hulk::Backend
+}
