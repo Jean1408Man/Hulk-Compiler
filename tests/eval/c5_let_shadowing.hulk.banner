@@ -1,0 +1,21 @@
+.TYPES
+.DATA
+
+.CODE
+function hulk_main() ; kind=entry
+{
+  local hulk_tmp_number_0
+  local hulk_local_a_0
+  local hulk_tmp_number_1
+  local hulk_tmp_arith_2
+  local hulk_local_a_1
+  local hulk_tmp_print_3
+  CONST_NUMBER hulk_tmp_number_0 7
+  MOVE hulk_local_a_0 hulk_tmp_number_0
+  CONST_NUMBER hulk_tmp_number_1 6
+  MUL hulk_tmp_arith_2 hulk_local_a_0 hulk_tmp_number_1
+  MOVE hulk_local_a_1 hulk_tmp_arith_2
+  PRINT hulk_tmp_print_3 hulk_local_a_1
+  RETURN hulk_tmp_print_3
+}
+

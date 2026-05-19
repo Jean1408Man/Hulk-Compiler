@@ -1,0 +1,53 @@
+.TYPES
+.DATA
+
+.CODE
+function hulk_fn_square_0(hulk_param_x_2) ; kind=global
+{
+  local hulk_tmp_arith_0
+  MUL hulk_tmp_arith_0 hulk_param_x_2 hulk_param_x_2
+  RETURN hulk_tmp_arith_0
+}
+
+function hulk_fn_add_1(hulk_param_a_3, hulk_param_b_4) ; kind=global
+{
+  local hulk_tmp_arith_1
+  ADD hulk_tmp_arith_1 hulk_param_a_3 hulk_param_b_4
+  RETURN hulk_tmp_arith_1
+}
+
+function hulk_main() ; kind=entry
+{
+  local hulk_tmp_call_2
+  local hulk_tmp_number_3
+  local hulk_tmp_print_4
+  local hulk_tmp_call_5
+  local hulk_tmp_number_6
+  local hulk_tmp_number_7
+  local hulk_tmp_print_8
+  local hulk_tmp_call_9
+  local hulk_tmp_call_10
+  local hulk_tmp_number_11
+  local hulk_tmp_number_12
+  local hulk_tmp_print_13
+  CONST_NUMBER hulk_tmp_number_3 5
+  PARAM hulk_tmp_number_3
+  CALL hulk_tmp_call_2 hulk_fn_square_0
+  PRINT hulk_tmp_print_4 hulk_tmp_call_2
+  CONST_NUMBER hulk_tmp_number_6 3
+  CONST_NUMBER hulk_tmp_number_7 4
+  PARAM hulk_tmp_number_6
+  PARAM hulk_tmp_number_7
+  CALL hulk_tmp_call_5 hulk_fn_add_1
+  PRINT hulk_tmp_print_8 hulk_tmp_call_5
+  CONST_NUMBER hulk_tmp_number_11 2
+  CONST_NUMBER hulk_tmp_number_12 3
+  PARAM hulk_tmp_number_11
+  PARAM hulk_tmp_number_12
+  CALL hulk_tmp_call_10 hulk_fn_add_1
+  PARAM hulk_tmp_call_10
+  CALL hulk_tmp_call_9 hulk_fn_square_0
+  PRINT hulk_tmp_print_13 hulk_tmp_call_9
+  RETURN hulk_tmp_print_13
+}
+
