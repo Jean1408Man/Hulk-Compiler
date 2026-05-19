@@ -1,50 +1,110 @@
 #include "vm_value.h"
 
+#include "vm_heap.h"
+
+#include <cmath>
+#include <cstring>
+#include <limits>
 #include <stdexcept>
 
 namespace Hulk::VM {
+namespace {
 
-bool is_nil(const VMValue& value) { return std::holds_alternative<VMNil>(value.inner); }
-bool is_number(const VMValue& value) { return std::holds_alternative<double>(value.inner); }
-bool is_bool(const VMValue& value) { return std::holds_alternative<bool>(value.inner); }
-bool is_string(const VMValue& value) { return std::holds_alternative<std::string>(value.inner); }
-bool is_object(const VMValue& value) { return std::holds_alternative<VMObjectRef>(value.inner); }
+constexpr Word kTagMask = 0xffff000000000000ULL;
+constexpr Word kTagBase = 0x7ffc000000000000ULL;
+constexpr Word kKindShift = 40;
+constexpr Word kPayloadMask = 0x000000ffffffffffULL;
 
-double as_number(const VMValue& value) {
+Word make_tagged(WordKind kind, std::size_t payload) {
+    if ((static_cast<Word>(payload) & ~kPayloadMask) != 0) {
+        throw std::runtime_error("Runtime error: handle de VM fuera de rango.");
+    }
+    return kTagBase | (static_cast<Word>(kind) << kKindShift) |
+           (static_cast<Word>(payload) & kPayloadMask);
+}
+
+WordKind kind_of(Word value) {
+    if ((value & kTagMask) != kTagBase) return WordKind::Number;
+    return static_cast<WordKind>((value >> kKindShift) & 0xffU);
+}
+
+std::size_t payload_of(Word value) {
+    return static_cast<std::size_t>(value & kPayloadMask);
+}
+
+}
+
+Word make_nil() {
+    return make_tagged(WordKind::Nil, 0);
+}
+
+Word make_number(double value) {
+    Word bits = 0;
+    std::memcpy(&bits, &value, sizeof(bits));
+    if ((bits & kTagMask) == kTagBase) {
+        const double canonical_nan = std::numeric_limits<double>::quiet_NaN();
+        std::memcpy(&bits, &canonical_nan, sizeof(bits));
+    }
+    return bits;
+}
+
+Word make_bool(bool value) {
+    return make_tagged(WordKind::Bool, value ? 1 : 0);
+}
+
+Word make_string_ref(std::size_t index) {
+    return make_tagged(WordKind::String, index);
+}
+
+Word make_object_ref(std::size_t index) {
+    return make_tagged(WordKind::Object, index);
+}
+
+bool is_nil(Word value) { return kind_of(value) == WordKind::Nil; }
+bool is_number(Word value) { return kind_of(value) == WordKind::Number; }
+bool is_bool(Word value) { return kind_of(value) == WordKind::Bool; }
+bool is_string(Word value) { return kind_of(value) == WordKind::String; }
+bool is_object(Word value) { return kind_of(value) == WordKind::Object; }
+
+double as_number(Word value) {
     if (!is_number(value)) throw std::runtime_error("Runtime error: se esperaba Number.");
-    return std::get<double>(value.inner);
+    double number = 0.0;
+    std::memcpy(&number, &value, sizeof(number));
+    return number;
 }
 
-bool as_bool(const VMValue& value) {
+bool as_bool(Word value) {
     if (!is_bool(value)) throw std::runtime_error("Runtime error: se esperaba Boolean.");
-    return std::get<bool>(value.inner);
+    return payload_of(value) != 0;
 }
 
-const std::string& as_string(const VMValue& value) {
+std::size_t as_string_index(Word value) {
     if (!is_string(value)) throw std::runtime_error("Runtime error: se esperaba String.");
-    return std::get<std::string>(value.inner);
+    return payload_of(value);
 }
 
-bool truthy(const VMValue& value) {
+std::size_t as_object_index(Word value) {
+    if (!is_object(value)) throw std::runtime_error("Runtime error: se esperaba Object.");
+    return payload_of(value);
+}
+
+bool truthy(Word value) {
     if (is_nil(value)) return false;
-    if (is_bool(value)) return std::get<bool>(value.inner);
+    if (is_bool(value)) return as_bool(value);
     return true;
 }
 
-std::string to_string(const VMValue& value) {
-    struct Visitor {
-        std::string operator()(VMNil) const { return "nil"; }
-        std::string operator()(double number) const {
-            if (number == static_cast<long long>(number)) {
-                return std::to_string(static_cast<long long>(number));
-            }
-            return std::to_string(number);
-        }
-        std::string operator()(bool value) const { return value ? "true" : "false"; }
-        std::string operator()(const std::string& value) const { return value; }
-        std::string operator()(const VMObjectRef&) const { return "<object>"; }
-    };
-    return std::visit(Visitor{}, value.inner);
+std::string to_string(Word value, const VMHeap& heap) {
+    if (is_nil(value)) return "nil";
+    if (is_bool(value)) return as_bool(value) ? "true" : "false";
+    if (is_string(value)) return heap.string_value(value);
+    if (is_object(value)) return "<object>";
+
+    const double number = as_number(value);
+    if (!std::isnan(number) && number == static_cast<long long>(number)) {
+        return std::to_string(static_cast<long long>(number));
+    }
+    return std::to_string(number);
 }
 
 }

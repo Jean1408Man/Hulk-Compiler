@@ -1,39 +1,43 @@
 #ifndef HULK_VM_VALUE_H
 #define HULK_VM_VALUE_H
 
-#include <memory>
+#include <cstddef>
+#include <cstdint>
 #include <string>
-#include <variant>
 
 namespace Hulk::VM {
 
-struct VMNil {};
+class VMHeap;
 
-struct VMObject;
-using VMObjectRef = std::shared_ptr<VMObject>;
+using Word = std::uint64_t;
 
-struct VMValue {
-    using Inner = std::variant<VMNil, double, bool, std::string, VMObjectRef>;
-    Inner inner;
-
-    VMValue() : inner(VMNil{}) {}
-    explicit VMValue(double value) : inner(value) {}
-    explicit VMValue(bool value) : inner(value) {}
-    explicit VMValue(std::string value) : inner(std::move(value)) {}
-    explicit VMValue(VMObjectRef value) : inner(std::move(value)) {}
+enum class WordKind : std::uint8_t {
+    Number,
+    Nil,
+    Bool,
+    String,
+    Object
 };
 
-bool is_nil(const VMValue& value);
-bool is_number(const VMValue& value);
-bool is_bool(const VMValue& value);
-bool is_string(const VMValue& value);
-bool is_object(const VMValue& value);
+Word make_nil();
+Word make_number(double value);
+Word make_bool(bool value);
+Word make_string_ref(std::size_t index);
+Word make_object_ref(std::size_t index);
 
-double as_number(const VMValue& value);
-bool as_bool(const VMValue& value);
-const std::string& as_string(const VMValue& value);
-bool truthy(const VMValue& value);
-std::string to_string(const VMValue& value);
+bool is_nil(Word value);
+bool is_number(Word value);
+bool is_bool(Word value);
+bool is_string(Word value);
+bool is_object(Word value);
+
+double as_number(Word value);
+bool as_bool(Word value);
+std::size_t as_string_index(Word value);
+std::size_t as_object_index(Word value);
+
+bool truthy(Word value);
+std::string to_string(Word value, const VMHeap& heap);
 
 }
 

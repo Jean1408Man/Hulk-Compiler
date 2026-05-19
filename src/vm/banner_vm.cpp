@@ -4,50 +4,55 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
+#include <unordered_set>
 
 namespace Hulk::VM {
+namespace {
 
-VMValue BannerVM::run(const Banner::BannerProgram& program) {
-    std::unordered_map<std::string, std::string> data;
-    for (const auto& item : program.data) {
-        data[item.label] = item.value;
-    }
+bool word_equal(Word a, Word b, const VMHeap& heap) {
+    if (is_number(a) && is_number(b)) return as_number(a) == as_number(b);
+    if (is_bool(a) && is_bool(b)) return as_bool(a) == as_bool(b);
+    if (is_string(a) && is_string(b)) return heap.string_value(a) == heap.string_value(b);
+    if (is_nil(a) && is_nil(b)) return true;
+    if (is_object(a) && is_object(b)) return a == b;
+    return false;
+}
 
-    std::unordered_map<std::string, CompiledFunction> functions;
-    for (const auto& function : program.functions) {
-        functions.emplace(function.name, compile_function(function));
-    }
-    const auto types = compile_types(program);
+}
 
-    auto entry = functions.find(program.entry_function);
-    if (entry == functions.end()) {
+Word BannerVM::run(const Banner::BannerProgram& program) {
+    heap_ = VMHeap{};
+    CompiledProgram compiled = compile_program(program);
+
+    auto entry = compiled.function_ids.find(program.entry_function);
+    if (entry == compiled.function_ids.end()) {
         throw std::runtime_error("Runtime error: funcion de entrada no encontrada.");
     }
 
     std::vector<Frame> stack;
-    stack.push_back(make_frame(entry->second, {}));
+    stack.push_back(make_frame(compiled.functions.at(entry->second), {}));
 
     while (!stack.empty()) {
         Frame& frame = stack.back();
-        const auto& code = frame.function->function->code;
+        const auto& code = frame.function->code;
 
-        auto get = [&](const std::string& name) -> const VMValue& {
-            return frame.slots.at(slot_of(*frame.function, name));
+        auto get = [&](std::size_t slot) -> Word {
+            return frame.slots.at(slot);
         };
-        auto set = [&](const std::string& name, VMValue value) {
-            frame.slots.at(slot_of(*frame.function, name)) = std::move(value);
+        auto set = [&](std::size_t slot, Word value) {
+            frame.slots.at(slot) = value;
         };
 
         if (frame.pc >= code.size()) {
-            VMValue result;
-            const bool has_return_dest = frame.has_return_dest;
-            const std::string return_dest = frame.return_dest;
+            const Word result = make_nil();
+            const bool has_return_slot = frame.has_return_slot;
+            const std::size_t return_slot = frame.return_slot;
             stack.pop_back();
             if (stack.empty()) return result;
-            Frame& caller = stack.back();
-            if (has_return_dest) {
-                caller.slots.at(slot_of(*caller.function, return_dest)) = std::move(result);
+            if (has_return_slot) {
+                stack.back().slots.at(return_slot) = result;
             }
             continue;
         }
@@ -58,280 +63,414 @@ VMValue BannerVM::run(const Banner::BannerProgram& program) {
             case Banner::Op::Label:
                 break;
             case Banner::Op::ConstNil:
-                set(instr.dest, VMValue());
+                set(instr.dest_slot, make_nil());
                 break;
             case Banner::Op::ConstNumber:
-                set(instr.dest, VMValue(instr.number_value));
+                set(instr.dest_slot, make_number(instr.number_value));
                 break;
             case Banner::Op::ConstBool:
-                set(instr.dest, VMValue(instr.bool_value));
+                set(instr.dest_slot, make_bool(instr.bool_value));
                 break;
             case Banner::Op::LoadData: {
-                auto it = data.find(instr.src1);
-                if (it == data.end()) throw std::runtime_error("Runtime error: string data no encontrado.");
-                set(instr.dest, VMValue(it->second));
+                auto it = compiled.data.find(instr.data_label);
+                if (it == compiled.data.end()) {
+                    throw std::runtime_error("Runtime error: string data no encontrado.");
+                }
+                set(instr.dest_slot, it->second);
                 break;
             }
             case Banner::Op::Move:
-                set(instr.dest, get(instr.src1));
+                set(instr.dest_slot, get(instr.src1_slot));
                 break;
             case Banner::Op::Add:
-                set(instr.dest, VMValue(as_number(get(instr.src1)) + as_number(get(instr.src2))));
+                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) +
+                                                 as_number(get(instr.src2_slot))));
                 break;
             case Banner::Op::Sub:
-                set(instr.dest, VMValue(as_number(get(instr.src1)) - as_number(get(instr.src2))));
+                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) -
+                                                 as_number(get(instr.src2_slot))));
                 break;
             case Banner::Op::Mul:
-                set(instr.dest, VMValue(as_number(get(instr.src1)) * as_number(get(instr.src2))));
+                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) *
+                                                 as_number(get(instr.src2_slot))));
                 break;
             case Banner::Op::Div: {
-                const double rhs = as_number(get(instr.src2));
+                const double rhs = as_number(get(instr.src2_slot));
                 if (rhs == 0) throw std::runtime_error("Runtime error: division por cero.");
-                set(instr.dest, VMValue(as_number(get(instr.src1)) / rhs));
+                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) / rhs));
                 break;
             }
             case Banner::Op::Mod: {
-                const double rhs = as_number(get(instr.src2));
+                const double rhs = as_number(get(instr.src2_slot));
                 if (rhs == 0) throw std::runtime_error("Runtime error: modulo por cero.");
-                set(instr.dest, VMValue(std::fmod(as_number(get(instr.src1)), rhs)));
+                set(instr.dest_slot, make_number(std::fmod(as_number(get(instr.src1_slot)), rhs)));
                 break;
             }
             case Banner::Op::Pow:
-                set(instr.dest, VMValue(std::pow(as_number(get(instr.src1)), as_number(get(instr.src2)))));
+                set(instr.dest_slot, make_number(std::pow(as_number(get(instr.src1_slot)),
+                                                          as_number(get(instr.src2_slot)))));
                 break;
             case Banner::Op::Neg:
-                set(instr.dest, VMValue(-as_number(get(instr.src1))));
+                set(instr.dest_slot, make_number(-as_number(get(instr.src1_slot))));
                 break;
             case Banner::Op::And:
-                set(instr.dest, VMValue(truthy(get(instr.src1)) && truthy(get(instr.src2))));
+                set(instr.dest_slot, make_bool(truthy(get(instr.src1_slot)) &&
+                                               truthy(get(instr.src2_slot))));
                 break;
             case Banner::Op::Or:
-                set(instr.dest, VMValue(truthy(get(instr.src1)) || truthy(get(instr.src2))));
+                set(instr.dest_slot, make_bool(truthy(get(instr.src1_slot)) ||
+                                               truthy(get(instr.src2_slot))));
                 break;
             case Banner::Op::Not:
-                set(instr.dest, VMValue(!truthy(get(instr.src1))));
+                set(instr.dest_slot, make_bool(!truthy(get(instr.src1_slot))));
                 break;
-            case Banner::Op::Equal: {
-                const auto& a = get(instr.src1);
-                const auto& b = get(instr.src2);
-                bool result = false;
-                if (is_number(a) && is_number(b)) result = as_number(a) == as_number(b);
-                else if (is_bool(a) && is_bool(b)) result = as_bool(a) == as_bool(b);
-                else if (is_string(a) && is_string(b)) result = as_string(a) == as_string(b);
-                else if (is_nil(a) && is_nil(b)) result = true;
-                set(instr.dest, VMValue(result));
+            case Banner::Op::Equal:
+                set(instr.dest_slot, make_bool(word_equal(get(instr.src1_slot),
+                                                          get(instr.src2_slot),
+                                                          heap_)));
                 break;
-            }
-            case Banner::Op::NotEqual: {
-                const auto& a = get(instr.src1);
-                const auto& b = get(instr.src2);
-                bool equal = false;
-                if (is_number(a) && is_number(b)) equal = as_number(a) == as_number(b);
-                else if (is_bool(a) && is_bool(b)) equal = as_bool(a) == as_bool(b);
-                else if (is_string(a) && is_string(b)) equal = as_string(a) == as_string(b);
-                else if (is_nil(a) && is_nil(b)) equal = true;
-                set(instr.dest, VMValue(!equal));
+            case Banner::Op::NotEqual:
+                set(instr.dest_slot, make_bool(!word_equal(get(instr.src1_slot),
+                                                           get(instr.src2_slot),
+                                                           heap_)));
                 break;
-            }
             case Banner::Op::Less:
-                set(instr.dest, VMValue(as_number(get(instr.src1)) < as_number(get(instr.src2))));
+                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) <
+                                               as_number(get(instr.src2_slot))));
                 break;
             case Banner::Op::Greater:
-                set(instr.dest, VMValue(as_number(get(instr.src1)) > as_number(get(instr.src2))));
+                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) >
+                                               as_number(get(instr.src2_slot))));
                 break;
             case Banner::Op::LessEqual:
-                set(instr.dest, VMValue(as_number(get(instr.src1)) <= as_number(get(instr.src2))));
+                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) <=
+                                               as_number(get(instr.src2_slot))));
                 break;
             case Banner::Op::GreaterEqual:
-                set(instr.dest, VMValue(as_number(get(instr.src1)) >= as_number(get(instr.src2))));
+                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) >=
+                                               as_number(get(instr.src2_slot))));
                 break;
             case Banner::Op::Concat:
-                set(instr.dest, VMValue(to_string(get(instr.src1)) + to_string(get(instr.src2))));
+                set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
+                                                           to_string(get(instr.src2_slot), heap_)));
                 break;
             case Banner::Op::ConcatSpace:
-                set(instr.dest, VMValue(to_string(get(instr.src1)) + " " + to_string(get(instr.src2))));
+                set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
+                                                           " " +
+                                                           to_string(get(instr.src2_slot), heap_)));
                 break;
             case Banner::Op::Jump:
-                frame.pc = label_of(*frame.function, instr.label);
+                frame.pc = instr.label_pc;
                 break;
             case Banner::Op::JumpIfTrue:
-                if (truthy(get(instr.src1))) frame.pc = label_of(*frame.function, instr.label);
+                if (truthy(get(instr.src1_slot))) frame.pc = instr.label_pc;
                 break;
             case Banner::Op::JumpIfFalse:
-                if (!truthy(get(instr.src1))) frame.pc = label_of(*frame.function, instr.label);
+                if (!truthy(get(instr.src1_slot))) frame.pc = instr.label_pc;
                 break;
             case Banner::Op::Return: {
-                VMValue result = get(instr.src1);
-                const bool has_return_dest = frame.has_return_dest;
-                const std::string return_dest = frame.return_dest;
+                const Word result = get(instr.src1_slot);
+                const bool has_return_slot = frame.has_return_slot;
+                const std::size_t return_slot = frame.return_slot;
                 stack.pop_back();
                 if (stack.empty()) return result;
-                Frame& caller = stack.back();
-                if (has_return_dest) {
-                    caller.slots.at(slot_of(*caller.function, return_dest)) = std::move(result);
+                if (has_return_slot) {
+                    stack.back().slots.at(return_slot) = result;
                 }
                 break;
             }
             case Banner::Op::Print: {
-                VMValue value = get(instr.args.at(0));
-                std::cout << to_string(value) << "\n";
-                set(instr.dest, value);
+                const Word value = get(instr.arg_slots.at(0));
+                std::cout << to_string(value, heap_) << "\n";
+                set(instr.dest_slot, value);
                 break;
             }
             case Banner::Op::Sqrt:
-                set(instr.dest, VMValue(std::sqrt(as_number(get(instr.args.at(0))))));
+                set(instr.dest_slot, make_number(std::sqrt(as_number(get(instr.arg_slots.at(0))))));
                 break;
             case Banner::Op::Sin:
-                set(instr.dest, VMValue(std::sin(as_number(get(instr.args.at(0))))));
+                set(instr.dest_slot, make_number(std::sin(as_number(get(instr.arg_slots.at(0))))));
                 break;
             case Banner::Op::Cos:
-                set(instr.dest, VMValue(std::cos(as_number(get(instr.args.at(0))))));
+                set(instr.dest_slot, make_number(std::cos(as_number(get(instr.arg_slots.at(0))))));
                 break;
             case Banner::Op::Exp:
-                set(instr.dest, VMValue(std::exp(as_number(get(instr.args.at(0))))));
+                set(instr.dest_slot, make_number(std::exp(as_number(get(instr.arg_slots.at(0))))));
                 break;
             case Banner::Op::Log:
-                set(instr.dest, VMValue(std::log(as_number(get(instr.args.at(1)))) /
-                                        std::log(as_number(get(instr.args.at(0))))));
+                set(instr.dest_slot, make_number(std::log(as_number(get(instr.arg_slots.at(1)))) /
+                                                 std::log(as_number(get(instr.arg_slots.at(0))))));
                 break;
             case Banner::Op::Rand:
-                set(instr.dest, VMValue(static_cast<double>(std::rand()) / RAND_MAX));
+                set(instr.dest_slot, make_number(static_cast<double>(std::rand()) / RAND_MAX));
                 break;
             case Banner::Op::Param:
-                frame.param_buffer.push_back(get(instr.src1));
+                frame.param_buffer.push_back(get(instr.src1_slot));
                 break;
             case Banner::Op::Call: {
-                auto callee = functions.find(instr.callee);
-                if (callee == functions.end()) {
-                    throw std::runtime_error("Runtime error: funcion no encontrada: " + instr.callee);
-                }
-                std::vector<VMValue> args = frame.param_buffer;
+                std::vector<Word> args = frame.param_buffer;
                 frame.param_buffer.clear();
-                stack.push_back(make_frame(callee->second, args, instr.dest));
+                stack.push_back(make_frame(compiled.functions.at(instr.callee_id),
+                                           args,
+                                           instr.dest_slot,
+                                           instr.has_dest));
                 break;
             }
-            case Banner::Op::Allocate: {
-                const auto& type = type_of(types, instr.type_name);
-                set(instr.dest, VMValue(heap_.allocate_object(type.type_id, type.field_slots.size())));
+            case Banner::Op::Allocate:
+                set(instr.dest_slot, heap_.allocate_object(instr.type_id,
+                                                           type_of(compiled, instr.type_name)
+                                                               .field_slots.size()));
                 break;
-            }
             case Banner::Op::GetAttr: {
-                const VMValue& receiver = get(instr.src1);
+                const Word receiver = get(instr.src1_slot);
                 if (!is_object(receiver)) {
                     throw std::runtime_error("Runtime error: se esperaba Object.");
                 }
-                auto object = std::get<VMObjectRef>(receiver.inner);
-                const auto& type = type_of(types, receiver);
-                set(instr.dest, object->fields.at(field_slot(type, instr.field_name)));
+                const auto& type = type_of(compiled, receiver);
+                const std::size_t slot = instr.has_field_slot
+                                             ? instr.field_slot
+                                             : field_slot(type, instr.field_name);
+                set(instr.dest_slot, heap_.object(receiver).fields.at(slot));
                 break;
             }
             case Banner::Op::SetAttr: {
-                const VMValue& receiver = get(instr.src1);
+                const Word receiver = get(instr.src1_slot);
                 if (!is_object(receiver)) {
                     throw std::runtime_error("Runtime error: se esperaba Object.");
                 }
-                auto object = std::get<VMObjectRef>(receiver.inner);
-                const auto& type = type_of(types, receiver);
-                VMValue value = get(instr.src2);
-                object->fields.at(field_slot(type, instr.field_name)) = value;
-                if (!instr.dest.empty()) {
-                    set(instr.dest, value);
+                const auto& type = type_of(compiled, receiver);
+                const std::size_t slot = instr.has_field_slot
+                                             ? instr.field_slot
+                                             : field_slot(type, instr.field_name);
+                const Word value = get(instr.src2_slot);
+                heap_.object(receiver).fields.at(slot) = value;
+                if (instr.has_dest) {
+                    set(instr.dest_slot, value);
                 }
                 break;
             }
             case Banner::Op::VCall: {
-                std::vector<VMValue> args = frame.param_buffer;
+                std::vector<Word> args = frame.param_buffer;
                 frame.param_buffer.clear();
-                VMValue receiver = get(instr.src1);
+                const Word receiver = get(instr.src1_slot);
                 if (!is_object(receiver)) {
                     throw std::runtime_error("Runtime error: se esperaba Object.");
                 }
                 if (args.empty()) {
-                    for (const auto& arg_name : instr.args) {
-                        args.push_back(get(arg_name));
+                    for (const auto slot : instr.arg_slots) {
+                        args.push_back(get(slot));
                     }
                 }
-                const auto& runtime_type = type_of(types, receiver);
-                const std::size_t slot = method_slot(runtime_type, instr.method_name);
-                auto callee = functions.find(runtime_type.vtable.at(slot));
-                if (callee == functions.end()) {
-                    throw std::runtime_error("Runtime error: metodo no encontrado: " + instr.method_name);
-                }
-                std::vector<VMValue> call_args;
+                const auto& runtime_type = type_of(compiled, receiver);
+                const std::size_t slot = instr.has_method_slot
+                                             ? instr.method_slot
+                                             : method_slot(runtime_type, instr.method_name);
+                std::vector<Word> call_args;
                 call_args.reserve(args.size() + 1);
                 call_args.push_back(receiver);
                 call_args.insert(call_args.end(), args.begin(), args.end());
-                stack.push_back(make_frame(callee->second, call_args, instr.dest));
+                stack.push_back(make_frame(compiled.functions.at(runtime_type.vtable.at(slot)),
+                                           call_args,
+                                           instr.dest_slot,
+                                           instr.has_dest));
                 break;
             }
             case Banner::Op::SCall: {
-                std::vector<VMValue> args = frame.param_buffer;
+                std::vector<Word> args = frame.param_buffer;
                 frame.param_buffer.clear();
-                VMValue receiver = get(instr.src1);
+                const Word receiver = get(instr.src1_slot);
                 if (!is_object(receiver)) {
                     throw std::runtime_error("Runtime error: se esperaba Object.");
                 }
                 if (args.empty()) {
-                    for (const auto& arg_name : instr.args) {
-                        args.push_back(get(arg_name));
+                    for (const auto slot : instr.arg_slots) {
+                        args.push_back(get(slot));
                     }
                 }
-                const auto& start_type = type_of(types, instr.type_name);
-                const std::size_t slot = method_slot(start_type, instr.method_name);
-                auto callee = functions.find(start_type.vtable.at(slot));
-                if (callee == functions.end()) {
-                    throw std::runtime_error("Runtime error: metodo no encontrado: " + instr.method_name);
-                }
-                std::vector<VMValue> call_args;
+                const auto& start_type = type_of(compiled, instr.type_name);
+                const std::size_t slot = instr.has_method_slot
+                                             ? instr.method_slot
+                                             : method_slot(start_type, instr.method_name);
+                std::vector<Word> call_args;
                 call_args.reserve(args.size() + 1);
                 call_args.push_back(receiver);
                 call_args.insert(call_args.end(), args.begin(), args.end());
-                stack.push_back(make_frame(callee->second, call_args, instr.dest));
+                stack.push_back(make_frame(compiled.functions.at(start_type.vtable.at(slot)),
+                                           call_args,
+                                           instr.dest_slot,
+                                           instr.has_dest));
                 break;
             }
             case Banner::Op::IsType:
-                set(instr.dest, VMValue(is_instance(get(instr.src1), instr.type_name, types)));
+                set(instr.dest_slot, make_bool(is_instance(get(instr.src1_slot),
+                                                           instr.type_name,
+                                                           compiled)));
                 break;
             case Banner::Op::AsType: {
-                VMValue value = get(instr.src1);
-                if (!is_instance(value, instr.type_name, types)) {
+                const Word value = get(instr.src1_slot);
+                if (!is_instance(value, instr.type_name, compiled)) {
                     throw std::runtime_error("Runtime error: no se puede castear '" +
-                                             to_string(value) + "' a '" + instr.type_name + "'.");
+                                             to_string(value, heap_) + "' a '" +
+                                             instr.type_name + "'.");
                 }
-                set(instr.dest, value);
+                set(instr.dest_slot, value);
                 break;
             }
         }
     }
 
-    return VMValue();
+    return make_nil();
 }
 
-BannerVM::CompiledFunction BannerVM::compile_function(const Banner::BannerFunction& function) const {
-    CompiledFunction out;
-    out.function = &function;
+BannerVM::CompiledProgram BannerVM::compile_program(const Banner::BannerProgram& program) {
+    CompiledProgram out;
 
-    std::size_t next_slot = 0;
-    for (const auto& param : function.params) {
-        out.slots.emplace(param, next_slot++);
-    }
-    for (const auto& local : function.locals) {
-        out.slots.emplace(local, next_slot++);
+    out.functions.resize(program.functions.size());
+    for (std::size_t i = 0; i < program.functions.size(); ++i) {
+        out.function_ids.emplace(program.functions.at(i).name, i);
+        out.functions.at(i).function = &program.functions.at(i);
     }
 
-    for (std::size_t pc = 0; pc < function.code.size(); ++pc) {
-        const auto& instr = function.code[pc];
-        if (instr.op == Banner::Op::Label) {
-            out.labels[instr.label] = pc;
-        }
+    out.types = compile_types(program, out.function_ids);
+    for (const auto& [_, type] : out.types) {
+        out.types_by_id.emplace(type.type_id, &type);
+    }
+
+    const auto field_slots = consistent_field_slots(out.types);
+    const auto method_slots = consistent_method_slots(out.types);
+    for (auto& function : out.functions) {
+        compile_function_code(out, function, field_slots, method_slots);
+    }
+
+    for (const auto& item : program.data) {
+        out.data[item.label] = heap_.allocate_string(item.value);
     }
 
     return out;
 }
 
+std::unordered_map<std::string, std::size_t>
+BannerVM::consistent_field_slots(const std::unordered_map<std::string, CompiledType>& types) const {
+    std::unordered_map<std::string, std::size_t> slots;
+    std::unordered_set<std::string> ambiguous;
+    for (const auto& [_, type] : types) {
+        for (const auto& [name, slot] : type.field_slots) {
+            auto existing = slots.find(name);
+            if (existing == slots.end()) {
+                slots.emplace(name, slot);
+            } else if (existing->second != slot) {
+                ambiguous.insert(name);
+            }
+        }
+    }
+    for (const auto& name : ambiguous) slots.erase(name);
+    return slots;
+}
+
+std::unordered_map<std::string, std::size_t>
+BannerVM::consistent_method_slots(const std::unordered_map<std::string, CompiledType>& types) const {
+    std::unordered_map<std::string, std::size_t> slots;
+    std::unordered_set<std::string> ambiguous;
+    for (const auto& [_, type] : types) {
+        for (const auto& [name, slot] : type.method_slots) {
+            auto existing = slots.find(name);
+            if (existing == slots.end()) {
+                slots.emplace(name, slot);
+            } else if (existing->second != slot) {
+                ambiguous.insert(name);
+            }
+        }
+    }
+    for (const auto& name : ambiguous) slots.erase(name);
+    return slots;
+}
+
+void BannerVM::compile_function_code(
+    CompiledProgram& program,
+    CompiledFunction& function,
+    const std::unordered_map<std::string, std::size_t>& field_slots,
+    const std::unordered_map<std::string, std::size_t>& method_slots) const {
+    std::size_t next_slot = 0;
+    for (const auto& param : function.function->params) {
+        function.slots.emplace(param, next_slot++);
+    }
+    for (const auto& local : function.function->locals) {
+        function.slots.emplace(local, next_slot++);
+    }
+
+    for (std::size_t pc = 0; pc < function.function->code.size(); ++pc) {
+        const auto& instr = function.function->code.at(pc);
+        if (instr.op == Banner::Op::Label) {
+            function.labels[instr.label] = pc;
+        }
+    }
+
+    function.code.reserve(function.function->code.size());
+    for (const auto& source : function.function->code) {
+        CompiledInstr instr;
+        instr.op = source.op;
+        instr.number_value = source.number_value;
+        instr.bool_value = source.bool_value;
+        instr.data_label = source.src1;
+        instr.field_name = source.field_name;
+        instr.method_name = source.method_name;
+        instr.type_name = source.type_name;
+        instr.has_dest = !source.dest.empty();
+
+        if (!source.dest.empty()) instr.dest_slot = slot_of(function, source.dest);
+        if (!source.src1.empty() &&
+            source.op != Banner::Op::LoadData &&
+            source.op != Banner::Op::JumpIfTrue &&
+            source.op != Banner::Op::JumpIfFalse) {
+            instr.src1_slot = slot_of(function, source.src1);
+        }
+        if ((source.op == Banner::Op::JumpIfTrue || source.op == Banner::Op::JumpIfFalse) &&
+            !source.src1.empty()) {
+            instr.src1_slot = slot_of(function, source.src1);
+        }
+        if (!source.src2.empty()) instr.src2_slot = slot_of(function, source.src2);
+        if (!source.label.empty()) instr.label_pc = label_of(function, source.label);
+        if (!source.callee.empty()) {
+            auto callee = program.function_ids.find(source.callee);
+            if (callee == program.function_ids.end()) {
+                throw std::runtime_error("Runtime error: funcion no encontrada: " + source.callee);
+            }
+            instr.callee_id = callee->second;
+        }
+        if (!source.type_name.empty() && source.op == Banner::Op::Allocate) {
+            instr.type_id = type_of(program, source.type_name).type_id;
+        }
+        if (!source.field_name.empty()) {
+            auto field_it = field_slots.find(source.field_name);
+            if (field_it != field_slots.end()) {
+                instr.field_slot = field_it->second;
+                instr.has_field_slot = true;
+            }
+        }
+        if (!source.method_name.empty()) {
+            auto method_it = method_slots.find(source.method_name);
+            if (method_it != method_slots.end()) {
+                instr.method_slot = method_it->second;
+                instr.has_method_slot = true;
+            }
+            if (source.op == Banner::Op::SCall && !source.type_name.empty()) {
+                const auto& type = type_of(program, source.type_name);
+                instr.method_slot = method_slot(type, source.method_name);
+                instr.has_method_slot = true;
+            }
+        }
+        for (const auto& arg : source.args) {
+            instr.arg_slots.push_back(slot_of(function, arg));
+        }
+
+        function.code.push_back(std::move(instr));
+    }
+}
+
 BannerVM::Frame BannerVM::make_frame(const CompiledFunction& function,
-                                     const std::vector<VMValue>& args,
-                                     std::string return_dest) const {
+                                     const std::vector<Word>& args,
+                                     std::size_t return_slot,
+                                     bool has_return_slot) const {
     if (args.size() != function.function->params.size()) {
         throw std::runtime_error("Runtime error: aridad incorrecta en " +
                                  function.function->source_name + ".");
@@ -340,9 +479,9 @@ BannerVM::Frame BannerVM::make_frame(const CompiledFunction& function,
     Frame frame;
     frame.function = &function;
     frame.pc = 0;
-    frame.slots.resize(function.slots.size());
-    frame.return_dest = std::move(return_dest);
-    frame.has_return_dest = !frame.return_dest.empty();
+    frame.slots.resize(function.slots.size(), make_nil());
+    frame.return_slot = return_slot;
+    frame.has_return_slot = has_return_slot;
     for (std::size_t i = 0; i < args.size(); ++i) {
         frame.slots.at(slot_of(function, function.function->params.at(i))) = args.at(i);
     }
@@ -351,7 +490,8 @@ BannerVM::Frame BannerVM::make_frame(const CompiledFunction& function,
 }
 
 std::unordered_map<std::string, BannerVM::CompiledType>
-BannerVM::compile_types(const Banner::BannerProgram& program) const {
+BannerVM::compile_types(const Banner::BannerProgram& program,
+                        const std::unordered_map<std::string, std::size_t>& function_ids) const {
     std::unordered_map<std::string, const Banner::BannerType*> source_types;
     for (const auto& type : program.types) {
         source_types.emplace(type.name, &type);
@@ -389,13 +529,18 @@ BannerVM::compile_types(const Banner::BannerProgram& program) const {
             }
 
             for (const auto& method : type.type->methods) {
+                auto fn_it = function_ids.find(method.function_name);
+                if (fn_it == function_ids.end()) {
+                    throw std::runtime_error("Runtime error: metodo no encontrado: " +
+                                             method.function_name);
+                }
                 auto slot_it = type.method_slots.find(method.name);
                 if (slot_it == type.method_slots.end()) {
                     const std::size_t slot = type.vtable.size();
                     type.method_slots.emplace(method.name, slot);
-                    type.vtable.push_back(method.function_name);
+                    type.vtable.push_back(fn_it->second);
                 } else {
-                    type.vtable.at(slot_it->second) = method.function_name;
+                    type.vtable.at(slot_it->second) = fn_it->second;
                 }
             }
 
@@ -426,29 +571,25 @@ std::size_t BannerVM::label_of(const CompiledFunction& function, const std::stri
     return it->second;
 }
 
-const BannerVM::CompiledType& BannerVM::type_of(
-    const std::unordered_map<std::string, CompiledType>& types,
-    const std::string& name) const {
-    auto it = types.find(name);
-    if (it == types.end()) {
+const BannerVM::CompiledType& BannerVM::type_of(const CompiledProgram& program,
+                                                const std::string& name) const {
+    auto it = program.types.find(name);
+    if (it == program.types.end()) {
         throw std::runtime_error("Runtime error: tipo no encontrado: " + name);
     }
     return it->second;
 }
 
-const BannerVM::CompiledType& BannerVM::type_of(
-    const std::unordered_map<std::string, CompiledType>& types,
-    const VMValue& value) const {
+const BannerVM::CompiledType& BannerVM::type_of(const CompiledProgram& program, Word value) const {
     if (!is_object(value)) {
         throw std::runtime_error("Runtime error: se esperaba Object.");
     }
-    auto object = std::get<VMObjectRef>(value.inner);
-    for (auto it = types.begin(); it != types.end(); ++it) {
-        if (it->second.type_id == object->type_id) {
-            return it->second;
-        }
+    const int type_id = heap_.object(value).type_id;
+    auto it = program.types_by_id.find(type_id);
+    if (it == program.types_by_id.end()) {
+        throw std::runtime_error("Runtime error: type_id de objeto invalido.");
     }
-    throw std::runtime_error("Runtime error: type_id de objeto invalido.");
+    return *it->second;
 }
 
 std::size_t BannerVM::field_slot(const CompiledType& type, const std::string& field_name) const {
@@ -469,9 +610,9 @@ std::size_t BannerVM::method_slot(const CompiledType& type, const std::string& m
     return it->second;
 }
 
-bool BannerVM::is_instance(const VMValue& value,
+bool BannerVM::is_instance(Word value,
                            const std::string& type_name,
-                           const std::unordered_map<std::string, CompiledType>& types) const {
+                           const CompiledProgram& program) const {
     if (!is_object(value)) {
         if (type_name == "Number") return is_number(value);
         if (type_name == "String") return is_string(value);
@@ -479,20 +620,14 @@ bool BannerVM::is_instance(const VMValue& value,
         return false;
     }
 
-    const auto& start_type = type_of(types, value);
+    const auto& start_type = type_of(program, value);
     const CompiledType* current = &start_type;
     while (current != nullptr) {
         if (current->type->name == type_name) return true;
         if (current->parent_type_id == -1) break;
 
-        const CompiledType* parent = nullptr;
-        for (auto it = types.begin(); it != types.end(); ++it) {
-            if (it->second.type_id == current->parent_type_id) {
-                parent = &it->second;
-                break;
-            }
-        }
-        current = parent;
+        auto parent = program.types_by_id.find(current->parent_type_id);
+        current = parent == program.types_by_id.end() ? nullptr : parent->second;
     }
 
     return type_name == "Object";
