@@ -10,12 +10,15 @@ struct BackendOptions {
     std::string output_path;
     bool emit_ir = false;
     bool emit_cpp = false;
+    bool emit_banner = false;
+    bool run_banner = false;
     bool keep_temp = false;
 };
 
 struct BackendResult {
     bool ok = false;
     std::string generated_ir_path;
+    std::string generated_banner_path;
     std::string generated_cpp_path;
     std::string executable_path;
 };
@@ -33,6 +36,6 @@ private:
     std::string shell_quote(const std::string& value) const;
 };
 
-} // namespace Hulk::Backend
+}
 
 #endif

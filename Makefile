@@ -61,14 +61,19 @@ SEMANTIC_SRCS := \
 	src/typecheck/type_checker.cpp
 
 BACKEND_SRCS := \
+	src/banner/banner_ir.cpp \
+	src/banner/banner_printer.cpp \
 	src/ir/ir.cpp \
 	src/ir/ir_printer.cpp \
 	src/backend/backend.cpp \
 	src/backend/backend_driver.cpp \
 	src/backend/codegen_context.cpp \
+	src/backend/hulkir_to_banner.cpp \
 	src/backend/ir_gen.cpp \
 	src/backend/ir_to_cpp.cpp \
-	src/backend/name_mangler.cpp
+	src/backend/name_mangler.cpp \
+	src/vm/banner_vm.cpp \
+	src/vm/vm_value.cpp
 
 SEMANTIC_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SEMANTIC_SRCS))
 BACKEND_OBJS  := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(BACKEND_SRCS))

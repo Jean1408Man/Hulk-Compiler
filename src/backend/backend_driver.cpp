@@ -1,9 +1,11 @@
 #include "backend_driver.h"
 
 #include "codegen_error.h"
+#include "hulkir_to_banner.h"
 #include "ir_gen.h"
 #include "ir_to_cpp.h"
 
+#include "../banner/banner_printer.h"
 #include "../ast/others/program.h"
 #include "../common/diagnosticEngine.hpp"
 #include "../common/diagnosticRepository.hpp"
@@ -12,6 +14,7 @@
 #include "../parser/parser.hpp"
 #include "../parser/parser_driver.hpp"
 #include "../semantic/analyzer.h"
+#include "../vm/banner_vm.h"
 
 #include <chrono>
 #include <cstdlib>
@@ -87,6 +90,27 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
             return result;
         }
 
+        const HulkIRToBanner lowerer;
+        const Banner::BannerProgram banner = lowerer.lower(ir);
+
+        if (options.emit_banner) {
+            result.generated_banner_path = default_output_path(options);
+            const Banner::BannerPrinter printer;
+            if (!write_file(result.generated_banner_path, printer.print(banner))) {
+                std::cerr << "Backend: no se pudo escribir " << result.generated_banner_path << "\n";
+                return result;
+            }
+            result.ok = true;
+            return result;
+        }
+
+        if (options.run_banner || !options.emit_cpp) {
+            VM::BannerVM vm;
+            (void)vm.run(banner);
+            result.ok = true;
+            return result;
+        }
+
         const IRToCppEmitter emitter;
         const std::string cpp = emitter.emit(ir);
 
@@ -140,6 +164,9 @@ std::string BackendDriver::default_output_path(const BackendOptions& options) co
     if (options.emit_cpp) {
         return options.input_path + ".cpp";
     }
+    if (options.emit_banner) {
+        return options.input_path + ".banner";
+    }
     return "a.out";
 }
 
@@ -181,4 +208,4 @@ std::string BackendDriver::shell_quote(const std::string& value) const {
     return out;
 }
 
-} // namespace Hulk::Backend
+}

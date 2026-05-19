@@ -21,17 +21,30 @@ BOLD='\033[1m'
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+compare_files() {
+    local expected_file="$1"
+    local actual_file="$2"
+    local diff_file="$3"
+    local expected_norm="$diff_file.expected.norm"
+    local actual_norm="$diff_file.actual.norm"
+
+    sed 's/\r$//' "$expected_file" > "$expected_norm"
+    sed 's/\r$//' "$actual_file" > "$actual_norm"
+    diff -u "$expected_norm" "$actual_norm" > "$diff_file"
+}
+
 run_one() {
     local hulk_file="$1"
     local name
     name="$(basename "$hulk_file" .hulk)"
+    local cpp_file="$TMP_DIR/$name.cpp"
     local exe="$TMP_DIR/$name"
     local actual_file="$TMP_DIR/$name.actual"
     local expected_file="$EXPECTED_DIR/$name.expected"
 
     TOTAL=$((TOTAL + 1))
 
-    if ! "$BACKEND_BIN" "$hulk_file" -o "$exe" > "$TMP_DIR/$name.compile.out" 2>&1; then
+    if ! "$BACKEND_BIN" "$hulk_file" --emit-cpp -o "$cpp_file" > "$TMP_DIR/$name.compile.out" 2>&1; then
         echo -e "  ${RED}FAIL${RESET} $name"
         echo -e "       ${YELLOW}backend:${RESET}"
         sed 's/^/         /' "$TMP_DIR/$name.compile.out"
@@ -39,9 +52,16 @@ run_one() {
         return
     fi
 
+    if ! g++ -std=c++20 -I"$ROOT/src" "$cpp_file" -o "$exe" > "$TMP_DIR/$name.gpp.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        sed 's/^/       /' "$TMP_DIR/$name.gpp.out"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
     "$exe" > "$actual_file" 2>&1 || true
 
-    if diff -u "$expected_file" "$actual_file" > "$TMP_DIR/$name.diff"; then
+    if compare_files "$expected_file" "$actual_file" "$TMP_DIR/$name.diff"; then
         echo -e "  ${GREEN}OK${RESET}  $name"
         PASSED=$((PASSED + 1))
     else
@@ -56,12 +76,13 @@ run_expected_one() {
     local expected_file="$2"
     local name
     name="$(basename "$hulk_file" .hulk)"
+    local cpp_file="$TMP_DIR/$name.cpp"
     local exe="$TMP_DIR/$name"
     local actual_file="$TMP_DIR/$name.actual"
 
     TOTAL=$((TOTAL + 1))
 
-    if ! "$BACKEND_BIN" "$hulk_file" -o "$exe" > "$TMP_DIR/$name.compile.out" 2>&1; then
+    if ! "$BACKEND_BIN" "$hulk_file" --emit-cpp -o "$cpp_file" > "$TMP_DIR/$name.compile.out" 2>&1; then
         echo -e "  ${RED}FAIL${RESET} $name"
         echo -e "       ${YELLOW}backend:${RESET}"
         sed 's/^/         /' "$TMP_DIR/$name.compile.out"
@@ -69,14 +90,47 @@ run_expected_one() {
         return
     fi
 
+    if ! g++ -std=c++20 -I"$ROOT/src" "$cpp_file" -o "$exe" > "$TMP_DIR/$name.gpp.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        sed 's/^/       /' "$TMP_DIR/$name.gpp.out"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
     "$exe" > "$actual_file" 2>&1 || true
 
-    if diff -u "$expected_file" "$actual_file" > "$TMP_DIR/$name.diff"; then
+    if compare_files "$expected_file" "$actual_file" "$TMP_DIR/$name.diff"; then
         echo -e "  ${GREEN}OK${RESET}  $name"
         PASSED=$((PASSED + 1))
     else
         echo -e "  ${RED}FAIL${RESET} $name"
         sed 's/^/       /' "$TMP_DIR/$name.diff"
+        FAILED=$((FAILED + 1))
+    fi
+}
+
+run_banner_one() {
+    local hulk_file="$1"
+    local mode="$2"
+    local name
+    name="$(basename "$hulk_file" .hulk)"
+    local actual_file="$TMP_DIR/$name.banner.$mode.actual"
+    local expected_file="$EXPECTED_DIR/$name.expected"
+
+    TOTAL=$((TOTAL + 1))
+
+    if [[ "$mode" == "default" ]]; then
+        "$BACKEND_BIN" "$hulk_file" > "$actual_file" 2>&1 || true
+    else
+        "$BACKEND_BIN" "$hulk_file" --run-banner > "$actual_file" 2>&1 || true
+    fi
+
+    if compare_files "$expected_file" "$actual_file" "$TMP_DIR/$name.banner.$mode.diff"; then
+        echo -e "  ${GREEN}OK${RESET}  $name Banner $mode"
+        PASSED=$((PASSED + 1))
+    else
+        echo -e "  ${RED}FAIL${RESET} $name Banner $mode"
+        sed 's/^/       /' "$TMP_DIR/$name.banner.$mode.diff"
         FAILED=$((FAILED + 1))
     fi
 }
@@ -126,6 +180,33 @@ run_emit_ir_one() {
     fi
 }
 
+run_emit_banner_one() {
+    local hulk_file="$1"
+    local name
+    name="$(basename "$hulk_file" .hulk)"
+    local banner_file="$TMP_DIR/$name.banner"
+
+    TOTAL=$((TOTAL + 1))
+
+    if ! "$BACKEND_BIN" "$hulk_file" --emit-banner -o "$banner_file" > "$TMP_DIR/$name.emit-banner.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name --emit-banner"
+        sed 's/^/         /' "$TMP_DIR/$name.emit-banner.out"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if grep -q '^\.TYPES$' "$banner_file" &&
+       grep -q '^\.DATA$' "$banner_file" &&
+       grep -q '^\.CODE$' "$banner_file"; then
+        echo -e "  ${GREEN}OK${RESET}  $name --emit-banner"
+        PASSED=$((PASSED + 1))
+    else
+        echo -e "  ${RED}FAIL${RESET} $name --emit-banner"
+        echo "       Banner output missing .TYPES/.DATA/.CODE sections"
+        FAILED=$((FAILED + 1))
+    fi
+}
+
 run_emit_cpp_one() {
     local hulk_file="$1"
     local expected_file="$2"
@@ -153,7 +234,7 @@ run_emit_cpp_one() {
 
     "$exe" > "$actual_file" 2>&1 || true
 
-    if diff -u "$expected_file" "$actual_file" > "$TMP_DIR/$name.emit-cpp.diff"; then
+    if compare_files "$expected_file" "$actual_file" "$TMP_DIR/$name.emit-cpp.diff"; then
         echo -e "  ${GREEN}OK${RESET}  $name --emit-cpp"
         PASSED=$((PASSED + 1))
     else
@@ -179,7 +260,7 @@ run_ir_snapshot_one() {
         return
     fi
 
-    if diff -u "$expected_file" "$ir_file" > "$TMP_DIR/$name.snapshot.diff"; then
+    if compare_files "$expected_file" "$ir_file" "$TMP_DIR/$name.snapshot.diff"; then
         echo -e "  ${GREEN}OK${RESET}  $name IR snapshot"
         PASSED=$((PASSED + 1))
     else
@@ -242,6 +323,14 @@ run_emit_ir_one "$ROOT/tests/eval/c4_block_let_if.hulk"
 run_emit_ir_one "$ROOT/tests/eval/c5_recursion.hulk"
 run_emit_ir_one "$ROOT/tests/eval/c6_objects_basic.hulk"
 run_emit_cpp_one "$ROOT/tests/eval/c6_objects_basic.hulk" "$EXPECTED_DIR/c6_objects_basic.expected"
+
+suite_header "BACKEND BANNER C4"
+for f in "$ROOT"/tests/eval/c4_*.hulk; do
+    [[ -f "$f" ]] || continue
+    run_emit_banner_one "$f"
+    run_banner_one "$f" "default"
+    run_banner_one "$f" "run"
+done
 
 suite_header "BACKEND IR SNAPSHOTS"
 for f in "$ROOT"/tests/backend/ir_cases/*.hulk; do
