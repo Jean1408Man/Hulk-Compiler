@@ -13,53 +13,44 @@ VMValue BannerVM::run(const Banner::BannerProgram& program) {
         data[item.label] = item.value;
     }
 
+    std::unordered_map<std::string, CompiledFunction> functions;
     for (const auto& function : program.functions) {
-        if (function.name == program.entry_function) {
-            return run_function(program, compile_function(function), data);
+        functions.emplace(function.name, compile_function(function));
+    }
+
+    auto entry = functions.find(program.entry_function);
+    if (entry == functions.end()) {
+        throw std::runtime_error("Runtime error: funcion de entrada no encontrada.");
+    }
+
+    std::vector<Frame> stack;
+    stack.push_back(make_frame(entry->second, {}));
+
+    while (!stack.empty()) {
+        Frame& frame = stack.back();
+        const auto& code = frame.function->function->code;
+
+        auto get = [&](const std::string& name) -> const VMValue& {
+            return frame.slots.at(slot_of(*frame.function, name));
+        };
+        auto set = [&](const std::string& name, VMValue value) {
+            frame.slots.at(slot_of(*frame.function, name)) = std::move(value);
+        };
+
+        if (frame.pc >= code.size()) {
+            VMValue result;
+            const bool has_return_dest = frame.has_return_dest;
+            const std::string return_dest = frame.return_dest;
+            stack.pop_back();
+            if (stack.empty()) return result;
+            Frame& caller = stack.back();
+            if (has_return_dest) {
+                caller.slots.at(slot_of(*caller.function, return_dest)) = std::move(result);
+            }
+            continue;
         }
-    }
 
-    throw std::runtime_error("Runtime error: funcion de entrada no encontrada.");
-}
-
-BannerVM::CompiledFunction BannerVM::compile_function(const Banner::BannerFunction& function) const {
-    CompiledFunction out;
-    out.function = &function;
-
-    std::size_t next_slot = 0;
-    for (const auto& param : function.params) {
-        out.slots.emplace(param, next_slot++);
-    }
-    for (const auto& local : function.locals) {
-        out.slots.emplace(local, next_slot++);
-    }
-
-    for (std::size_t pc = 0; pc < function.code.size(); ++pc) {
-        const auto& instr = function.code[pc];
-        if (instr.op == Banner::Op::Label) {
-            out.labels[instr.label] = pc;
-        }
-    }
-
-    return out;
-}
-
-VMValue BannerVM::run_function(const Banner::BannerProgram&,
-                               const CompiledFunction& function,
-                               const std::unordered_map<std::string, std::string>& data) const {
-    std::vector<VMValue> slots(function.slots.size());
-    std::size_t pc = 0;
-    const auto& code = function.function->code;
-
-    auto get = [&](const std::string& name) -> const VMValue& {
-        return slots.at(slot_of(function, name));
-    };
-    auto set = [&](const std::string& name, VMValue value) {
-        slots.at(slot_of(function, name)) = std::move(value);
-    };
-
-    while (pc < code.size()) {
-        const auto& instr = code[pc++];
+        const auto& instr = code[frame.pc++];
         switch (instr.op) {
             case Banner::Op::Nop:
             case Banner::Op::Label:
@@ -159,16 +150,26 @@ VMValue BannerVM::run_function(const Banner::BannerProgram&,
                 set(instr.dest, VMValue(to_string(get(instr.src1)) + " " + to_string(get(instr.src2))));
                 break;
             case Banner::Op::Jump:
-                pc = label_of(function, instr.label);
+                frame.pc = label_of(*frame.function, instr.label);
                 break;
             case Banner::Op::JumpIfTrue:
-                if (truthy(get(instr.src1))) pc = label_of(function, instr.label);
+                if (truthy(get(instr.src1))) frame.pc = label_of(*frame.function, instr.label);
                 break;
             case Banner::Op::JumpIfFalse:
-                if (!truthy(get(instr.src1))) pc = label_of(function, instr.label);
+                if (!truthy(get(instr.src1))) frame.pc = label_of(*frame.function, instr.label);
                 break;
-            case Banner::Op::Return:
-                return get(instr.src1);
+            case Banner::Op::Return: {
+                VMValue result = get(instr.src1);
+                const bool has_return_dest = frame.has_return_dest;
+                const std::string return_dest = frame.return_dest;
+                stack.pop_back();
+                if (stack.empty()) return result;
+                Frame& caller = stack.back();
+                if (has_return_dest) {
+                    caller.slots.at(slot_of(*caller.function, return_dest)) = std::move(result);
+                }
+                break;
+            }
             case Banner::Op::Print: {
                 VMValue value = get(instr.args.at(0));
                 std::cout << to_string(value) << "\n";
@@ -195,8 +196,18 @@ VMValue BannerVM::run_function(const Banner::BannerProgram&,
                 set(instr.dest, VMValue(static_cast<double>(std::rand()) / RAND_MAX));
                 break;
             case Banner::Op::Param:
-            case Banner::Op::Call:
-                unsupported("funciones y llamadas");
+                frame.param_buffer.push_back(get(instr.src1));
+                break;
+            case Banner::Op::Call: {
+                auto callee = functions.find(instr.callee);
+                if (callee == functions.end()) {
+                    throw std::runtime_error("Runtime error: funcion no encontrada: " + instr.callee);
+                }
+                std::vector<VMValue> args = frame.param_buffer;
+                frame.param_buffer.clear();
+                stack.push_back(make_frame(callee->second, args, instr.dest));
+                break;
+            }
             case Banner::Op::Allocate:
             case Banner::Op::GetAttr:
             case Banner::Op::SetAttr:
@@ -209,6 +220,49 @@ VMValue BannerVM::run_function(const Banner::BannerProgram&,
     }
 
     return VMValue();
+}
+
+BannerVM::CompiledFunction BannerVM::compile_function(const Banner::BannerFunction& function) const {
+    CompiledFunction out;
+    out.function = &function;
+
+    std::size_t next_slot = 0;
+    for (const auto& param : function.params) {
+        out.slots.emplace(param, next_slot++);
+    }
+    for (const auto& local : function.locals) {
+        out.slots.emplace(local, next_slot++);
+    }
+
+    for (std::size_t pc = 0; pc < function.code.size(); ++pc) {
+        const auto& instr = function.code[pc];
+        if (instr.op == Banner::Op::Label) {
+            out.labels[instr.label] = pc;
+        }
+    }
+
+    return out;
+}
+
+BannerVM::Frame BannerVM::make_frame(const CompiledFunction& function,
+                                     const std::vector<VMValue>& args,
+                                     std::string return_dest) const {
+    if (args.size() != function.function->params.size()) {
+        throw std::runtime_error("Runtime error: aridad incorrecta en " +
+                                 function.function->source_name + ".");
+    }
+
+    Frame frame;
+    frame.function = &function;
+    frame.pc = 0;
+    frame.slots.resize(function.slots.size());
+    frame.return_dest = std::move(return_dest);
+    frame.has_return_dest = !frame.return_dest.empty();
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        frame.slots.at(slot_of(function, function.function->params.at(i))) = args.at(i);
+    }
+
+    return frame;
 }
 
 std::size_t BannerVM::slot_of(const CompiledFunction& function, const std::string& name) const {
@@ -228,7 +282,7 @@ std::size_t BannerVM::label_of(const CompiledFunction& function, const std::stri
 }
 
 [[noreturn]] void BannerVM::unsupported(const std::string& feature) const {
-    throw std::runtime_error("Runtime error: BannerVM etapa 1 no soporta " + feature + ".");
+    throw std::runtime_error("Runtime error: BannerVM aun no soporta " + feature + ".");
 }
 
 }

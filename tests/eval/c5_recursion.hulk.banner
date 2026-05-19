@@ -1,0 +1,103 @@
+.TYPES
+.DATA
+
+.CODE
+function hulk_fn_fib_0(hulk_param_n_2) ; kind=global
+{
+  local hulk_tmp_if_result_0
+  local hulk_tmp_number_1
+  local hulk_tmp_cmp_2
+  local hulk_tmp_call_3
+  local hulk_tmp_number_4
+  local hulk_tmp_arith_5
+  local hulk_tmp_call_6
+  local hulk_tmp_number_7
+  local hulk_tmp_arith_8
+  local hulk_tmp_arith_9
+  CONST_NUMBER hulk_tmp_number_1 1
+  LE hulk_tmp_cmp_2 hulk_param_n_2 hulk_tmp_number_1
+  JUMP_IF_FALSE hulk_tmp_cmp_2 L_if_next_1
+  MOVE hulk_tmp_if_result_0 hulk_param_n_2
+  JUMP L_if_end_0
+  LABEL L_if_next_1
+  CONST_NUMBER hulk_tmp_number_4 1
+  SUB hulk_tmp_arith_5 hulk_param_n_2 hulk_tmp_number_4
+  PARAM hulk_tmp_arith_5
+  CALL hulk_tmp_call_3 hulk_fn_fib_0
+  CONST_NUMBER hulk_tmp_number_7 2
+  SUB hulk_tmp_arith_8 hulk_param_n_2 hulk_tmp_number_7
+  PARAM hulk_tmp_arith_8
+  CALL hulk_tmp_call_6 hulk_fn_fib_0
+  ADD hulk_tmp_arith_9 hulk_tmp_call_3 hulk_tmp_call_6
+  MOVE hulk_tmp_if_result_0 hulk_tmp_arith_9
+  LABEL L_if_end_0
+  RETURN hulk_tmp_if_result_0
+}
+
+function hulk_fn_factorial_1(hulk_param_n_3) ; kind=global
+{
+  local hulk_tmp_if_result_10
+  local hulk_tmp_number_11
+  local hulk_tmp_cmp_12
+  local hulk_tmp_number_13
+  local hulk_tmp_call_14
+  local hulk_tmp_number_15
+  local hulk_tmp_arith_16
+  local hulk_tmp_arith_17
+  CONST_NUMBER hulk_tmp_number_11 1
+  LE hulk_tmp_cmp_12 hulk_param_n_3 hulk_tmp_number_11
+  JUMP_IF_FALSE hulk_tmp_cmp_12 L_if_next_3
+  CONST_NUMBER hulk_tmp_number_13 1
+  MOVE hulk_tmp_if_result_10 hulk_tmp_number_13
+  JUMP L_if_end_2
+  LABEL L_if_next_3
+  CONST_NUMBER hulk_tmp_number_15 1
+  SUB hulk_tmp_arith_16 hulk_param_n_3 hulk_tmp_number_15
+  PARAM hulk_tmp_arith_16
+  CALL hulk_tmp_call_14 hulk_fn_factorial_1
+  MUL hulk_tmp_arith_17 hulk_param_n_3 hulk_tmp_call_14
+  MOVE hulk_tmp_if_result_10 hulk_tmp_arith_17
+  LABEL L_if_end_2
+  RETURN hulk_tmp_if_result_10
+}
+
+function hulk_main() ; kind=entry
+{
+  local hulk_tmp_call_18
+  local hulk_tmp_number_19
+  local hulk_tmp_print_20
+  local hulk_tmp_call_21
+  local hulk_tmp_number_22
+  local hulk_tmp_print_23
+  local hulk_tmp_call_24
+  local hulk_tmp_number_25
+  local hulk_tmp_print_26
+  local hulk_tmp_call_27
+  local hulk_tmp_number_28
+  local hulk_tmp_print_29
+  local hulk_tmp_call_30
+  local hulk_tmp_number_31
+  local hulk_tmp_print_32
+  CONST_NUMBER hulk_tmp_number_19 0
+  PARAM hulk_tmp_number_19
+  CALL hulk_tmp_call_18 hulk_fn_fib_0
+  PRINT hulk_tmp_print_20 hulk_tmp_call_18
+  CONST_NUMBER hulk_tmp_number_22 1
+  PARAM hulk_tmp_number_22
+  CALL hulk_tmp_call_21 hulk_fn_fib_0
+  PRINT hulk_tmp_print_23 hulk_tmp_call_21
+  CONST_NUMBER hulk_tmp_number_25 10
+  PARAM hulk_tmp_number_25
+  CALL hulk_tmp_call_24 hulk_fn_fib_0
+  PRINT hulk_tmp_print_26 hulk_tmp_call_24
+  CONST_NUMBER hulk_tmp_number_28 5
+  PARAM hulk_tmp_number_28
+  CALL hulk_tmp_call_27 hulk_fn_factorial_1
+  PRINT hulk_tmp_print_29 hulk_tmp_call_27
+  CONST_NUMBER hulk_tmp_number_31 10
+  PARAM hulk_tmp_number_31
+  CALL hulk_tmp_call_30 hulk_fn_factorial_1
+  PRINT hulk_tmp_print_32 hulk_tmp_call_30
+  RETURN hulk_tmp_print_32
+}
+

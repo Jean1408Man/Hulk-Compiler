@@ -1,0 +1,41 @@
+.TYPES
+.DATA
+
+.CODE
+function hulk_main() ; kind=entry
+{
+  local hulk_tmp_number_0
+  local hulk_local_x_0
+  local hulk_tmp_number_1
+  local hulk_local_x_1
+  local hulk_tmp_print_2
+  local hulk_tmp_print_3
+  local hulk_tmp_number_4
+  local hulk_local_y_2
+  local hulk_tmp_number_5
+  local hulk_tmp_arith_6
+  local hulk_tmp_assign_7
+  local hulk_tmp_number_8
+  local hulk_tmp_arith_9
+  local hulk_tmp_assign_10
+  local hulk_tmp_print_11
+  CONST_NUMBER hulk_tmp_number_0 10
+  MOVE hulk_local_x_0 hulk_tmp_number_0
+  CONST_NUMBER hulk_tmp_number_1 20
+  MOVE hulk_local_x_1 hulk_tmp_number_1
+  PRINT hulk_tmp_print_2 hulk_local_x_1
+  PRINT hulk_tmp_print_3 hulk_local_x_0
+  CONST_NUMBER hulk_tmp_number_4 1
+  MOVE hulk_local_y_2 hulk_tmp_number_4
+  CONST_NUMBER hulk_tmp_number_5 1
+  ADD hulk_tmp_arith_6 hulk_local_y_2 hulk_tmp_number_5
+  MOVE hulk_tmp_assign_7 hulk_tmp_arith_6
+  MOVE hulk_local_y_2 hulk_tmp_assign_7
+  CONST_NUMBER hulk_tmp_number_8 1
+  ADD hulk_tmp_arith_9 hulk_local_y_2 hulk_tmp_number_8
+  MOVE hulk_tmp_assign_10 hulk_tmp_arith_9
+  MOVE hulk_local_y_2 hulk_tmp_assign_10
+  PRINT hulk_tmp_print_11 hulk_local_y_2
+  RETURN hulk_tmp_print_11
+}
+
