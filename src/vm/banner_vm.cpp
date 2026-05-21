@@ -150,15 +150,19 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) >=
                                                as_number(get(instr.src2_slot))));
                 break;
-            case Banner::Op::Concat:
+            case Banner::Op::Concat: {
                 set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
                                                            to_string(get(instr.src2_slot), heap_)));
+                collect_if_needed(stack, compiled);
                 break;
-            case Banner::Op::ConcatSpace:
+            }
+            case Banner::Op::ConcatSpace: {
                 set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
                                                            " " +
                                                            to_string(get(instr.src2_slot), heap_)));
+                collect_if_needed(stack, compiled);
                 break;
+            }
             case Banner::Op::Jump:
                 frame.pc = instr.label_pc;
                 break;
@@ -220,6 +224,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 set(instr.dest_slot, heap_.allocate_object(instr.type_id,
                                                            type_of(compiled, instr.type_name)
                                                                .field_slots.size()));
+                collect_if_needed(stack, compiled);
                 break;
             case Banner::Op::GetAttr: {
                 const Word receiver = get(instr.src1_slot);
@@ -631,6 +636,25 @@ bool BannerVM::is_instance(Word value,
     }
 
     return type_name == "Object";
+}
+
+std::vector<Word> BannerVM::gc_roots(const std::vector<Frame>& stack,
+                                     const CompiledProgram& program) const {
+    std::vector<Word> roots;
+    for (const auto& frame : stack) {
+        roots.insert(roots.end(), frame.slots.begin(), frame.slots.end());
+        roots.insert(roots.end(), frame.param_buffer.begin(), frame.param_buffer.end());
+    }
+    for (const auto& [_, value] : program.data) {
+        roots.push_back(value);
+    }
+    return roots;
+}
+
+void BannerVM::collect_if_needed(const std::vector<Frame>& stack,
+                                 const CompiledProgram& program) {
+    if (!heap_.should_collect()) return;
+    heap_.collect(gc_roots(stack, program));
 }
 
 [[noreturn]] void BannerVM::unsupported(const std::string& feature) const {

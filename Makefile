@@ -85,7 +85,7 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend backend-tests run-tests update-expected clean
+.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
 
@@ -193,6 +193,15 @@ backend: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) $(BACKEND_OBJS)
 		$(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) $(BACKEND_OBJS) \
 		$(OBJDIR)/backend_main/main.o \
 		-o hulk_backend
+
+vm-tests: $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o
+	@mkdir -p $(OBJDIR)/vm_tests
+	$(CXX) $(CXXFLAGS) -c tests/vm/vm_heap_tests.cpp -o $(OBJDIR)/vm_tests/vm_heap_tests.o
+	$(CXX) $(CXXFLAGS) \
+		$(OBJDIR)/vm_tests/vm_heap_tests.o \
+		$(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o \
+		-o hulk_vm_tests
+	./hulk_vm_tests
 
 backend-tests: backend
 	@bash tests/backend/run_backend_tests.sh

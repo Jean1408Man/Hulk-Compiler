@@ -95,6 +95,9 @@ private:
     std::size_t field_slot(const CompiledType& type, const std::string& field_name) const;
     std::size_t method_slot(const CompiledType& type, const std::string& method_name) const;
     bool is_instance(Word value, const std::string& type_name, const CompiledProgram& program) const;
+    std::vector<Word> gc_roots(const std::vector<Frame>& stack,
+                               const CompiledProgram& program) const;
+    void collect_if_needed(const std::vector<Frame>& stack, const CompiledProgram& program);
     [[noreturn]] void unsupported(const std::string& feature) const;
 
     VMHeap heap_;
