@@ -6,15 +6,22 @@
 #include "vm_value.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace Hulk::VM {
 
+struct VMOptions {
+    std::size_t max_frames = 100000;
+    std::uint64_t max_steps = 10000000;
+    std::size_t max_heap_values = 1000000;
+};
+
 class BannerVM {
 public:
-    Word run(const Banner::BannerProgram& program);
+    Word run(const Banner::BannerProgram& program, const VMOptions& options = {});
 
 private:
     struct CompiledInstr {
@@ -98,6 +105,8 @@ private:
     std::vector<Word> gc_roots(const std::vector<Frame>& stack,
                                const CompiledProgram& program) const;
     void collect_if_needed(const std::vector<Frame>& stack, const CompiledProgram& program);
+    void enforce_frame_limit(std::size_t next_size, const VMOptions& options) const;
+    void enforce_heap_limit(const VMOptions& options) const;
     [[noreturn]] void unsupported(const std::string& feature) const;
 
     VMHeap heap_;

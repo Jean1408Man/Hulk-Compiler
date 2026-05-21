@@ -22,9 +22,10 @@ bool word_equal(Word a, Word b, const VMHeap& heap) {
 
 }
 
-Word BannerVM::run(const Banner::BannerProgram& program) {
+Word BannerVM::run(const Banner::BannerProgram& program, const VMOptions& options) {
     heap_ = VMHeap{};
     CompiledProgram compiled = compile_program(program);
+    enforce_heap_limit(options);
 
     auto entry = compiled.function_ids.find(program.entry_function);
     if (entry == compiled.function_ids.end()) {
@@ -32,7 +33,9 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
     }
 
     std::vector<Frame> stack;
+    enforce_frame_limit(1, options);
     stack.push_back(make_frame(compiled.functions.at(entry->second), {}));
+    std::uint64_t steps = 0;
 
     while (!stack.empty()) {
         Frame& frame = stack.back();
@@ -58,6 +61,9 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
         }
 
         const auto& instr = code[frame.pc++];
+        if (++steps > options.max_steps) {
+            throw std::runtime_error("Runtime error: limite de instrucciones de VM excedido.");
+        }
         switch (instr.op) {
             case Banner::Op::Nop:
             case Banner::Op::Label:
@@ -154,6 +160,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
                                                            to_string(get(instr.src2_slot), heap_)));
                 collect_if_needed(stack, compiled);
+                enforce_heap_limit(options);
                 break;
             }
             case Banner::Op::ConcatSpace: {
@@ -161,6 +168,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                                                            " " +
                                                            to_string(get(instr.src2_slot), heap_)));
                 collect_if_needed(stack, compiled);
+                enforce_heap_limit(options);
                 break;
             }
             case Banner::Op::Jump:
@@ -214,6 +222,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
             case Banner::Op::Call: {
                 std::vector<Word> args = frame.param_buffer;
                 frame.param_buffer.clear();
+                enforce_frame_limit(stack.size() + 1, options);
                 stack.push_back(make_frame(compiled.functions.at(instr.callee_id),
                                            args,
                                            instr.dest_slot,
@@ -225,6 +234,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                                                            type_of(compiled, instr.type_name)
                                                                .field_slots.size()));
                 collect_if_needed(stack, compiled);
+                enforce_heap_limit(options);
                 break;
             case Banner::Op::GetAttr: {
                 const Word receiver = get(instr.src1_slot);
@@ -274,6 +284,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 call_args.reserve(args.size() + 1);
                 call_args.push_back(receiver);
                 call_args.insert(call_args.end(), args.begin(), args.end());
+                enforce_frame_limit(stack.size() + 1, options);
                 stack.push_back(make_frame(compiled.functions.at(runtime_type.vtable.at(slot)),
                                            call_args,
                                            instr.dest_slot,
@@ -300,6 +311,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 call_args.reserve(args.size() + 1);
                 call_args.push_back(receiver);
                 call_args.insert(call_args.end(), args.begin(), args.end());
+                enforce_frame_limit(stack.size() + 1, options);
                 stack.push_back(make_frame(compiled.functions.at(start_type.vtable.at(slot)),
                                            call_args,
                                            instr.dest_slot,
@@ -655,6 +667,19 @@ void BannerVM::collect_if_needed(const std::vector<Frame>& stack,
                                  const CompiledProgram& program) {
     if (!heap_.should_collect()) return;
     heap_.collect(gc_roots(stack, program));
+}
+
+void BannerVM::enforce_frame_limit(std::size_t next_size, const VMOptions& options) const {
+    if (next_size > options.max_frames) {
+        throw std::runtime_error("Runtime error: limite de frames de VM excedido.");
+    }
+}
+
+void BannerVM::enforce_heap_limit(const VMOptions& options) const {
+    const std::size_t live_values = heap_.live_object_count() + heap_.live_string_count();
+    if (live_values > options.max_heap_values) {
+        throw std::runtime_error("Runtime error: limite de heap de VM excedido.");
+    }
 }
 
 [[noreturn]] void BannerVM::unsupported(const std::string& feature) const {
