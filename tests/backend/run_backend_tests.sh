@@ -131,6 +131,55 @@ run_invalid_one() {
     fi
 }
 
+run_invalid_semantic_one() {
+    local hulk_file="$1"
+    local name
+    name="$(basename "$hulk_file" .hulk)"
+    local ir_file="$TMP_DIR/$name.invalid.hir"
+    local banner_file="$TMP_DIR/$name.invalid.banner"
+    local actual_file="$TMP_DIR/$name.invalid"
+
+    TOTAL=$((TOTAL + 1))
+
+    if "$BACKEND_BIN" "$hulk_file" > "$actual_file.default.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend executed an invalid semantic program"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if "$BACKEND_BIN" "$hulk_file" --emit-ir -o "$ir_file" > "$actual_file.emit-ir.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend emitted IR for an invalid semantic program"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if [[ -e "$ir_file" ]]; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       IR file was created despite semantic errors"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if "$BACKEND_BIN" "$hulk_file" --emit-banner -o "$banner_file" > "$actual_file.emit-banner.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend emitted BannerIR for an invalid semantic program"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if [[ -e "$banner_file" ]]; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       BannerIR file was created despite semantic errors"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    echo -e "  ${GREEN}OK${RESET}  $name"
+    PASSED=$((PASSED + 1))
+}
+
 run_emit_ir_one() {
     local hulk_file="$1"
     local name
@@ -257,6 +306,12 @@ for name in \
     invalid_unknown_method
 do
     run_invalid_one "$ROOT/tests/extension/$name.hulk"
+done
+
+suite_header "BACKEND SEMANTICOS INVALIDOS"
+for f in "$ROOT"/tests/backend/invalid/*.hulk; do
+    [[ -f "$f" ]] || continue
+    run_invalid_semantic_one "$f"
 done
 
 suite_header "BACKEND IR"

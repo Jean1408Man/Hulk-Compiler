@@ -55,19 +55,7 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
 
         Hulk::SemanticAnalyzer sem(engine);
         const bool sem_ok = sem.analyze(*program);
-        bool has_blocking_error = false;
-        for (const auto& diagnostic : engine.diagnostics()) {
-            if (diagnostic.severity != hulk::common::Severity::Error) continue;
-            if (diagnostic.message == "Los atributos son privados. Solo se pueden acceder mediante 'self'.") {
-                continue;
-            }
-            if (diagnostic.message.find("'is' no plausible:") != std::string::npos) {
-                continue;
-            }
-            has_blocking_error = true;
-            break;
-        }
-        if ((!sem_ok || engine.has_errors()) && has_blocking_error) {
+        if (!sem_ok || engine.has_blocking_errors()) {
             engine.print_all();
             return result;
         }

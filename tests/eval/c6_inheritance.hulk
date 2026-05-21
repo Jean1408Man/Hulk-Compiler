@@ -14,8 +14,8 @@ type Cat(name) inherits Animal(name) {
 let d = new Dog("Rex") in d.speak();
 let c = new Cat("Mishi") in c.speak();
 
-// is: verificar tipo en runtime
-let a = new Dog("Buddy") in {
+// is: verificar tipo en runtime desde un tipo estatico comun
+let a: Animal = new Dog("Buddy") in {
     print(a is Dog);
     print(a is Animal);
     print(a is Cat);

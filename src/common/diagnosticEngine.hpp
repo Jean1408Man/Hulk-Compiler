@@ -66,6 +66,10 @@ public:
         return false;
     }
 
+    [[nodiscard]] bool has_blocking_errors() const {
+        return has_errors();
+    }
+
     void clear() { diagnostics_.clear(); }
 
     void print_all() const {
