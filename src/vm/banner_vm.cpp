@@ -1,10 +1,12 @@
 #include "banner_vm.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <unordered_set>
 
@@ -18,6 +20,27 @@ bool word_equal(Word a, Word b, const VMHeap& heap) {
     if (is_nil(a) && is_nil(b)) return true;
     if (is_object(a) && is_object(b)) return a == b;
     return false;
+}
+
+std::string slot_ref(std::size_t slot) {
+    return "s" + std::to_string(slot);
+}
+
+void append_slot_list(std::ostringstream& out, const std::vector<std::size_t>& slots) {
+    out << "(";
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        if (i > 0) out << ", ";
+        out << slot_ref(slots.at(i));
+    }
+    out << ")";
+}
+
+std::string format_source_ref(const IR::SourceSpan& source) {
+    std::ostringstream out;
+    out << (source.file.empty() ? "<desconocido>" : source.file)
+        << ":" << source.span.start.line
+        << ":" << source.span.start.column;
+    return out.str();
 }
 
 }
@@ -60,11 +83,14 @@ Word BannerVM::run(const Banner::BannerProgram& program, const VMOptions& option
             continue;
         }
 
-        const auto& instr = code[frame.pc++];
-        if (++steps > options.max_steps) {
-            throw std::runtime_error("Runtime error: limite de instrucciones de VM excedido.");
-        }
-        switch (instr.op) {
+        const std::size_t instr_pc = frame.pc;
+        const auto& instr = code.at(instr_pc);
+        ++frame.pc;
+        try {
+            if (++steps > options.max_steps) {
+                throw std::runtime_error("Runtime error: limite de instrucciones de VM excedido.");
+            }
+            switch (instr.op) {
             case Banner::Op::Nop:
             case Banner::Op::Label:
                 break;
@@ -333,10 +359,90 @@ Word BannerVM::run(const Banner::BannerProgram& program, const VMOptions& option
                 set(instr.dest_slot, value);
                 break;
             }
+            }
+        } catch (const std::exception& err) {
+            throw std::runtime_error(format_runtime_error(err.what(), stack, instr, instr_pc));
         }
     }
 
     return make_nil();
+}
+
+std::string BannerVM::compiled_view(const Banner::BannerProgram& program) {
+    heap_ = VMHeap{};
+    const CompiledProgram compiled = compile_program(program);
+
+    std::ostringstream out;
+    out << ".COMPILED_BANNER\n";
+    out << "entry function #" << compiled.function_ids.at(program.entry_function)
+        << " " << program.entry_function << "\n";
+
+    for (std::size_t function_id = 0; function_id < compiled.functions.size(); ++function_id) {
+        const auto& function = compiled.functions.at(function_id);
+        out << "\nfunction #" << function_id << " " << function.function->name;
+        if (!function.function->source_name.empty() &&
+            function.function->source_name != function.function->name) {
+            out << " ; source=" << function.function->source_name;
+        }
+        out << "\n";
+
+        std::vector<std::pair<std::string, std::size_t>> slots(function.slots.begin(),
+                                                              function.slots.end());
+        std::sort(slots.begin(),
+                  slots.end(),
+                  [](const auto& left, const auto& right) {
+                      if (left.second != right.second) return left.second < right.second;
+                      return left.first < right.first;
+                  });
+
+        out << "  slots:\n";
+        for (const auto& [name, slot] : slots) {
+            out << "    " << slot_ref(slot) << " = " << name << "\n";
+        }
+
+        out << "  code:\n";
+        for (std::size_t pc = 0; pc < function.code.size(); ++pc) {
+            const auto& instr = function.code.at(pc);
+            out << "    " << pc << ": " << format_compiled_instr(instr);
+            if (instr.source) out << " ; source=" << format_source_ref(*instr.source);
+            out << "\n";
+        }
+    }
+
+    if (!compiled.types.empty()) {
+        out << "\ntypes:\n";
+        std::vector<const CompiledType*> types;
+        types.reserve(compiled.types.size());
+        for (const auto& [_, type] : compiled.types) {
+            types.push_back(&type);
+        }
+        std::sort(types.begin(),
+                  types.end(),
+                  [](const auto* left, const auto* right) {
+                      return left->type_id < right->type_id;
+                  });
+
+        for (const auto* type : types) {
+            out << "  type #" << type->type_id << " " << type->type->name;
+            if (type->parent_type_id != -1) out << " parent=#" << type->parent_type_id;
+            out << "\n";
+        }
+    }
+
+    if (!compiled.data.empty()) {
+        out << "\ndata:\n";
+        std::vector<std::string> labels;
+        labels.reserve(compiled.data.size());
+        for (const auto& [label, _] : compiled.data) {
+            labels.push_back(label);
+        }
+        std::sort(labels.begin(), labels.end());
+        for (const auto& label : labels) {
+            out << "  " << label << " = <string>\n";
+        }
+    }
+
+    return out.str();
 }
 
 BannerVM::CompiledProgram BannerVM::compile_program(const Banner::BannerProgram& program) {
@@ -479,6 +585,7 @@ void BannerVM::compile_function_code(
         for (const auto& arg : source.args) {
             instr.arg_slots.push_back(slot_of(function, arg));
         }
+        instr.source = source.source;
 
         function.code.push_back(std::move(instr));
     }
@@ -667,6 +774,227 @@ void BannerVM::collect_if_needed(const std::vector<Frame>& stack,
                                  const CompiledProgram& program) {
     if (!heap_.should_collect()) return;
     heap_.collect(gc_roots(stack, program));
+}
+
+std::string BannerVM::format_compiled_instr(const CompiledInstr& instr) const {
+    std::ostringstream out;
+    auto dest = [&] {
+        if (instr.has_dest) out << slot_ref(instr.dest_slot) << " = ";
+    };
+    auto binary = [&](const char* name) {
+        dest();
+        out << name << " " << slot_ref(instr.src1_slot) << ", " << slot_ref(instr.src2_slot);
+    };
+    auto unary = [&](const char* name) {
+        dest();
+        out << name << " " << slot_ref(instr.src1_slot);
+    };
+    auto builtin = [&](const char* name) {
+        dest();
+        out << name << " ";
+        append_slot_list(out, instr.arg_slots);
+    };
+
+    switch (instr.op) {
+        case Banner::Op::Nop:
+            out << "NOP";
+            break;
+        case Banner::Op::Label:
+            out << "LABEL pc=" << instr.label_pc;
+            break;
+        case Banner::Op::ConstNil:
+            dest();
+            out << "CONST_NIL";
+            break;
+        case Banner::Op::ConstNumber:
+            dest();
+            out << "CONST_NUMBER " << instr.number_value;
+            break;
+        case Banner::Op::ConstBool:
+            dest();
+            out << "CONST_BOOL " << (instr.bool_value ? "true" : "false");
+            break;
+        case Banner::Op::LoadData:
+            dest();
+            out << "LOAD_DATA " << instr.data_label;
+            break;
+        case Banner::Op::Move:
+            unary("MOVE");
+            break;
+        case Banner::Op::Add:
+            binary("ADD");
+            break;
+        case Banner::Op::Sub:
+            binary("SUB");
+            break;
+        case Banner::Op::Mul:
+            binary("MUL");
+            break;
+        case Banner::Op::Div:
+            binary("DIV");
+            break;
+        case Banner::Op::Mod:
+            binary("MOD");
+            break;
+        case Banner::Op::Pow:
+            binary("POW");
+            break;
+        case Banner::Op::Neg:
+            unary("NEG");
+            break;
+        case Banner::Op::And:
+            binary("AND");
+            break;
+        case Banner::Op::Or:
+            binary("OR");
+            break;
+        case Banner::Op::Not:
+            unary("NOT");
+            break;
+        case Banner::Op::Equal:
+            binary("EQUAL");
+            break;
+        case Banner::Op::NotEqual:
+            binary("NOT_EQUAL");
+            break;
+        case Banner::Op::Less:
+            binary("LESS");
+            break;
+        case Banner::Op::Greater:
+            binary("GREATER");
+            break;
+        case Banner::Op::LessEqual:
+            binary("LESS_EQUAL");
+            break;
+        case Banner::Op::GreaterEqual:
+            binary("GREATER_EQUAL");
+            break;
+        case Banner::Op::Concat:
+            binary("CONCAT");
+            break;
+        case Banner::Op::ConcatSpace:
+            binary("CONCAT_SPACE");
+            break;
+        case Banner::Op::Jump:
+            out << "JUMP pc=" << instr.label_pc;
+            break;
+        case Banner::Op::JumpIfTrue:
+            out << "JUMP_IF_TRUE " << slot_ref(instr.src1_slot) << " pc=" << instr.label_pc;
+            break;
+        case Banner::Op::JumpIfFalse:
+            out << "JUMP_IF_FALSE " << slot_ref(instr.src1_slot) << " pc=" << instr.label_pc;
+            break;
+        case Banner::Op::Param:
+            out << "PARAM " << slot_ref(instr.src1_slot);
+            break;
+        case Banner::Op::Call:
+            dest();
+            out << "CALL function #" << instr.callee_id;
+            break;
+        case Banner::Op::Return:
+            out << "RETURN " << slot_ref(instr.src1_slot);
+            break;
+        case Banner::Op::Allocate:
+            dest();
+            out << "ALLOCATE type #" << instr.type_id << " " << instr.type_name;
+            break;
+        case Banner::Op::GetAttr:
+            dest();
+            out << "GET_ATTR " << slot_ref(instr.src1_slot);
+            out << "." << (instr.has_field_slot ? "#" + std::to_string(instr.field_slot)
+                                                : instr.field_name);
+            break;
+        case Banner::Op::SetAttr:
+            dest();
+            out << "SET_ATTR " << slot_ref(instr.src1_slot);
+            out << "." << (instr.has_field_slot ? "#" + std::to_string(instr.field_slot)
+                                                : instr.field_name);
+            out << ", " << slot_ref(instr.src2_slot);
+            break;
+        case Banner::Op::VCall:
+            dest();
+            out << "VCALL " << slot_ref(instr.src1_slot) << ".";
+            out << (instr.has_method_slot ? "#" + std::to_string(instr.method_slot)
+                                          : instr.method_name);
+            if (!instr.arg_slots.empty()) {
+                out << " ";
+                append_slot_list(out, instr.arg_slots);
+            }
+            break;
+        case Banner::Op::SCall:
+            dest();
+            out << "SCALL " << instr.type_name << "::";
+            out << (instr.has_method_slot ? "#" + std::to_string(instr.method_slot)
+                                          : instr.method_name);
+            out << " receiver=" << slot_ref(instr.src1_slot);
+            if (!instr.arg_slots.empty()) {
+                out << " ";
+                append_slot_list(out, instr.arg_slots);
+            }
+            break;
+        case Banner::Op::IsType:
+            dest();
+            out << "IS_TYPE " << slot_ref(instr.src1_slot) << ", " << instr.type_name;
+            break;
+        case Banner::Op::AsType:
+            dest();
+            out << "AS_TYPE " << slot_ref(instr.src1_slot) << ", " << instr.type_name;
+            break;
+        case Banner::Op::Print:
+            builtin("PRINT");
+            break;
+        case Banner::Op::Sqrt:
+            builtin("SQRT");
+            break;
+        case Banner::Op::Sin:
+            builtin("SIN");
+            break;
+        case Banner::Op::Cos:
+            builtin("COS");
+            break;
+        case Banner::Op::Exp:
+            builtin("EXP");
+            break;
+        case Banner::Op::Log:
+            builtin("LOG");
+            break;
+        case Banner::Op::Rand:
+            dest();
+            out << "RAND";
+            break;
+    }
+
+    return out.str();
+}
+
+std::string BannerVM::format_runtime_error(const std::string& cause,
+                                           const std::vector<Frame>& stack,
+                                           const CompiledInstr& instr,
+                                           std::size_t pc) const {
+    const Frame* current = stack.empty() ? nullptr : &stack.back();
+    const std::string function_name =
+        current != nullptr && current->function != nullptr && current->function->function != nullptr
+            ? current->function->function->name
+            : "<sin-funcion>";
+
+    std::ostringstream out;
+    out << "Runtime error en " << function_name << " pc=" << pc << "\n";
+    if (instr.source) {
+        out << "  source: " << format_source_ref(*instr.source) << "\n";
+    }
+    out << "  instr: " << format_compiled_instr(instr) << "\n";
+    out << "  causa: " << cause << "\n";
+    out << "  stack:\n";
+    for (std::size_t i = stack.size(); i > 0; --i) {
+        const auto& frame = stack.at(i - 1);
+        const std::string name =
+            frame.function != nullptr && frame.function->function != nullptr
+                ? frame.function->function->name
+                : "<sin-funcion>";
+        const std::size_t frame_pc = (i == stack.size()) ? pc : frame.pc;
+        out << "    at " << name << " pc=" << frame_pc << "\n";
+    }
+    return out.str();
 }
 
 void BannerVM::enforce_frame_limit(std::size_t next_size, const VMOptions& options) const {

@@ -126,6 +126,7 @@ Banner::BannerInstr HulkIRToBanner::lower_instr(const IR::IRInstr& instr,
     lowered.args = instr.args;
     lowered.number_value = instr.number_value;
     lowered.bool_value = instr.bool_value;
+    lowered.source = instr.source;
 
     switch (instr.op) {
         case IR::IROp::Nop: lowered.op = Banner::Op::Nop; break;
@@ -168,6 +169,7 @@ Banner::BannerInstr HulkIRToBanner::lower_instr(const IR::IRInstr& instr,
                 Banner::BannerInstr param;
                 param.op = Banner::Op::Param;
                 param.src1 = arg;
+                param.source = instr.source;
                 out.push_back(std::move(param));
             }
             lowered.op = Banner::Op::VCall;
@@ -177,6 +179,7 @@ Banner::BannerInstr HulkIRToBanner::lower_instr(const IR::IRInstr& instr,
                 Banner::BannerInstr param;
                 param.op = Banner::Op::Param;
                 param.src1 = arg;
+                param.source = instr.source;
                 out.push_back(std::move(param));
             }
             lowered.op = Banner::Op::SCall;
@@ -195,6 +198,7 @@ Banner::BannerInstr HulkIRToBanner::lower_instr(const IR::IRInstr& instr,
                 Banner::BannerInstr param;
                 param.op = Banner::Op::Param;
                 param.src1 = arg;
+                param.source = instr.source;
                 out.push_back(std::move(param));
             }
             lowered.op = Banner::Op::Call;

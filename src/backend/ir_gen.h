@@ -12,6 +12,7 @@
 #include "../semantic/semantic_tables.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -30,7 +31,8 @@ class IRGen : public ExprVisitor, public DeclVisitor {
 public:
     IRGen(const SemanticTables& tables,
           const std::unordered_map<Expr*, ResolutionResult>& resolution_map,
-          const std::unordered_map<Expr*, HulkType>& type_map);
+          const std::unordered_map<Expr*, HulkType>& type_map,
+          std::string source_path = {});
 
     IR::IRProgram generate(Program& program);
 
@@ -38,12 +40,14 @@ private:
     const SemanticTables& tables_;
     const std::unordered_map<Expr*, ResolutionResult>& resolution_map_;
     const std::unordered_map<Expr*, HulkType>& type_map_;
+    std::string source_path_;
 
     NameMangler mangler_;
     CodegenContext context_;
     IR::IRProgram program_;
     IR::IRFunction* current_function_ = nullptr;
     std::string expr_result_;
+    std::vector<hulk::common::Span> span_stack_;
 
     std::unordered_map<const FunctionDecl*, std::string> function_names_;
     std::unordered_map<std::string, const TypeDecl*> type_decls_;
@@ -78,6 +82,7 @@ private:
     void finish_function(IR::IRFunction&& fn);
     void add_param(const std::string& name);
     void add_local(const std::string& name);
+    std::optional<IR::SourceSpan> current_source() const;
     IR::IRInstr make_instr(IR::IROp op) const;
     void emit(IR::IRInstr instr);
     void emit_return(const std::string& value);

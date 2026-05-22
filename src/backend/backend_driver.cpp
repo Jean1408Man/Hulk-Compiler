@@ -60,7 +60,7 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
             return result;
         }
 
-        IRGen irgen(sem.tables(), sem.resolution_map(), sem.type_map());
+        IRGen irgen(sem.tables(), sem.resolution_map(), sem.type_map(), options.input_path);
         const IR::IRProgram ir = irgen.generate(*program);
 
         if (options.emit_ir) {
@@ -88,11 +88,25 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
             return result;
         }
 
+        if (options.emit_banner_compiled) {
+            result.generated_banner_path = default_output_path(options);
+            VM::BannerVM vm;
+            if (!write_file(result.generated_banner_path, vm.compiled_view(banner))) {
+                std::cerr << "Backend: no se pudo escribir " << result.generated_banner_path << "\n";
+                return result;
+            }
+            result.ok = true;
+            return result;
+        }
+
         VM::BannerVM vm;
         (void)vm.run(banner);
         result.ok = true;
         return result;
     } catch (const CodegenError& err) {
+        std::cerr << err.what() << "\n";
+        return result;
+    } catch (const std::runtime_error& err) {
         std::cerr << err.what() << "\n";
         return result;
     } catch (const std::exception& err) {
@@ -118,6 +132,9 @@ std::string BackendDriver::default_output_path(const BackendOptions& options) co
     }
     if (options.emit_banner) {
         return options.input_path + ".banner";
+    }
+    if (options.emit_banner_compiled) {
+        return options.input_path + ".compiled.banner";
     }
     return {};
 }

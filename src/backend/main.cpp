@@ -6,7 +6,8 @@
 namespace {
 
 void print_usage() {
-    std::cerr << "Uso: hulk_backend <archivo.hulk> [-o salida] [--emit-ir] [--emit-banner] [--run-banner]\n";
+    std::cerr << "Uso: hulk_backend <archivo.hulk> [-o salida] "
+                 "[--emit-ir] [--emit-banner] [--emit-banner-compiled] [--run-banner]\n";
 }
 
 } // namespace
@@ -30,6 +31,8 @@ int main(int argc, char** argv) {
             options.output_path = argv[++i];
         } else if (arg == "--emit-banner") {
             options.emit_banner = true;
+        } else if (arg == "--emit-banner-compiled") {
+            options.emit_banner_compiled = true;
         } else if (arg == "--run-banner") {
             options.run_banner = true;
         } else if (arg == "--emit-ir") {
@@ -43,9 +46,11 @@ int main(int argc, char** argv) {
 
     const int final_actions = static_cast<int>(options.emit_ir) +
                               static_cast<int>(options.emit_banner) +
+                              static_cast<int>(options.emit_banner_compiled) +
                               static_cast<int>(options.run_banner);
     if (final_actions > 1) {
-        std::cerr << "Use solo una accion final: --emit-ir, --emit-banner o --run-banner.\n";
+        std::cerr << "Use solo una accion final: --emit-ir, --emit-banner, "
+                     "--emit-banner-compiled o --run-banner.\n";
         print_usage();
         return 1;
     }

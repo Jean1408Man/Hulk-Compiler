@@ -10,6 +10,7 @@ struct BackendOptions {
     std::string output_path;
     bool emit_ir = false;
     bool emit_banner = false;
+    bool emit_banner_compiled = false;
     bool run_banner = false;
 };
 

@@ -137,6 +137,7 @@ run_invalid_semantic_one() {
     name="$(basename "$hulk_file" .hulk)"
     local ir_file="$TMP_DIR/$name.invalid.hir"
     local banner_file="$TMP_DIR/$name.invalid.banner"
+    local compiled_banner_file="$TMP_DIR/$name.invalid.compiled.banner"
     local actual_file="$TMP_DIR/$name.invalid"
 
     TOTAL=$((TOTAL + 1))
@@ -172,6 +173,20 @@ run_invalid_semantic_one() {
     if [[ -e "$banner_file" ]]; then
         echo -e "  ${RED}FAIL${RESET} $name"
         echo "       BannerIR file was created despite semantic errors"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if "$BACKEND_BIN" "$hulk_file" --emit-banner-compiled -o "$compiled_banner_file" > "$actual_file.emit-banner-compiled.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend emitted compiled BannerIR for an invalid semantic program"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if [[ -e "$compiled_banner_file" ]]; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       compiled BannerIR file was created despite semantic errors"
         FAILED=$((FAILED + 1))
         return
     fi
@@ -230,6 +245,61 @@ run_emit_banner_one() {
     else
         echo -e "  ${RED}FAIL${RESET} $name --emit-banner"
         echo "       Banner output missing .TYPES/.DATA/.CODE sections"
+        FAILED=$((FAILED + 1))
+    fi
+}
+
+run_emit_compiled_banner_one() {
+    local hulk_file="$1"
+    local name
+    name="$(basename "$hulk_file" .hulk)"
+    local banner_file="$TMP_DIR/$name.compiled.banner"
+
+    TOTAL=$((TOTAL + 1))
+
+    if ! "$BACKEND_BIN" "$hulk_file" --emit-banner-compiled -o "$banner_file" > "$TMP_DIR/$name.emit-banner-compiled.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name --emit-banner-compiled"
+        sed 's/^/         /' "$TMP_DIR/$name.emit-banner-compiled.out"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if grep -q '^\.COMPILED_BANNER$' "$banner_file" &&
+       grep -q '^function #' "$banner_file" &&
+       grep -q '^[[:space:]]*[0-9][0-9]*:' "$banner_file"; then
+        echo -e "  ${GREEN}OK${RESET}  $name --emit-banner-compiled"
+        PASSED=$((PASSED + 1))
+    else
+        echo -e "  ${RED}FAIL${RESET} $name --emit-banner-compiled"
+        echo "       compiled Banner output missing header/functions/pc-indexed code"
+        FAILED=$((FAILED + 1))
+    fi
+}
+
+run_runtime_error_context_one() {
+    local hulk_file="$1"
+    local name
+    name="$(basename "$hulk_file" .hulk)"
+    local actual_file="$TMP_DIR/$name.runtime-error.out"
+
+    TOTAL=$((TOTAL + 1))
+
+    if "$BACKEND_BIN" "$hulk_file" > "$actual_file" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name runtime error context"
+        echo "       backend accepted a runtime-error program"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if grep -q '^Runtime error en hulk_main pc=' "$actual_file" &&
+       grep -q "source: $hulk_file:3:7" "$actual_file" &&
+       grep -q 'instr: s2 = DIV s0, s1' "$actual_file" &&
+       grep -q '^  stack:$' "$actual_file"; then
+        echo -e "  ${GREEN}OK${RESET}  $name runtime error context"
+        PASSED=$((PASSED + 1))
+    else
+        echo -e "  ${RED}FAIL${RESET} $name runtime error context"
+        sed 's/^/       /' "$actual_file"
         FAILED=$((FAILED + 1))
     fi
 }
@@ -318,6 +388,14 @@ suite_header "BACKEND IR"
 run_emit_ir_one "$ROOT/tests/eval/c4_block_let_if.hulk"
 run_emit_ir_one "$ROOT/tests/eval/c5_recursion.hulk"
 run_emit_ir_one "$ROOT/tests/eval/c6_objects_basic.hulk"
+
+suite_header "BACKEND COMPILED BANNER"
+run_emit_compiled_banner_one "$ROOT/tests/eval/c4_block_let_if.hulk"
+run_emit_compiled_banner_one "$ROOT/tests/eval/c5_recursion.hulk"
+run_emit_compiled_banner_one "$ROOT/tests/eval/c6_objects_basic.hulk"
+
+suite_header "BACKEND RUNTIME ERRORS"
+run_runtime_error_context_one "$ROOT/tests/eval/err_div_zero.hulk"
 
 suite_header "BACKEND BANNER C4"
 for f in "$ROOT"/tests/eval/c4_*.hulk; do

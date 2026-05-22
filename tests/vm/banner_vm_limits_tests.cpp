@@ -20,6 +20,19 @@ bool throws_with_message(auto&& fn, const std::string& fragment) {
     return false;
 }
 
+std::string runtime_error_from(auto&& fn) {
+    try {
+        fn();
+    } catch (const std::runtime_error& err) {
+        return err.what();
+    }
+    return {};
+}
+
+bool contains(const std::string& text, const std::string& fragment) {
+    return text.find(fragment) != std::string::npos;
+}
+
 Banner::BannerFunction make_function(std::string name) {
     Banner::BannerFunction fn;
     fn.name = std::move(name);
@@ -74,6 +87,14 @@ Banner::BannerInstr const_number(std::string dest, double value) {
     auto out = instr(Banner::Op::ConstNumber);
     out.dest = std::move(dest);
     out.number_value = value;
+    return out;
+}
+
+Banner::BannerInstr div(std::string dest, std::string lhs, std::string rhs) {
+    auto out = instr(Banner::Op::Div);
+    out.dest = std::move(dest);
+    out.src1 = std::move(lhs);
+    out.src2 = std::move(rhs);
     return out;
 }
 
@@ -168,6 +189,56 @@ void default_limits_allow_small_program() {
     assert(VM::as_number(result) == 42.0);
 }
 
+void compiled_view_uses_slots_and_pcs() {
+    Banner::BannerProgram program;
+    program.entry_function = "hulk_main";
+
+    auto main = make_function("hulk_main");
+    main.locals.push_back("x");
+    main.locals.push_back("y");
+    main.code.push_back(const_number("x", 42.0));
+    main.code.push_back(ret("x"));
+    program.functions.push_back(std::move(main));
+
+    VM::BannerVM vm;
+    const std::string view = vm.compiled_view(program);
+    assert(contains(view, ".COMPILED_BANNER"));
+    assert(contains(view, "function #0 hulk_main"));
+    assert(contains(view, "s0 = x"));
+    assert(contains(view, "0: s0 = CONST_NUMBER 42"));
+    assert(contains(view, "1: RETURN s0"));
+}
+
+void runtime_error_includes_instruction_context() {
+    Banner::BannerProgram program;
+    program.entry_function = "hulk_main";
+
+    auto main = make_function("hulk_main");
+    main.locals.push_back("x");
+    main.locals.push_back("y");
+    main.locals.push_back("z");
+    main.code.push_back(const_number("x", 1.0));
+    main.code.push_back(const_number("y", 0.0));
+    auto bad_div = div("z", "x", "y");
+    bad_div.source = IR::SourceSpan{
+        "tests/vm/runtime_error.hulk",
+        hulk::common::Span{hulk::common::Position{.index = 0, .line = 3, .column = 12},
+                           hulk::common::Position{.index = 0, .line = 3, .column = 17}},
+    };
+    main.code.push_back(std::move(bad_div));
+    main.code.push_back(ret("z"));
+    program.functions.push_back(std::move(main));
+
+    VM::BannerVM vm;
+    const std::string message = runtime_error_from([&] { (void)vm.run(program); });
+    assert(contains(message, "Runtime error en hulk_main pc=2"));
+    assert(contains(message, "source: tests/vm/runtime_error.hulk:3:12"));
+    assert(contains(message, "instr: s2 = DIV s0, s1"));
+    assert(contains(message, "causa: Runtime error: division por cero."));
+    assert(contains(message, "stack:"));
+    assert(contains(message, "at hulk_main pc=2"));
+}
+
 }
 
 int main() {
@@ -175,5 +246,7 @@ int main() {
     frame_limit_stops_recursion();
     heap_limit_stops_allocation_growth();
     default_limits_allow_small_program();
+    compiled_view_uses_slots_and_pcs();
+    runtime_error_includes_instruction_context();
     return 0;
 }

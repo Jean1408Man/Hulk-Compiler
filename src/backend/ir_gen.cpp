@@ -44,8 +44,12 @@ namespace Hulk::Backend {
 
 IRGen::IRGen(const SemanticTables& tables,
              const std::unordered_map<Expr*, ResolutionResult>& resolution_map,
-             const std::unordered_map<Expr*, HulkType>& type_map)
-    : tables_(tables), resolution_map_(resolution_map), type_map_(type_map) {}
+             const std::unordered_map<Expr*, HulkType>& type_map,
+             std::string source_path)
+    : tables_(tables),
+      resolution_map_(resolution_map),
+      type_map_(type_map),
+      source_path_(std::move(source_path)) {}
 
 IR::IRProgram IRGen::generate(Program& program) {
     (void)type_map_;
@@ -58,6 +62,7 @@ IR::IRProgram IRGen::generate(Program& program) {
     init_names_.clear();
     ctor_names_.clear();
     method_names_.clear();
+    span_stack_.clear();
 
     collect_declarations(program);
     emit_type_metadata(program);
@@ -142,7 +147,6 @@ IR::IRFunction IRGen::start_function(std::string name,
     fn.name = std::move(name);
     fn.source_name = std::move(source_name);
     fn.kind = kind;
-    current_function_ = &fn;
     context_ = CodegenContext{};
     context_.push_scope();
     return fn;
@@ -172,6 +176,7 @@ void IRGen::add_local(const std::string& name) {
 IR::IRInstr IRGen::make_instr(IR::IROp op) const {
     IR::IRInstr instr;
     instr.op = op;
+    instr.source = current_source();
     return instr;
 }
 
@@ -179,7 +184,15 @@ void IRGen::emit(IR::IRInstr instr) {
     if (!current_function_) {
         throw CodegenError("Backend IR: intento de emitir instruccion fuera de funcion.");
     }
+    if (!instr.source) {
+        instr.source = current_source();
+    }
     current_function_->body.push_back(std::move(instr));
+}
+
+std::optional<IR::SourceSpan> IRGen::current_source() const {
+    if (span_stack_.empty()) return std::nullopt;
+    return IR::SourceSpan{source_path_, span_stack_.back()};
 }
 
 void IRGen::emit_return(const std::string& value) {
@@ -280,6 +293,7 @@ std::string IRGen::const_bool(bool value) {
 
 void IRGen::emit_global_function(FunctionDecl& fn) {
     auto ir_fn = start_function(function_names_.at(&fn), fn.GetName(), IR::IRFunctionKind::Global);
+    current_function_ = &ir_fn;
 
     for (const auto& param : fn.GetParams()) {
         const std::string name = mangler_.make_unique("hulk_param", param.name);
@@ -305,6 +319,7 @@ void IRGen::emit_type_initializer(TypeDecl& type) {
     auto ir_fn = start_function(init_names_.at(type.GetName()),
                                 type.GetName() + ".__init__",
                                 IR::IRFunctionKind::Initializer);
+    current_function_ = &ir_fn;
 
     const std::string self_name = "hulk_self_value";
     current_self_name_ = self_name;
@@ -369,6 +384,7 @@ void IRGen::emit_method(const std::string& type_name, TypeMemberMethod& method) 
     auto ir_fn = start_function(method_names_.at(type_name).at(method.GetName()),
                                 type_name + "." + method.GetName(),
                                 IR::IRFunctionKind::Method);
+    current_function_ = &ir_fn;
 
     const std::string prev_type = current_type_name_;
     const std::string prev_method = current_method_name_;
@@ -395,6 +411,7 @@ void IRGen::emit_method(const std::string& type_name, TypeMemberMethod& method) 
 
 void IRGen::emit_entry(Program& program) {
     auto ir_fn = start_function(program_.entry_function, "program", IR::IRFunctionKind::Entry);
+    current_function_ = &ir_fn;
     const std::string result = program.GetGlobalExpr() ? lower_expr(program.GetGlobalExpr()) : const_nil();
     emit_return(result);
     finish_function(std::move(ir_fn));
@@ -402,7 +419,14 @@ void IRGen::emit_entry(Program& program) {
 
 std::string IRGen::lower_expr(Expr* expr) {
     if (!expr) return const_nil();
-    expr->accept(*this);
+    span_stack_.push_back(expr->span);
+    try {
+        expr->accept(*this);
+    } catch (...) {
+        span_stack_.pop_back();
+        throw;
+    }
+    span_stack_.pop_back();
     return expr_result_;
 }
 
