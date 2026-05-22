@@ -54,6 +54,31 @@ void object_root_marks_fields() {
     assert(heap.string_value(child) == "child");
 }
 
+void object_fields_store_all_word_kinds() {
+    VMHeap heap;
+    const Word text = heap.allocate_string("field");
+    const Word object = heap.allocate_object(3, 3);
+
+    heap.object(object).fields.at(0) = make_number(12.0);
+    heap.object(object).fields.at(1) = make_bool(true);
+    heap.object(object).fields.at(2) = text;
+
+    assert(as_number(heap.object(object).fields.at(0)) == 12.0);
+    assert(as_bool(heap.object(object).fields.at(1)));
+    assert(heap.string_value(heap.object(object).fields.at(2)) == "field");
+}
+
+void invalid_handles_are_rejected() {
+    VMHeap heap;
+    const Word valid_string = heap.allocate_string("ok");
+    const Word valid_object = heap.allocate_object(1, 0);
+
+    assert(throws_runtime_error([&] { (void)heap.string_value(make_string_ref(99, 0)); }));
+    assert(throws_runtime_error([&] { (void)heap.object(make_object_ref(99, 0)); }));
+    assert(throws_runtime_error([&] { (void)heap.string_value(valid_object); }));
+    assert(throws_runtime_error([&] { (void)heap.object(valid_string); }));
+}
+
 void unreachable_object_cycle_is_collected() {
     VMHeap heap;
     const Word a = heap.allocate_object(1, 1);
@@ -104,6 +129,8 @@ int main() {
     string_without_root_is_collected();
     string_root_survives();
     object_root_marks_fields();
+    object_fields_store_all_word_kinds();
+    invalid_handles_are_rejected();
     unreachable_object_cycle_is_collected();
     freed_slot_is_reused_with_new_generation();
     old_object_handle_is_rejected_after_reuse();

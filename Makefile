@@ -196,8 +196,14 @@ backend: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) $(BACKEND_OBJS)
 
 vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o $(OBJDIR)/banner/banner_ir.o
 	@mkdir -p $(OBJDIR)/vm_tests
+	$(CXX) $(CXXFLAGS) -c tests/vm/vm_value_tests.cpp -o $(OBJDIR)/vm_tests/vm_value_tests.o
 	$(CXX) $(CXXFLAGS) -c tests/vm/vm_heap_tests.cpp -o $(OBJDIR)/vm_tests/vm_heap_tests.o
 	$(CXX) $(CXXFLAGS) -c tests/vm/banner_vm_limits_tests.cpp -o $(OBJDIR)/vm_tests/banner_vm_limits_tests.o
+	$(CXX) $(CXXFLAGS) -c tests/vm/banner_vm_semantics_tests.cpp -o $(OBJDIR)/vm_tests/banner_vm_semantics_tests.o
+	$(CXX) $(CXXFLAGS) \
+		$(OBJDIR)/vm_tests/vm_value_tests.o \
+		$(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o \
+		-o hulk_vm_value_tests
 	$(CXX) $(CXXFLAGS) \
 		$(OBJDIR)/vm_tests/vm_heap_tests.o \
 		$(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o \
@@ -206,8 +212,14 @@ vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.
 		$(OBJDIR)/vm_tests/banner_vm_limits_tests.o \
 		$(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o $(OBJDIR)/banner/banner_ir.o \
 		-o hulk_vm_limits_tests
+	$(CXX) $(CXXFLAGS) \
+		$(OBJDIR)/vm_tests/banner_vm_semantics_tests.o \
+		$(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o $(OBJDIR)/banner/banner_ir.o \
+		-o hulk_vm_semantics_tests
+	./hulk_vm_value_tests
 	./hulk_vm_tests
 	./hulk_vm_limits_tests
+	./hulk_vm_semantics_tests
 
 backend-tests: backend
 	@bash tests/backend/run_backend_tests.sh
