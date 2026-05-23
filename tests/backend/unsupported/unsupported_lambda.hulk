@@ -1,0 +1,1 @@
+let f: Object = (x: Number): Number => x + 1 in print(0);

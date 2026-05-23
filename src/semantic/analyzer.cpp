@@ -21,6 +21,7 @@
 #include "../ast/others/group.h"
 #include "../ast/others/program.h"
 #include "../ast/others/selfRef.h"
+#include "../ast/protocols/protocolDecl.h"
 #include "../ast/types/asExpr.h"
 #include "../ast/types/isExpr.h"
 #include "../ast/types/memberAccess.h"
@@ -45,10 +46,16 @@ constexpr const char* kRestrictedInferenceMessage =
     "Inferencia implicita no permitida en modo restringido. "
     "Use ': _', ': auto' o escriba un tipo concreto.";
 
-class RestrictedInferenceChecker : public ExprVisitor, public DeclVisitor {
+std::string unsupported_feature_message(const std::string& feature) {
+    return "Feature no soportado en el flujo end-to-end: " + feature + ".";
+}
+
+class SemanticPolicyChecker : public ExprVisitor, public DeclVisitor {
 public:
-    explicit RestrictedInferenceChecker(hulk::common::DiagnosticEngine& engine)
-        : engine_(engine) {}
+    SemanticPolicyChecker(hulk::common::DiagnosticEngine& engine,
+                          bool restricted_inference)
+        : engine_(engine),
+          restricted_inference_(restricted_inference) {}
 
     void check(Program& program) {
         for (const auto& decl : program.GetDeclarations()) {
@@ -58,12 +65,15 @@ public:
     }
 
     [[nodiscard]] bool has_errors() const { return has_errors_; }
+    [[nodiscard]] bool has_unsupported_errors() const { return has_unsupported_errors_; }
 
 private:
     hulk::common::DiagnosticEngine& engine_;
+    bool restricted_inference_ = false;
     bool has_errors_ = false;
+    bool has_unsupported_errors_ = false;
 
-    void report(const hulk::common::Span& span) {
+    void report_restricted(const hulk::common::Span& span) {
         engine_.report_raw(hulk::common::DiagnosticLevel::Semantic,
                            hulk::common::Severity::Error,
                            span,
@@ -71,9 +81,19 @@ private:
         has_errors_ = true;
     }
 
+    void report_unsupported(const hulk::common::Span& span,
+                            const std::string& feature) {
+        engine_.report_raw(hulk::common::DiagnosticLevel::Semantic,
+                           hulk::common::Severity::Error,
+                           span,
+                           unsupported_feature_message(feature));
+        has_errors_ = true;
+        has_unsupported_errors_ = true;
+    }
+
     void require_annotation(const std::string& annotation,
                             const hulk::common::Span& span) {
-        if (annotation.empty()) report(span);
+        if (restricted_inference_ && annotation.empty()) report_restricted(span);
     }
 
     void require_param_annotation(const Param& param,
@@ -147,20 +167,28 @@ private:
     }
 
     void visit(For& node) override {
+        report_unsupported(node.span, "for/range");
         visit_expr(node.GetIterable());
         visit_expr(node.GetBody());
     }
 
-    void visit(FunctionCall& node) override { visit_args(node.GetArgs()); }
+    void visit(FunctionCall& node) override {
+        if (node.GetName() == "range") report_unsupported(node.span, "range");
+        visit_args(node.GetArgs());
+    }
 
     void visit(Lambda& node) override {
+        report_unsupported(node.span, "lambda");
         for (const auto& param : node.GetParams()) require_param_annotation(param, node.span);
         require_annotation(node.GetReturnTypeAnnotation(), node.span);
         visit_expr(node.GetBody());
     }
 
     void visit(Print& node) override { visit_expr(node.GetExpr()); }
-    void visit(BuiltinCall& node) override { visit_args(node.GetArgs()); }
+    void visit(BuiltinCall& node) override {
+        if (node.GetFunc() == BuiltinFunc::Range) report_unsupported(node.span, "range");
+        visit_args(node.GetArgs());
+    }
 
     void visit(ExprBlock& node) override {
         for (const auto& expr : node.GetExprs()) visit_expr(expr.get());
@@ -206,7 +234,9 @@ private:
         visit_expr(node.GetBody());
     }
 
-    void visit(ProtocolDecl&) override {}
+    void visit(ProtocolDecl& node) override {
+        report_unsupported(node.span, "protocol");
+    }
 };
 
 }
@@ -220,16 +250,15 @@ SemanticAnalyzer::SemanticAnalyzer(hulk::common::DiagnosticEngine& engine,
 SemanticAnalyzer::~SemanticAnalyzer() = default;
 
 bool SemanticAnalyzer::analyze(Program& program) {
+    SemanticPolicyChecker policy_checker(engine_, options_.restricted_inference);
+    policy_checker.check(program);
+    if (policy_checker.has_errors()) has_errors_ = true;
+    if (policy_checker.has_unsupported_errors()) return false;
+
     resolver_ = std::make_unique<SymbolResolver>(tables_, engine_);
     resolver_->run(program);
     // Continuamos a pesar de errores en el resolver para capturar errores de tipos
     // a menos que el resolver haya fallado catastróficamente (sin tablas consistentes)
-
-    if (options_.restricted_inference) {
-        RestrictedInferenceChecker checker(engine_);
-        checker.check(program);
-        if (checker.has_errors()) has_errors_ = true;
-    }
     
     inferencer_ = std::make_unique<TypeInferencer>(tables_, resolver_->resolution_map(), engine_);
     inferencer_->infer(program);

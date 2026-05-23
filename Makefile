@@ -37,6 +37,7 @@ LEXER_AST_SRCS := \
 	src/ast/others/group.cpp \
 	src/ast/others/program.cpp \
 	src/ast/others/selfRef.cpp \
+	src/ast/protocols/protocolDecl.cpp \
 	src/ast/types/asExpr.cpp \
 	src/ast/types/isExpr.cpp \
 	src/ast/types/memberAccess.cpp \

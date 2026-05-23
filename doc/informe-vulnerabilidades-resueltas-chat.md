@@ -3,7 +3,7 @@
 Fecha: 2026-05-23
 
 Este informe resume el trabajo realizado durante el chat para cerrar las
-vulnerabilidades 1 a 9 del documento
+vulnerabilidades 1 a 10 del documento
 `doc/vulnerabilidades-flujo-end-to-end.md`. El foco fue endurecer el flujo:
 
 ```text
@@ -30,6 +30,7 @@ HULK fuente
 | 7. Errores runtime sin contexto | Resuelta | Los errores runtime incluyen funcion, pc, source span, instruccion y stack trace. |
 | 8. Tests sin invariantes internas de VM | Resuelta | Se ampliaron `vm-tests` con checks de `Word`, heap y BannerVM construido en C++. |
 | 9. Falta `restricted-inference` | Resuelta | Se agrego modo opt-in que bloquea inferencia implicita y permite solo tipos concretos, `_` o `auto`. |
+| 10. Features parciales en frontend/backend | Resuelta | `lambda`, `for/range`, `range()` y `protocol` fallan temprano con diagnostico semantico estable. |
 
 ## 1. Tolerancias semanticas en BackendDriver
 
@@ -501,11 +502,105 @@ explicitas siguen funcionando con la bandera. Los invalidos demuestran que:
 - no se emite `--emit-banner-compiled`;
 - no quedan archivos de salida creados.
 
+## 10. Limpiar del flujo end-to-end `lambda`, `range` y `protocol`
+
+### Problema
+
+El frontend conservaba piezas para features que no forman parte del flujo
+soportado por el backend final:
+
+- `lambda`;
+- `for/range`;
+- llamada `range(...)`;
+- `protocol`.
+
+Antes, algunos de estos casos llegaban tarde hasta `IRGen`, que los rechazaba
+con `unsupported(...)`. Eso evitaba ejecuciones incorrectas, pero dejaba una
+promesa falsa: parser/AST/semantica parecian aceptar construcciones que el
+pipeline end-to-end no podia bajar a HulkIR/BannerIR.
+
+### Solucion aplicada
+
+Se formalizo la politica conservadora: mantener nodos y parser donde ya aportan
+estructura, pero bloquear el feature en `SemanticAnalyzer` antes de resolver,
+inferir, type-checkear o generar IR.
+
+El nuevo pase de politica semantica reporta:
+
+```text
+Feature no soportado en el flujo end-to-end: <feature>.
+```
+
+Se bloquean explicitamente:
+
+- `lambda`;
+- `for/range`;
+- `range`;
+- `protocol`.
+
+Tambien se retiro `range` de las funciones builtin registradas por
+`SemanticTables`, para que no quede anunciado como builtin soportado por
+semantica. La ruta de `FunctionCall("range")` se detecta por nombre antes de
+resolver simbolos, por lo que el usuario recibe el diagnostico estable de
+feature no soportado en vez de un error tardio de IR.
+
+Para que el rechazo sea consistente:
+
+- se agrego token `protocol`;
+- se agrego parser minimo para declaraciones `protocol`;
+- se agrego parser minimo para lambdas de la forma `(x: T): R => expr`;
+- se enlazo `ProtocolDecl` en el build compartido;
+- `IRGen` conserva sus defensas `unsupported(...)`, pero ya no son la primera
+  barrera esperada.
+
+### Archivos relevantes
+
+- `src/semantic/analyzer.cpp`
+- `src/semantic/semantic_tables.cpp`
+- `src/lexer/token_kind.hpp`
+- `src/lexer/keywords.hpp`
+- `src/lexer/lexer.cpp`
+- `src/lexer/main.cpp`
+- `src/parser/grammar.y`
+- `src/parser/parser.cpp`
+- `src/parser/parser.hpp`
+- `src/parser/parser_lexer_adapter.cpp`
+- `src/ast/protocols/protocolMethodSig.h`
+- `Makefile`
+- `tests/backend/run_backend_tests.sh`
+- `tests/backend/unsupported/*.hulk`
+
+### Validacion
+
+Se agrego la seccion:
+
+```text
+BACKEND FEATURES NO SOPORTADOS
+```
+
+Los tests cubren:
+
+- lambda;
+- `for (x in range(...))`;
+- llamada directa `range(...)`;
+- declaracion `protocol`.
+
+Cada caso verifica que:
+
+- el backend falla en modo default;
+- el mensaje contiene `Feature no soportado en el flujo end-to-end`;
+- no se emite `--emit-ir`;
+- no se emite `--emit-banner`;
+- no se emite `--emit-banner-compiled`;
+- no quedan archivos de salida creados.
+
 ## Comandos de verificacion ejecutados
 
 Durante el cierre de estas vulnerabilidades se ejecutaron:
 
 ```bash
+make parser-gen
+make parser-demo
 make -B backend
 make vm-tests
 make backend-tests
@@ -513,14 +608,17 @@ make semantic
 ./hulk_semantic tests/extension/restricted_invalid_implicit_let.hulk --restricted-inference
 ./hulk_semantic tests/extension/restricted_valid_let.hulk --restricted-inference
 ./hulk_backend tests/extension/restricted_invalid_implicit_let.hulk
+./hulk_backend tests/backend/unsupported/unsupported_lambda.hulk
+./hulk_backend tests/backend/unsupported/unsupported_protocol.hulk --emit-ir -o /tmp/unsupported_protocol.hir
+./hulk_backend tests/backend/unsupported/unsupported_range_call.hulk --emit-banner-compiled -o /tmp/unsupported_range.compiled.banner
 ```
 
 Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 99
-  Passed : 99
+  Total  : 103
+  Passed : 103
   Failed : 0
 ```
 
@@ -535,10 +633,12 @@ trace.
 
 ## Estado final
 
-Las vulnerabilidades 1 a 9 quedaron cerradas con cambios de implementacion y
+Las vulnerabilidades 1 a 10 quedaron cerradas con cambios de implementacion y
 tests. El pipeline ahora respeta errores semanticos bloqueantes, libera heap no
 alcanzable, limita recursos de VM, permite inspeccionar la forma baja de
 BannerIR, reporta errores runtime con contexto suficiente para depurar desde
 el programa fuente, cuenta con pruebas unitarias para invariantes internas de
 la VM y ofrece un modo opt-in de inferencia restringida para exigir tipos
-concretos o type holes explicitos.
+concretos o type holes explicitos. Ademas, los features fuera de alcance
+end-to-end quedan bloqueados temprano con diagnosticos probados y no llegan a
+la generacion de IR ni a BannerVM.

@@ -28,6 +28,7 @@
     #include "../ast/domainFunctions/print.h"
     #include "../ast/functions/functionCall.h"
     #include "../ast/functions/functionDecl.h"
+    #include "../ast/functions/lambda.h"
     #include "../ast/functions/param.h"
     #include "../ast/literales/boolean.h"
     #include "../ast/literales/number.h"
@@ -36,6 +37,8 @@
     #include "../ast/loops/while.h"
     #include "../ast/others/exprBlock.h"
     #include "../ast/others/program.h"
+    #include "../ast/protocols/protocolDecl.h"
+    #include "../ast/protocols/protocolMethodSig.h"
     #include "../ast/types/asExpr.h"
     #include "../ast/types/isExpr.h"
     #include "../ast/types/memberAccess.h"
@@ -60,6 +63,7 @@
         using BindingPtr = std::unique_ptr<Hulk::VariableBinding>;
         using BindingList = std::vector<BindingPtr>;
         using ParamList = std::vector<Hulk::Param>;
+        using ProtocolMethodList = std::vector<Hulk::ProtocolMethodSig>;
         using ElifList = std::vector<Hulk::ElifBranch>;
         using TypeMemberList = std::vector<Hulk::TypeMember>;
 
@@ -116,7 +120,7 @@
 %token TRUE FALSE
 %token PRINT SQRT SIN COS EXP LOG RAND PI_CONST E_CONST
 %token LET IN IF ELIF ELSE WHILE FOR
-%token FUNCTION TYPE INHERITS NEW IS AS
+%token FUNCTION TYPE PROTOCOL INHERITS NEW IS AS
 
 %token PLUS MINUS STAR SLASH PERCENT CARET
 %token ASSIGN DESTRUCTIVE_ASSIGN
@@ -141,14 +145,17 @@
 %right UMINUS
 
 %type <ProgramPtr> program
-%type <ExprPtr> expr let_expr if_expr while_expr for_expr assign_expr
+%type <ExprPtr> expr lambda_expr let_expr if_expr while_expr for_expr assign_expr
 %type <ExprPtr> logic_or logic_and equality relation type_test_expr concat additive multiplicative power unary postfix primary block
-%type <DeclPtr> decl function_decl type_decl
+%type <DeclPtr> decl function_decl type_decl protocol_decl
 %type <BindingList> binding_list
 %type <BindingPtr> binding
 %type <ExprList> expr_list args_opt arg_list block_body_opt parent_args_opt
-%type <ParamList> params_opt param_list ctor_params_opt
+%type <ParamList> params_opt param_list ctor_params_opt lambda_param_list
+%type <ProtocolMethodList> protocol_member_list
+%type <Hulk::ProtocolMethodSig> protocol_member
 %type <Hulk::Param> param
+%type <Hulk::Param> lambda_param
 %type <std::string> type_expr type_ann_opt return_ann_opt
 %type <ElifList> elif_clauses
 %type <hulk::parser::InheritsInfo> inherits_opt
@@ -227,6 +234,10 @@ decl
       {
           $$ = std::move($1);
       }
+    | protocol_decl
+      {
+          $$ = std::move($1);
+      }
     ;
 
 function_decl
@@ -269,6 +280,33 @@ type_decl
               );
           }
           $$->span = to_span(@$);
+      }
+    ;
+
+protocol_decl
+    : PROTOCOL IDENTIFIER LBRACE protocol_member_list RBRACE
+      {
+          $$ = std::make_unique<Hulk::ProtocolDecl>($2, std::move($4));
+          $$->span = to_span(@$);
+      }
+    ;
+
+protocol_member_list
+    :
+      {
+          $$ = hulk::parser::ProtocolMethodList {};
+      }
+    | protocol_member_list protocol_member
+      {
+          $1.push_back(std::move($2));
+          $$ = std::move($1);
+      }
+    ;
+
+protocol_member
+    : IDENTIFIER LPAREN params_opt RPAREN return_ann_opt SEMICOLON
+      {
+          $$ = Hulk::ProtocolMethodSig($1, std::move($3), $5);
       }
     ;
 
@@ -428,18 +466,14 @@ type_expr
       {
           $$ = std::move($1);
       }
-    | AUTO
-      {
-          $$ = "auto";
-      }
-    | UNDERSCORE_TYPE
-      {
-          $$ = "_";
-      }
     ;
 
 expr
-    : let_expr
+    : lambda_expr
+      {
+          $$ = std::move($1);
+      }
+    | let_expr
       {
           $$ = std::move($1);
       }
@@ -458,6 +492,39 @@ expr
     | assign_expr
       {
           $$ = std::move($1);
+      }
+    ;
+
+lambda_expr
+    : LPAREN lambda_param_list RPAREN return_ann_opt FATARROW expr
+      {
+          if ($4.empty()) {
+              $$ = std::make_unique<Hulk::Lambda>(std::move($2), std::move($6));
+          } else {
+              $$ = std::make_unique<Hulk::Lambda>(std::move($2), $4, std::move($6));
+          }
+          $$->span = to_span(@$);
+      }
+    ;
+
+lambda_param_list
+    : lambda_param
+      {
+          ParamList params;
+          params.push_back(std::move($1));
+          $$ = std::move(params);
+      }
+    | lambda_param_list COMMA lambda_param
+      {
+          $1.push_back(std::move($3));
+          $$ = std::move($1);
+      }
+    ;
+
+lambda_param
+    : IDENTIFIER COLON type_expr
+      {
+          $$ = Hulk::Param($1, $3);
       }
     ;
 

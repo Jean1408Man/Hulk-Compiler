@@ -100,6 +100,7 @@ Parser::symbol_type yylex(ParserDriver& driver) {
         case TK::Semicolon: return Parser::make_SEMICOLON(loc);
         case TK::Colon: return Parser::make_COLON(loc);
         case TK::Dot: return Parser::make_DOT(loc);
+        case TK::Protocol: return Parser::make_PROTOCOL(loc);
     }
 
     return Parser::make_ERROR_TOKEN("<unknown>", loc);

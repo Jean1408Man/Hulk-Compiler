@@ -21,7 +21,6 @@ SemanticTables::SemanticTables() {
             {"exp",    1, {"Number"}, "Number"},
             {"log",    2, {"Number", "Number"}, "Number"},
             {"rand",   0, {}, "Number"},
-            {"range",  2, {"Number", "Number"}, "Iterable"},
         })
     {
         BuiltinFuncInfo bfi;
