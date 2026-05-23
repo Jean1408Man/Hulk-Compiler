@@ -53,7 +53,7 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
             return result;
         }
 
-        Hulk::SemanticAnalyzer sem(engine);
+        Hulk::SemanticAnalyzer sem(engine, options.semantic);
         const bool sem_ok = sem.analyze(*program);
         if (!sem_ok || engine.has_blocking_errors()) {
             engine.print_all();

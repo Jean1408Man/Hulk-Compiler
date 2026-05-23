@@ -195,6 +195,113 @@ run_invalid_semantic_one() {
     PASSED=$((PASSED + 1))
 }
 
+run_restricted_valid_one() {
+    local hulk_file="$1"
+    local expected_file="$2"
+    local name
+    name="$(basename "$hulk_file" .hulk)"
+    local actual_file="$TMP_DIR/$name.restricted.actual"
+
+    TOTAL=$((TOTAL + 1))
+
+    if ! "$BACKEND_BIN" "$hulk_file" --restricted-inference > "$actual_file" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo -e "       ${YELLOW}backend restricted:${RESET}"
+        sed 's/^/         /' "$actual_file"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if compare_files "$expected_file" "$actual_file" "$TMP_DIR/$name.restricted.diff"; then
+        echo -e "  ${GREEN}OK${RESET}  $name"
+        PASSED=$((PASSED + 1))
+    else
+        echo -e "  ${RED}FAIL${RESET} $name"
+        sed 's/^/       /' "$TMP_DIR/$name.restricted.diff"
+        FAILED=$((FAILED + 1))
+    fi
+}
+
+run_restricted_invalid_one() {
+    local hulk_file="$1"
+    local name
+    name="$(basename "$hulk_file" .hulk)"
+    local ir_file="$TMP_DIR/$name.restricted.hir"
+    local banner_file="$TMP_DIR/$name.restricted.banner"
+    local compiled_banner_file="$TMP_DIR/$name.restricted.compiled.banner"
+    local actual_file="$TMP_DIR/$name.restricted"
+
+    TOTAL=$((TOTAL + 1))
+
+    if ! "$BACKEND_BIN" "$hulk_file" > "$actual_file.normal.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend rejected implicit inference in normal mode"
+        sed 's/^/         /' "$actual_file.normal.out"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if "$BACKEND_BIN" "$hulk_file" --restricted-inference > "$actual_file.default.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend accepted implicit inference in restricted mode"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if ! grep -q "Inferencia implicita no permitida" "$actual_file.default.out"; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       restricted inference diagnostic was not reported"
+        sed 's/^/         /' "$actual_file.default.out"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if "$BACKEND_BIN" "$hulk_file" --restricted-inference --emit-ir -o "$ir_file" > "$actual_file.emit-ir.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend emitted IR with implicit inference in restricted mode"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if [[ -e "$ir_file" ]]; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       IR file was created despite restricted inference errors"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if "$BACKEND_BIN" "$hulk_file" --restricted-inference --emit-banner -o "$banner_file" > "$actual_file.emit-banner.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend emitted BannerIR with implicit inference in restricted mode"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if [[ -e "$banner_file" ]]; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       BannerIR file was created despite restricted inference errors"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if "$BACKEND_BIN" "$hulk_file" --restricted-inference --emit-banner-compiled -o "$compiled_banner_file" > "$actual_file.emit-banner-compiled.out" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       backend emitted compiled BannerIR with implicit inference in restricted mode"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if [[ -e "$compiled_banner_file" ]]; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       compiled BannerIR file was created despite restricted inference errors"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    echo -e "  ${GREEN}OK${RESET}  $name"
+    PASSED=$((PASSED + 1))
+}
+
 run_emit_ir_one() {
     local hulk_file="$1"
     local name
@@ -359,6 +466,12 @@ for f in "$ROOT"/tests/extension/valid_*.hulk; do
     run_expected_one "$f" "$BACKEND_EXPECTED_DIR/$(basename "$f" .hulk).expected"
 done
 
+suite_header "BACKEND RESTRICTED-INFERENCE VALIDOS"
+for f in "$ROOT"/tests/extension/restricted_valid_*.hulk; do
+    [[ -f "$f" ]] || continue
+    run_restricted_valid_one "$f" "$BACKEND_EXPECTED_DIR/$(basename "$f" .hulk).expected"
+done
+
 suite_header "BACKEND REGRESIONES"
 for f in "$ROOT"/tests/backend/regression/*.hulk; do
     [[ -f "$f" ]] || continue
@@ -376,6 +489,12 @@ for name in \
     invalid_unknown_method
 do
     run_invalid_one "$ROOT/tests/extension/$name.hulk"
+done
+
+suite_header "BACKEND RESTRICTED-INFERENCE INVALIDOS"
+for f in "$ROOT"/tests/extension/restricted_invalid_*.hulk; do
+    [[ -f "$f" ]] || continue
+    run_restricted_invalid_one "$f"
 done
 
 suite_header "BACKEND SEMANTICOS INVALIDOS"

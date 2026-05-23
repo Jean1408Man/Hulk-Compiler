@@ -7,7 +7,8 @@ namespace {
 
 void print_usage() {
     std::cerr << "Uso: hulk_backend <archivo.hulk> [-o salida] "
-                 "[--emit-ir] [--emit-banner] [--emit-banner-compiled] [--run-banner]\n";
+                 "[--emit-ir] [--emit-banner] [--emit-banner-compiled] "
+                 "[--run-banner] [--restricted-inference]\n";
 }
 
 } // namespace
@@ -37,6 +38,8 @@ int main(int argc, char** argv) {
             options.run_banner = true;
         } else if (arg == "--emit-ir") {
             options.emit_ir = true;
+        } else if (arg == "--restricted-inference") {
+            options.semantic.restricted_inference = true;
         } else {
             std::cerr << "Opcion desconocida: " << arg << "\n";
             print_usage();

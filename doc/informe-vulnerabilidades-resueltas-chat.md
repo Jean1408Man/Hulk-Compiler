@@ -1,9 +1,9 @@
 # Informe de vulnerabilidades resueltas en el flujo end-to-end
 
-Fecha: 2026-05-22
+Fecha: 2026-05-23
 
 Este informe resume el trabajo realizado durante el chat para cerrar las
-vulnerabilidades 1 a 8 del documento
+vulnerabilidades 1 a 9 del documento
 `doc/vulnerabilidades-flujo-end-to-end.md`. El foco fue endurecer el flujo:
 
 ```text
@@ -29,6 +29,7 @@ HULK fuente
 | 6. BannerIR textual demasiado simbolica | Resuelta | Se agrego `--emit-banner-compiled` con vista indexada por slots/PC/IDs. |
 | 7. Errores runtime sin contexto | Resuelta | Los errores runtime incluyen funcion, pc, source span, instruccion y stack trace. |
 | 8. Tests sin invariantes internas de VM | Resuelta | Se ampliaron `vm-tests` con checks de `Word`, heap y BannerVM construido en C++. |
+| 9. Falta `restricted-inference` | Resuelta | Se agrego modo opt-in que bloquea inferencia implicita y permite solo tipos concretos, `_` o `auto`. |
 
 ## 1. Tolerancias semanticas en BackendDriver
 
@@ -407,6 +408,99 @@ compila y ejecuta todos los binarios unitarios de VM. Con esto, los cambios
 futuros en representacion de `Word`, GC, slots, dispatch o errores runtime
 tienen pruebas mas cercanas al punto de fallo.
 
+## 9. Falta implementar `restricted-inference`
+
+### Problema
+
+La extension de inferencia ya aceptaba type holes con `_` y `auto`, pero no
+existia una forma de activar el modo estricto descrito en el reporte: permitir
+inferencia solo cuando el programador la pide explicitamente.
+
+Eso hacia indistinguibles estos dos casos desde el flujo end-to-end:
+
+```hulk
+let x = 42 in print(x);
+let y: _ = 42 in print(y);
+```
+
+En modo normal ambos deben seguir siendo validos. En modo restringido, el
+primero debe fallar porque omitio la anotacion.
+
+### Solucion aplicada
+
+Se agrego `SemanticOptions`:
+
+```cpp
+struct SemanticOptions {
+    bool restricted_inference = false;
+};
+```
+
+`SemanticAnalyzer` recibe esas opciones y, si `restricted_inference` esta
+activo, ejecuta un pase previo a inferencia que recorre el AST y reporta error
+cuando encuentra anotaciones omitidas en:
+
+- bindings de `let`;
+- parametros y retornos de funciones;
+- parametros y retornos de metodos;
+- parametros de constructores;
+- atributos de tipos;
+- lambdas, por consistencia con el visitor existente.
+
+La regla se basa en el dato que ya conserva el AST: anotacion omitida es cadena
+vacia. Por eso `_` y `auto` quedan permitidos como solicitudes explicitas de
+inferencia.
+
+El diagnostico nuevo es:
+
+```text
+Inferencia implicita no permitida en modo restringido. Use ': _', ': auto' o escriba un tipo concreto.
+```
+
+Tambien se conecto la opcion en:
+
+```bash
+./hulk_backend archivo.hulk --restricted-inference
+./hulk_semantic archivo.hulk --restricted-inference
+```
+
+El backend pasa las opciones semanticas al analyzer y conserva la proteccion
+de la vulnerabilidad 1: si aparece este error, no genera IR, no genera
+BannerIR y no ejecuta VM.
+
+### Archivos relevantes
+
+- `src/semantic/analyzer.h`
+- `src/semantic/analyzer.cpp`
+- `src/semantic/main_semantic.cpp`
+- `src/backend/backend_driver.h`
+- `src/backend/backend_driver.cpp`
+- `src/backend/main.cpp`
+- `tests/backend/run_backend_tests.sh`
+- `tests/extension/restricted_valid_*.hulk`
+- `tests/extension/restricted_invalid_*.hulk`
+- `tests/expected/backend/restricted_valid_*.expected`
+
+### Validacion
+
+Se agregaron secciones nuevas al runner:
+
+```text
+BACKEND RESTRICTED-INFERENCE VALIDOS
+BACKEND RESTRICTED-INFERENCE INVALIDOS
+```
+
+Los validos demuestran que `: _`, `: auto`/tipo concreto y anotaciones
+explicitas siguen funcionando con la bandera. Los invalidos demuestran que:
+
+- el mismo programa pasa en modo normal;
+- falla con `--restricted-inference`;
+- el error contiene el diagnostico esperado;
+- no se emite `--emit-ir`;
+- no se emite `--emit-banner`;
+- no se emite `--emit-banner-compiled`;
+- no quedan archivos de salida creados.
+
 ## Comandos de verificacion ejecutados
 
 Durante el cierre de estas vulnerabilidades se ejecutaron:
@@ -415,14 +509,18 @@ Durante el cierre de estas vulnerabilidades se ejecutaron:
 make -B backend
 make vm-tests
 make backend-tests
+make semantic
+./hulk_semantic tests/extension/restricted_invalid_implicit_let.hulk --restricted-inference
+./hulk_semantic tests/extension/restricted_valid_let.hulk --restricted-inference
+./hulk_backend tests/extension/restricted_invalid_implicit_let.hulk
 ```
 
 Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 92
-  Passed : 92
+  Total  : 99
+  Passed : 99
   Failed : 0
 ```
 
@@ -437,9 +535,10 @@ trace.
 
 ## Estado final
 
-Las vulnerabilidades 1 a 8 quedaron cerradas con cambios de implementacion y
+Las vulnerabilidades 1 a 9 quedaron cerradas con cambios de implementacion y
 tests. El pipeline ahora respeta errores semanticos bloqueantes, libera heap no
 alcanzable, limita recursos de VM, permite inspeccionar la forma baja de
 BannerIR, reporta errores runtime con contexto suficiente para depurar desde
-el programa fuente y cuenta con pruebas unitarias para invariantes internas de
-la VM.
+el programa fuente, cuenta con pruebas unitarias para invariantes internas de
+la VM y ofrece un modo opt-in de inferencia restringida para exigir tipos
+concretos o type holes explicitos.
