@@ -167,7 +167,7 @@ private:
     }
 
     void visit(For& node) override {
-        report_unsupported(node.span, "for/range");
+        report_unsupported(node.span, "for sobre Iterable/range");
         visit_expr(node.GetIterable());
         visit_expr(node.GetBody());
     }

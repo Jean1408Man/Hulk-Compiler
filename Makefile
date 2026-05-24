@@ -86,7 +86,7 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests run-tests update-expected clean
+.PHONY: all parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
 
@@ -115,6 +115,28 @@ $(OBJDIR)/parser/parser_lexer_adapter.o: src/parser/parser_lexer_adapter.cpp
 # ─────────────────────────────────────────────────────────────────────────────
 parser-gen:
 	bison -d -o src/parser/parser.cpp src/parser/grammar.y
+
+parser-sync-check:
+	@set -e; \
+	if grep -n -E 'AUTO|UNDERSCORE_TYPE' \
+		src/parser/grammar.y \
+		src/parser/parser.cpp \
+		src/parser/parser.hpp \
+		src/lexer/token_kind.hpp \
+		src/lexer/keywords.hpp \
+		src/parser/parser_lexer_adapter.cpp; then \
+		echo "parser-sync-check: tokens AUTO/UNDERSCORE_TYPE no deben reaparecer; use IDENTIFIER como pseudo-tipo."; \
+		exit 1; \
+	fi; \
+	tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	mkdir -p "$$tmp_dir/src/parser"; \
+	cp src/parser/grammar.y "$$tmp_dir/src/parser/grammar.y"; \
+	( cd "$$tmp_dir" && bison -d -o src/parser/parser.cpp src/parser/grammar.y ); \
+	diff -u src/parser/parser.cpp "$$tmp_dir/src/parser/parser.cpp"; \
+	diff -u src/parser/parser.hpp "$$tmp_dir/src/parser/parser.hpp"; \
+	diff -u src/parser/location.hh "$$tmp_dir/src/parser/location.hh"; \
+	echo "parser-sync-check: parser generado sincronizado con grammar.y"
 
 lexer:
 	$(CXX) $(CXXFLAGS) \

@@ -1,9 +1,9 @@
 # Informe de vulnerabilidades resueltas en el flujo end-to-end
 
-Fecha: 2026-05-23
+Fecha: 2026-05-24
 
 Este informe resume el trabajo realizado durante el chat para cerrar las
-vulnerabilidades 1 a 10 del documento
+vulnerabilidades 1 a 13 del documento
 `doc/vulnerabilidades-flujo-end-to-end.md`. El foco fue endurecer el flujo:
 
 ```text
@@ -30,7 +30,10 @@ HULK fuente
 | 7. Errores runtime sin contexto | Resuelta | Los errores runtime incluyen funcion, pc, source span, instruccion y stack trace. |
 | 8. Tests sin invariantes internas de VM | Resuelta | Se ampliaron `vm-tests` con checks de `Word`, heap y BannerVM construido en C++. |
 | 9. Falta `restricted-inference` | Resuelta | Se agrego modo opt-in que bloquea inferencia implicita y permite solo tipos concretos, `_` o `auto`. |
-| 10. Features parciales en frontend/backend | Resuelta | `lambda`, `for/range`, `range()` y `protocol` fallan temprano con diagnostico semantico estable. |
+| 10. Features parciales en frontend/backend | Resuelta | `lambda`, `range()`/`Iterable` y `protocol` fallan temprano con diagnostico semantico estable; el caso bloqueado de `for` es `for` sobre `Iterable/range`. |
+| 11. Literales numericos invalidos convertidos a `0` | Resuelta | Los numeros no representables reportan error sintactico y no se transforman en `Number(0)`. |
+| 12. Escapes de strings aceptados pero no interpretados | Resuelta | Los literales decodifican `\n`, `\r`, `\t`, `\"` y `\\`; escapes desconocidos bloquean el frontend. |
+| 13. `grammar.y` y parser generado desincronizados | Resuelta | `auto` y `_` quedan como pseudo-tipos via `IDENTIFIER`, el parser fue regenerado y se agrego `make parser-sync-check`. |
 
 ## 1. Tolerancias semanticas en BackendDriver
 
@@ -502,7 +505,7 @@ explicitas siguen funcionando con la bandera. Los invalidos demuestran que:
 - no se emite `--emit-banner-compiled`;
 - no quedan archivos de salida creados.
 
-## 10. Limpiar del flujo end-to-end `lambda`, `range` y `protocol`
+## 10. Limpiar del flujo end-to-end `lambda`, `range`/`Iterable` y `protocol`
 
 ### Problema
 
@@ -510,7 +513,7 @@ El frontend conservaba piezas para features que no forman parte del flujo
 soportado por el backend final:
 
 - `lambda`;
-- `for/range`;
+- `for` sobre `Iterable/range`;
 - llamada `range(...)`;
 - `protocol`.
 
@@ -534,9 +537,14 @@ Feature no soportado en el flujo end-to-end: <feature>.
 Se bloquean explicitamente:
 
 - `lambda`;
-- `for/range`;
+- `for` sobre `Iterable/range`;
 - `range`;
 - `protocol`.
+
+Despues de revisar `hulk-docs.pdf`, el `for` queda tratado como una feature del
+lenguaje HULK. Lo que no se anuncia como soportado en este pipeline es el caso
+end-to-end que depende de `Iterable`/`range`, que todavia no tiene bajada segura
+hacia el backend.
 
 Tambien se retiro `range` de las funciones builtin registradas por
 `SemanticTables`, para que no quede anunciado como builtin soportado por
@@ -594,12 +602,174 @@ Cada caso verifica que:
 - no se emite `--emit-banner-compiled`;
 - no quedan archivos de salida creados.
 
+## 11. Literales numericos invalidos no se convierten silenciosamente en `0`
+
+### Problema
+
+`src/parser/parser_lexer_adapter.cpp` convertia lexemas numericos con
+`std::stod`. Si la conversion fallaba, el helper capturaba la excepcion y
+devolvia `0.0`. Eso permitia que un literal fuera de rango entrara al AST como
+un numero valido distinto del programa fuente.
+
+### Solucion aplicada
+
+La conversion ahora valida el resultado de `std::stod` y reporta un diagnostico
+sintactico con el span del token cuando el literal no se puede representar.
+Para un numero fuera de rango se emite:
+
+```text
+Literal numerico fuera de rango
+```
+
+En ese caso el adaptador devuelve el token especial de error de Bison
+`YYerror`, asi que no se construye `NUMBER_LITERAL(0)` como fallback. El
+`BackendDriver` ya bloquea el flujo si el parser o el motor de diagnosticos
+reportan errores, por lo que tampoco se genera IR, BannerIR ni BannerIR
+compilado.
+
+### Archivos relevantes
+
+- `src/parser/parser_lexer_adapter.cpp`
+- `tests/backend/run_backend_tests.sh`
+- `tests/backend/frontend_invalid/out_of_range_number.hulk`
+
+### Validacion
+
+Se agrego la seccion:
+
+```text
+BACKEND FRONTEND INVALIDOS
+```
+
+El test `out_of_range_number.hulk` verifica que:
+
+- el backend rechaza el programa en modo default;
+- el mensaje contiene `Literal numerico fuera de rango`;
+- no se emite `--emit-ir`;
+- no se emite `--emit-banner`;
+- no se emite `--emit-banner-compiled`;
+- no quedan archivos de salida creados.
+
+## 12. Escapes de strings se interpretan como valor semantico
+
+### Problema
+
+El lexer ya aceptaba barras invertidas dentro de strings, pero el parser solo
+quitaba las comillas externas con un `substr`. Por eso literales como
+`"a\nb"` llegaban al AST como los dos caracteres `\` y `n`, no como un salto
+de linea. La documentacion de HULK describe strings con comillas escapadas,
+line endings y tabs, asi que el valor ejecutado no coincidia con el programa
+escrito.
+
+### Solucion aplicada
+
+La decodificacion se movio al adaptador lexer-parser. Cuando llega un token
+`String`, `decode_string_lexeme` valida la forma del literal y traduce:
+
+```text
+\n -> newline
+\r -> carriage return
+\t -> tab
+\" -> "
+\\ -> \
+```
+
+Si encuentra un escape desconocido, reporta un diagnostico sintactico con el
+span del literal y devuelve `YYerror`; asi no se construye un nodo
+`String` con contenido corrupto. En `grammar.y`, `STRING_LITERAL` ahora usa el
+valor ya decodificado directamente, y `parser.cpp`/`parser.hpp` fueron
+regenerados con Bison.
+
+### Archivos relevantes
+
+- `src/parser/parser_lexer_adapter.cpp`
+- `src/parser/grammar.y`
+- `src/parser/parser.cpp`
+- `src/parser/parser.hpp`
+- `tests/backend/run_backend_tests.sh`
+- `tests/backend/regression/string_escapes.hulk`
+- `tests/backend/frontend_invalid/invalid_string_escape.hulk`
+- `tests/expected/backend/string_escapes.expected`
+
+### Validacion
+
+Se agrego una regresion positiva que imprime strings con salto de linea, tab,
+comillas escapadas y barra invertida. Tambien se agrego un caso negativo:
+
+```hulk
+print("bad\q");
+```
+
+El test invalido verifica que:
+
+- el backend rechaza el programa;
+- el mensaje contiene `Escape de string no soportado`;
+- no se emite `--emit-ir`;
+- no se emite `--emit-banner`;
+- no se emite `--emit-banner-compiled`;
+- no quedan archivos de salida creados.
+
+## 13. Parser generado sincronizado con `grammar.y`
+
+### Problema
+
+El informe marcaba una inconsistencia entre la gramatica fuente y el parser
+generado alrededor de los tokens `AUTO` y `UNDERSCORE_TYPE`. El lexer no
+producía esos tokens; en la practica `auto` y `_` viajan como identificadores,
+y la semantica los interpreta como type holes explicitos.
+
+### Solucion aplicada
+
+Se cerro la decision por la opcion conservadora ya compatible con el resto del
+compilador: mantener `auto` y `_` como pseudo-tipos expresados mediante
+`IDENTIFIER`. La regla de tipos queda en:
+
+```yacc
+type_expr
+    : IDENTIFIER
+```
+
+El parser generado fue regenerado desde `src/parser/grammar.y`, por lo que
+`src/parser/parser.cpp` y `src/parser/parser.hpp` reflejan esa fuente. Ademas,
+se agrego el target:
+
+```bash
+make parser-sync-check
+```
+
+Este target:
+
+- falla si reaparecen `AUTO` o `UNDERSCORE_TYPE` en lexer/parser;
+- regenera Bison en un arbol temporal con las mismas rutas relativas;
+- compara `parser.cpp`, `parser.hpp` y `location.hh` contra los archivos del repo;
+- falla si hay drift entre la gramatica y lo generado.
+
+### Archivos relevantes
+
+- `Makefile`
+- `src/parser/grammar.y`
+- `src/parser/parser.cpp`
+- `src/parser/parser.hpp`
+- `src/parser/location.hh`
+
+### Validacion
+
+Se ejecuto `make parser-sync-check`. El target confirma:
+
+```text
+parser-sync-check: parser generado sincronizado con grammar.y
+```
+
+Tambien se mantienen verdes las pruebas que usan `auto` y `_` como pseudo-tipos
+en `tests/extension`, incluyendo los casos de inferencia restringida.
+
 ## Comandos de verificacion ejecutados
 
 Durante el cierre de estas vulnerabilidades se ejecutaron:
 
 ```bash
 make parser-gen
+make parser-sync-check
 make parser-demo
 make -B backend
 make vm-tests
@@ -611,14 +781,17 @@ make semantic
 ./hulk_backend tests/backend/unsupported/unsupported_lambda.hulk
 ./hulk_backend tests/backend/unsupported/unsupported_protocol.hulk --emit-ir -o /tmp/unsupported_protocol.hir
 ./hulk_backend tests/backend/unsupported/unsupported_range_call.hulk --emit-banner-compiled -o /tmp/unsupported_range.compiled.banner
+./hulk_backend tests/backend/frontend_invalid/out_of_range_number.hulk
+./hulk_backend tests/backend/regression/string_escapes.hulk
+./hulk_backend tests/backend/frontend_invalid/invalid_string_escape.hulk
 ```
 
 Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 103
-  Passed : 103
+  Total  : 106
+  Passed : 106
   Failed : 0
 ```
 
@@ -633,7 +806,7 @@ trace.
 
 ## Estado final
 
-Las vulnerabilidades 1 a 10 quedaron cerradas con cambios de implementacion y
+Las vulnerabilidades 1 a 13 quedaron cerradas con cambios de implementacion y
 tests. El pipeline ahora respeta errores semanticos bloqueantes, libera heap no
 alcanzable, limita recursos de VM, permite inspeccionar la forma baja de
 BannerIR, reporta errores runtime con contexto suficiente para depurar desde
@@ -641,4 +814,8 @@ el programa fuente, cuenta con pruebas unitarias para invariantes internas de
 la VM y ofrece un modo opt-in de inferencia restringida para exigir tipos
 concretos o type holes explicitos. Ademas, los features fuera de alcance
 end-to-end quedan bloqueados temprano con diagnosticos probados y no llegan a
-la generacion de IR ni a BannerVM.
+la generacion de IR ni a BannerVM, y los literales numericos no representables
+ya no pueden convertirse silenciosamente en `0`. Los strings tambien llegan al
+AST y al backend con sus escapes decodificados, y los escapes desconocidos
+fallan temprano. Finalmente, el parser generado queda protegido contra drift
+respecto a `grammar.y` mediante un chequeo reproducible.

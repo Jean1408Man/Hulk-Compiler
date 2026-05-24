@@ -95,13 +95,6 @@
 %code {
     #define yylex() yylex(driver)
 
-    static std::string unquote_string_literal(const std::string& lexeme) {
-        if (lexeme.size() >= 2 && lexeme.front() == '"' && lexeme.back() == '"') {
-            return lexeme.substr(1, lexeme.size() - 2);
-        }
-        return lexeme;
-    }
-
     static hulk::common::Span to_span(const hulk::parser::Parser::location_type& loc) {
         return hulk::common::Span {
             .start = { .index = 0,
@@ -863,7 +856,7 @@ primary
       }
     | STRING_LITERAL
       {
-          $$ = std::make_unique<Hulk::String>(unquote_string_literal($1));
+          $$ = std::make_unique<Hulk::String>($1);
           $$->span = to_span(@$);
       }
     | TRUE
