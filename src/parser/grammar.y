@@ -105,6 +105,14 @@
                        .column = static_cast<std::size_t>(loc.end.column) },
         };
     }
+
+    static hulk::parser::ExprPtr make_global_entrypoint(hulk::parser::ExprList exprs) {
+        if (exprs.size() == 1) return std::move(exprs.front());
+
+        // Extension local del flujo end-to-end: varias expresiones globales se
+        // ejecutan como un bloque implicito y el valor del programa es el de la ultima.
+        return std::make_unique<Hulk::ExprBlock>(std::move(exprs));
+    }
 }
 
 %token <std::string> IDENTIFIER STRING_LITERAL ERROR_TOKEN
@@ -168,15 +176,10 @@ program
                   std::move($1.decls),
                   std::make_unique<Hulk::ExprBlock>(ExprList {})
               );
-          } else if ($1.exprs.size() == 1) {
-              $$ = std::make_unique<Hulk::Program>(
-                  std::move($1.decls),
-                  std::move($1.exprs.front())
-              );
           } else {
               $$ = std::make_unique<Hulk::Program>(
                   std::move($1.decls),
-                  std::make_unique<Hulk::ExprBlock>(std::move($1.exprs))
+                  make_global_entrypoint(std::move($1.exprs))
               );
           }
           driver.set_result(std::move($$));

@@ -3,7 +3,7 @@
 Fecha: 2026-05-24
 
 Este informe resume el trabajo realizado durante el chat para cerrar las
-vulnerabilidades 1 a 13 del documento
+vulnerabilidades 1 a 14 del documento
 `doc/vulnerabilidades-flujo-end-to-end.md`. El foco fue endurecer el flujo:
 
 ```text
@@ -34,6 +34,7 @@ HULK fuente
 | 11. Literales numericos invalidos convertidos a `0` | Resuelta | Los numeros no representables reportan error sintactico y no se transforman en `Number(0)`. |
 | 12. Escapes de strings aceptados pero no interpretados | Resuelta | Los literales decodifican `\n`, `\r`, `\t`, `\"` y `\\`; escapes desconocidos bloquean el frontend. |
 | 13. `grammar.y` y parser generado desincronizados | Resuelta | `auto` y `_` quedan como pseudo-tipos via `IDENTIFIER`, el parser fue regenerado y se agrego `make parser-sync-check`. |
+| 14. Multiples expresiones globales | Resuelta | Se formalizo como extension local: `decl* expr+` se ejecuta como bloque implicito y queda documentado/probado. |
 
 ## 1. Tolerancias semanticas en BackendDriver
 
@@ -763,6 +764,68 @@ parser-sync-check: parser generado sincronizado con grammar.y
 Tambien se mantienen verdes las pruebas que usan `auto` y `_` como pseudo-tipos
 en `tests/extension`, incluyendo los casos de inferencia restringida.
 
+## 14. Multiples expresiones globales como extension local
+
+### Problema
+
+La referencia academica describe un programa como cero o mas declaraciones
+globales y una unica expresion final. El parser del repositorio aceptaba varias
+expresiones globales y las empaquetaba en un `ExprBlock`, pero esa extension no
+estaba documentada como parte del dialecto end-to-end.
+
+### Solucion aplicada
+
+Se formalizo la decision de mantener la extension porque buena parte de la
+suite y de los ejemplos operativos del proyecto ya dependen de ella. La regla
+del dialecto implementado queda asi:
+
+```text
+decl* expr+
+```
+
+Si hay una sola expresion global, se conserva como entrypoint directo. Si hay
+mas de una, el parser construye un bloque implicito equivalente a:
+
+```hulk
+{
+    expr1;
+    expr2;
+    exprN;
+}
+```
+
+Las expresiones se ejecutan en orden de aparicion y el valor del programa es el
+valor de la ultima expresion, igual que en un bloque explicito.
+
+Para que no sea un comportamiento escondido, se agrego el helper
+`make_global_entrypoint` en `grammar.y` y un comentario junto a la construccion
+del `ExprBlock` implicito. Tambien se documento la diferencia entre HULK base y
+el dialecto end-to-end en `doc/analisis_gramatica_hulk_base.md`.
+
+### Archivos relevantes
+
+- `src/parser/grammar.y`
+- `src/parser/parser.cpp`
+- `src/parser/parser.hpp`
+- `doc/analisis_gramatica_hulk_base.md`
+- `tests/backend/regression/multiple_global_exprs.hulk`
+- `tests/expected/backend/multiple_global_exprs.expected`
+
+### Validacion
+
+Se agrego la regresion `multiple_global_exprs.hulk`, que verifica ejecucion en
+orden de varias expresiones globales:
+
+```hulk
+print("global 1");
+print("global 2");
+print("global 3");
+```
+
+La suite de backend tambien conserva cubiertos los programas historicos que
+dependen de esta extension, como `c4_literals`, `c4_strings`, `c5_recursion` y
+`c6_inheritance`.
+
 ## Comandos de verificacion ejecutados
 
 Durante el cierre de estas vulnerabilidades se ejecutaron:
@@ -784,14 +847,15 @@ make semantic
 ./hulk_backend tests/backend/frontend_invalid/out_of_range_number.hulk
 ./hulk_backend tests/backend/regression/string_escapes.hulk
 ./hulk_backend tests/backend/frontend_invalid/invalid_string_escape.hulk
+./hulk_backend tests/backend/regression/multiple_global_exprs.hulk
 ```
 
 Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 106
-  Passed : 106
+  Total  : 107
+  Passed : 107
   Failed : 0
 ```
 
@@ -806,7 +870,7 @@ trace.
 
 ## Estado final
 
-Las vulnerabilidades 1 a 13 quedaron cerradas con cambios de implementacion y
+Las vulnerabilidades 1 a 14 quedaron cerradas con cambios de implementacion y
 tests. El pipeline ahora respeta errores semanticos bloqueantes, libera heap no
 alcanzable, limita recursos de VM, permite inspeccionar la forma baja de
 BannerIR, reporta errores runtime con contexto suficiente para depurar desde
@@ -818,4 +882,6 @@ la generacion de IR ni a BannerVM, y los literales numericos no representables
 ya no pueden convertirse silenciosamente en `0`. Los strings tambien llegan al
 AST y al backend con sus escapes decodificados, y los escapes desconocidos
 fallan temprano. Finalmente, el parser generado queda protegido contra drift
-respecto a `grammar.y` mediante un chequeo reproducible.
+respecto a `grammar.y` mediante un chequeo reproducible. El soporte de multiples
+expresiones globales ya no queda implicito: es una extension local documentada,
+probada y definida como bloque global implicito.

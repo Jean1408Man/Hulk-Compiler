@@ -57,7 +57,15 @@
         };
     }
 
-#line 61 "src/parser/parser.cpp"
+    static hulk::parser::ExprPtr make_global_entrypoint(hulk::parser::ExprList exprs) {
+        if (exprs.size() == 1) return std::move(exprs.front());
+
+        // Extension local del flujo end-to-end: varias expresiones globales se
+        // ejecutan como un bloque implicito y el valor del programa es el de la ultima.
+        return std::make_unique<Hulk::ExprBlock>(std::move(exprs));
+    }
+
+#line 69 "src/parser/parser.cpp"
 
 
 #ifndef YY_
@@ -150,7 +158,7 @@
 
 #line 4 "src/parser/grammar.y"
 namespace hulk { namespace parser {
-#line 154 "src/parser/parser.cpp"
+#line 162 "src/parser/parser.cpp"
 
   /// Build a parser object.
   Parser::Parser (hulk::parser::ParserDriver& driver_yyarg)
@@ -1082,7 +1090,7 @@ namespace hulk { namespace parser {
           switch (yyn)
             {
   case 2: // program: top_level_items
-#line 164 "src/parser/grammar.y"
+#line 172 "src/parser/grammar.y"
       {
           if (yystack_[0].value.as < hulk::parser::TopLevelItems > ().exprs.empty()) {
               driver.report_syntax_error("el programa debe contener al menos una expresion global");
@@ -1090,32 +1098,27 @@ namespace hulk { namespace parser {
                   std::move(yystack_[0].value.as < hulk::parser::TopLevelItems > ().decls),
                   std::make_unique<Hulk::ExprBlock>(ExprList {})
               );
-          } else if (yystack_[0].value.as < hulk::parser::TopLevelItems > ().exprs.size() == 1) {
-              yylhs.value.as < ProgramPtr > () = std::make_unique<Hulk::Program>(
-                  std::move(yystack_[0].value.as < hulk::parser::TopLevelItems > ().decls),
-                  std::move(yystack_[0].value.as < hulk::parser::TopLevelItems > ().exprs.front())
-              );
           } else {
               yylhs.value.as < ProgramPtr > () = std::make_unique<Hulk::Program>(
                   std::move(yystack_[0].value.as < hulk::parser::TopLevelItems > ().decls),
-                  std::make_unique<Hulk::ExprBlock>(std::move(yystack_[0].value.as < hulk::parser::TopLevelItems > ().exprs))
+                  make_global_entrypoint(std::move(yystack_[0].value.as < hulk::parser::TopLevelItems > ().exprs))
               );
           }
           driver.set_result(std::move(yylhs.value.as < ProgramPtr > ()));
       }
-#line 1107 "src/parser/parser.cpp"
+#line 1110 "src/parser/parser.cpp"
     break;
 
   case 3: // top_level_items: top_level_item opt_semi
-#line 188 "src/parser/grammar.y"
+#line 191 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::TopLevelItems > () = std::move(yystack_[1].value.as < hulk::parser::TopLevelItems > ());
       }
-#line 1115 "src/parser/parser.cpp"
+#line 1118 "src/parser/parser.cpp"
     break;
 
   case 4: // top_level_items: top_level_items top_level_item opt_semi
-#line 192 "src/parser/grammar.y"
+#line 195 "src/parser/grammar.y"
       {
           for (auto& decl : yystack_[1].value.as < hulk::parser::TopLevelItems > ().decls) {
               yystack_[2].value.as < hulk::parser::TopLevelItems > ().decls.push_back(std::move(decl));
@@ -1125,53 +1128,53 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < hulk::parser::TopLevelItems > () = std::move(yystack_[2].value.as < hulk::parser::TopLevelItems > ());
       }
-#line 1129 "src/parser/parser.cpp"
+#line 1132 "src/parser/parser.cpp"
     break;
 
   case 5: // top_level_item: decl
-#line 205 "src/parser/grammar.y"
+#line 208 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::TopLevelItems > () = hulk::parser::TopLevelItems {};
           yylhs.value.as < hulk::parser::TopLevelItems > ().decls.push_back(std::move(yystack_[0].value.as < DeclPtr > ()));
       }
-#line 1138 "src/parser/parser.cpp"
+#line 1141 "src/parser/parser.cpp"
     break;
 
   case 6: // top_level_item: expr
-#line 210 "src/parser/grammar.y"
+#line 213 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::TopLevelItems > () = hulk::parser::TopLevelItems {};
           yylhs.value.as < hulk::parser::TopLevelItems > ().exprs.push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
       }
-#line 1147 "src/parser/parser.cpp"
+#line 1150 "src/parser/parser.cpp"
     break;
 
   case 9: // decl: function_decl
-#line 223 "src/parser/grammar.y"
+#line 226 "src/parser/grammar.y"
       {
           yylhs.value.as < DeclPtr > () = std::move(yystack_[0].value.as < DeclPtr > ());
       }
-#line 1155 "src/parser/parser.cpp"
+#line 1158 "src/parser/parser.cpp"
     break;
 
   case 10: // decl: type_decl
-#line 227 "src/parser/grammar.y"
+#line 230 "src/parser/grammar.y"
       {
           yylhs.value.as < DeclPtr > () = std::move(yystack_[0].value.as < DeclPtr > ());
       }
-#line 1163 "src/parser/parser.cpp"
+#line 1166 "src/parser/parser.cpp"
     break;
 
   case 11: // decl: protocol_decl
-#line 231 "src/parser/grammar.y"
+#line 234 "src/parser/grammar.y"
       {
           yylhs.value.as < DeclPtr > () = std::move(yystack_[0].value.as < DeclPtr > ());
       }
-#line 1171 "src/parser/parser.cpp"
+#line 1174 "src/parser/parser.cpp"
     break;
 
   case 12: // function_decl: FUNCTION IDENTIFIER LPAREN params_opt RPAREN return_ann_opt FATARROW expr SEMICOLON
-#line 238 "src/parser/grammar.y"
+#line 241 "src/parser/grammar.y"
       {
           if (yystack_[3].value.as < std::string > ().empty()) {
               yylhs.value.as < DeclPtr > () = std::make_unique<Hulk::FunctionDecl>(yystack_[7].value.as < std::string > (), std::move(yystack_[5].value.as < ParamList > ()), std::move(yystack_[1].value.as < ExprPtr > ()));
@@ -1180,11 +1183,11 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < DeclPtr > ()->span = to_span(yylhs.location);
       }
-#line 1184 "src/parser/parser.cpp"
+#line 1187 "src/parser/parser.cpp"
     break;
 
   case 13: // function_decl: FUNCTION IDENTIFIER LPAREN params_opt RPAREN return_ann_opt block
-#line 247 "src/parser/grammar.y"
+#line 250 "src/parser/grammar.y"
       {
           if (yystack_[1].value.as < std::string > ().empty()) {
               yylhs.value.as < DeclPtr > () = std::make_unique<Hulk::FunctionDecl>(yystack_[5].value.as < std::string > (), std::move(yystack_[3].value.as < ParamList > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
@@ -1193,11 +1196,11 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < DeclPtr > ()->span = to_span(yylhs.location);
       }
-#line 1197 "src/parser/parser.cpp"
+#line 1200 "src/parser/parser.cpp"
     break;
 
   case 14: // type_decl: TYPE IDENTIFIER ctor_params_opt inherits_opt LBRACE type_member_list RBRACE
-#line 259 "src/parser/grammar.y"
+#line 262 "src/parser/grammar.y"
       {
           if (yystack_[4].value.as < ParamList > ().empty() && !yystack_[3].value.as < hulk::parser::InheritsInfo > ().hasParent) {
               yylhs.value.as < DeclPtr > () = std::make_unique<Hulk::TypeDecl>(yystack_[5].value.as < std::string > (), std::move(yystack_[1].value.as < TypeMemberList > ()));
@@ -1216,110 +1219,110 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < DeclPtr > ()->span = to_span(yylhs.location);
       }
-#line 1220 "src/parser/parser.cpp"
+#line 1223 "src/parser/parser.cpp"
     break;
 
   case 15: // protocol_decl: PROTOCOL IDENTIFIER LBRACE protocol_member_list RBRACE
-#line 281 "src/parser/grammar.y"
+#line 284 "src/parser/grammar.y"
       {
           yylhs.value.as < DeclPtr > () = std::make_unique<Hulk::ProtocolDecl>(yystack_[3].value.as < std::string > (), std::move(yystack_[1].value.as < ProtocolMethodList > ()));
           yylhs.value.as < DeclPtr > ()->span = to_span(yylhs.location);
       }
-#line 1229 "src/parser/parser.cpp"
+#line 1232 "src/parser/parser.cpp"
     break;
 
   case 16: // protocol_member_list: %empty
-#line 289 "src/parser/grammar.y"
+#line 292 "src/parser/grammar.y"
       {
           yylhs.value.as < ProtocolMethodList > () = hulk::parser::ProtocolMethodList {};
       }
-#line 1237 "src/parser/parser.cpp"
+#line 1240 "src/parser/parser.cpp"
     break;
 
   case 17: // protocol_member_list: protocol_member_list protocol_member
-#line 293 "src/parser/grammar.y"
+#line 296 "src/parser/grammar.y"
       {
           yystack_[1].value.as < ProtocolMethodList > ().push_back(std::move(yystack_[0].value.as < Hulk::ProtocolMethodSig > ()));
           yylhs.value.as < ProtocolMethodList > () = std::move(yystack_[1].value.as < ProtocolMethodList > ());
       }
-#line 1246 "src/parser/parser.cpp"
+#line 1249 "src/parser/parser.cpp"
     break;
 
   case 18: // protocol_member: IDENTIFIER LPAREN params_opt RPAREN return_ann_opt SEMICOLON
-#line 301 "src/parser/grammar.y"
+#line 304 "src/parser/grammar.y"
       {
           yylhs.value.as < Hulk::ProtocolMethodSig > () = Hulk::ProtocolMethodSig(yystack_[5].value.as < std::string > (), std::move(yystack_[3].value.as < ParamList > ()), yystack_[1].value.as < std::string > ());
       }
-#line 1254 "src/parser/parser.cpp"
+#line 1257 "src/parser/parser.cpp"
     break;
 
   case 19: // ctor_params_opt: LPAREN params_opt RPAREN
-#line 308 "src/parser/grammar.y"
+#line 311 "src/parser/grammar.y"
       {
           yylhs.value.as < ParamList > () = std::move(yystack_[1].value.as < ParamList > ());
       }
-#line 1262 "src/parser/parser.cpp"
+#line 1265 "src/parser/parser.cpp"
     break;
 
   case 20: // ctor_params_opt: %empty
-#line 312 "src/parser/grammar.y"
+#line 315 "src/parser/grammar.y"
       {
           yylhs.value.as < ParamList > () = ParamList {};
       }
-#line 1270 "src/parser/parser.cpp"
+#line 1273 "src/parser/parser.cpp"
     break;
 
   case 21: // inherits_opt: INHERITS IDENTIFIER parent_args_opt
-#line 319 "src/parser/grammar.y"
+#line 322 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::InheritsInfo > () = hulk::parser::InheritsInfo { yystack_[1].value.as < std::string > (), std::move(yystack_[0].value.as < ExprList > ()), true };
       }
-#line 1278 "src/parser/parser.cpp"
+#line 1281 "src/parser/parser.cpp"
     break;
 
   case 22: // inherits_opt: %empty
-#line 323 "src/parser/grammar.y"
+#line 326 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::InheritsInfo > () = hulk::parser::InheritsInfo {};
       }
-#line 1286 "src/parser/parser.cpp"
+#line 1289 "src/parser/parser.cpp"
     break;
 
   case 23: // parent_args_opt: LPAREN args_opt RPAREN
-#line 330 "src/parser/grammar.y"
+#line 333 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprList > () = std::move(yystack_[1].value.as < ExprList > ());
       }
-#line 1294 "src/parser/parser.cpp"
+#line 1297 "src/parser/parser.cpp"
     break;
 
   case 24: // parent_args_opt: %empty
-#line 334 "src/parser/grammar.y"
+#line 337 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprList > () = ExprList {};
       }
-#line 1302 "src/parser/parser.cpp"
+#line 1305 "src/parser/parser.cpp"
     break;
 
   case 25: // type_member_list: %empty
-#line 341 "src/parser/grammar.y"
+#line 344 "src/parser/grammar.y"
       {
           yylhs.value.as < TypeMemberList > () = TypeMemberList {};
       }
-#line 1310 "src/parser/parser.cpp"
+#line 1313 "src/parser/parser.cpp"
     break;
 
   case 26: // type_member_list: type_member_list type_member
-#line 345 "src/parser/grammar.y"
+#line 348 "src/parser/grammar.y"
       {
           yystack_[1].value.as < TypeMemberList > ().push_back(std::move(yystack_[0].value.as < Hulk::TypeMember > ()));
           yylhs.value.as < TypeMemberList > () = std::move(yystack_[1].value.as < TypeMemberList > ());
       }
-#line 1319 "src/parser/parser.cpp"
+#line 1322 "src/parser/parser.cpp"
     break;
 
   case 27: // type_member: IDENTIFIER type_ann_opt ASSIGN expr SEMICOLON
-#line 353 "src/parser/grammar.y"
+#line 356 "src/parser/grammar.y"
       {
           if (yystack_[3].value.as < std::string > ().empty()) {
               yylhs.value.as < Hulk::TypeMember > () = Hulk::TypeMember(
@@ -1334,11 +1337,11 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < Hulk::TypeMember > ().node->span = to_span(yylhs.location);
       }
-#line 1338 "src/parser/parser.cpp"
+#line 1341 "src/parser/parser.cpp"
     break;
 
   case 28: // type_member: IDENTIFIER LPAREN params_opt RPAREN return_ann_opt FATARROW expr SEMICOLON
-#line 368 "src/parser/grammar.y"
+#line 371 "src/parser/grammar.y"
       {
           if (yystack_[3].value.as < std::string > ().empty()) {
               yylhs.value.as < Hulk::TypeMember > () = Hulk::TypeMember(
@@ -1353,11 +1356,11 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < Hulk::TypeMember > ().node->span = to_span(yylhs.location);
       }
-#line 1357 "src/parser/parser.cpp"
+#line 1360 "src/parser/parser.cpp"
     break;
 
   case 29: // type_member: IDENTIFIER LPAREN params_opt RPAREN return_ann_opt block
-#line 383 "src/parser/grammar.y"
+#line 386 "src/parser/grammar.y"
       {
           if (yystack_[1].value.as < std::string > ().empty()) {
               yylhs.value.as < Hulk::TypeMember > () = Hulk::TypeMember(
@@ -1372,46 +1375,46 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < Hulk::TypeMember > ().node->span = to_span(yylhs.location);
       }
-#line 1376 "src/parser/parser.cpp"
+#line 1379 "src/parser/parser.cpp"
     break;
 
   case 30: // params_opt: param_list
-#line 401 "src/parser/grammar.y"
+#line 404 "src/parser/grammar.y"
       {
           yylhs.value.as < ParamList > () = std::move(yystack_[0].value.as < ParamList > ());
       }
-#line 1384 "src/parser/parser.cpp"
+#line 1387 "src/parser/parser.cpp"
     break;
 
   case 31: // params_opt: %empty
-#line 405 "src/parser/grammar.y"
+#line 408 "src/parser/grammar.y"
       {
           yylhs.value.as < ParamList > () = ParamList {};
       }
-#line 1392 "src/parser/parser.cpp"
+#line 1395 "src/parser/parser.cpp"
     break;
 
   case 32: // param_list: param
-#line 412 "src/parser/grammar.y"
+#line 415 "src/parser/grammar.y"
       {
           ParamList params;
           params.push_back(std::move(yystack_[0].value.as < Hulk::Param > ()));
           yylhs.value.as < ParamList > () = std::move(params);
       }
-#line 1402 "src/parser/parser.cpp"
+#line 1405 "src/parser/parser.cpp"
     break;
 
   case 33: // param_list: param_list COMMA param
-#line 418 "src/parser/grammar.y"
+#line 421 "src/parser/grammar.y"
       {
           yystack_[2].value.as < ParamList > ().push_back(std::move(yystack_[0].value.as < Hulk::Param > ()));
           yylhs.value.as < ParamList > () = std::move(yystack_[2].value.as < ParamList > ());
       }
-#line 1411 "src/parser/parser.cpp"
+#line 1414 "src/parser/parser.cpp"
     break;
 
   case 34: // param: IDENTIFIER type_ann_opt
-#line 426 "src/parser/grammar.y"
+#line 429 "src/parser/grammar.y"
       {
           if (yystack_[0].value.as < std::string > ().empty()) {
               yylhs.value.as < Hulk::Param > () = Hulk::Param(yystack_[1].value.as < std::string > ());
@@ -1419,99 +1422,99 @@ namespace hulk { namespace parser {
               yylhs.value.as < Hulk::Param > () = Hulk::Param(yystack_[1].value.as < std::string > (), yystack_[0].value.as < std::string > ());
           }
       }
-#line 1423 "src/parser/parser.cpp"
+#line 1426 "src/parser/parser.cpp"
     break;
 
   case 35: // return_ann_opt: COLON type_expr
-#line 437 "src/parser/grammar.y"
+#line 440 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = std::move(yystack_[0].value.as < std::string > ());
       }
-#line 1431 "src/parser/parser.cpp"
+#line 1434 "src/parser/parser.cpp"
     break;
 
   case 36: // return_ann_opt: %empty
-#line 441 "src/parser/grammar.y"
+#line 444 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = "";
       }
-#line 1439 "src/parser/parser.cpp"
+#line 1442 "src/parser/parser.cpp"
     break;
 
   case 37: // type_ann_opt: COLON type_expr
-#line 448 "src/parser/grammar.y"
+#line 451 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = std::move(yystack_[0].value.as < std::string > ());
       }
-#line 1447 "src/parser/parser.cpp"
+#line 1450 "src/parser/parser.cpp"
     break;
 
   case 38: // type_ann_opt: %empty
-#line 452 "src/parser/grammar.y"
+#line 455 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = "";
       }
-#line 1455 "src/parser/parser.cpp"
+#line 1458 "src/parser/parser.cpp"
     break;
 
   case 39: // type_expr: IDENTIFIER
-#line 459 "src/parser/grammar.y"
+#line 462 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = std::move(yystack_[0].value.as < std::string > ());
       }
-#line 1463 "src/parser/parser.cpp"
+#line 1466 "src/parser/parser.cpp"
     break;
 
   case 40: // expr: lambda_expr
-#line 466 "src/parser/grammar.y"
+#line 469 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1471 "src/parser/parser.cpp"
+#line 1474 "src/parser/parser.cpp"
     break;
 
   case 41: // expr: let_expr
-#line 470 "src/parser/grammar.y"
+#line 473 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1479 "src/parser/parser.cpp"
+#line 1482 "src/parser/parser.cpp"
     break;
 
   case 42: // expr: if_expr
-#line 474 "src/parser/grammar.y"
+#line 477 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1487 "src/parser/parser.cpp"
+#line 1490 "src/parser/parser.cpp"
     break;
 
   case 43: // expr: while_expr
-#line 478 "src/parser/grammar.y"
+#line 481 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1495 "src/parser/parser.cpp"
+#line 1498 "src/parser/parser.cpp"
     break;
 
   case 44: // expr: for_expr
-#line 482 "src/parser/grammar.y"
+#line 485 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1503 "src/parser/parser.cpp"
+#line 1506 "src/parser/parser.cpp"
     break;
 
   case 45: // expr: assign_expr
-#line 486 "src/parser/grammar.y"
+#line 489 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1511 "src/parser/parser.cpp"
+#line 1514 "src/parser/parser.cpp"
     break;
 
   case 46: // lambda_expr: LPAREN lambda_param_list RPAREN return_ann_opt FATARROW expr
-#line 493 "src/parser/grammar.y"
+#line 496 "src/parser/grammar.y"
       {
           if (yystack_[2].value.as < std::string > ().empty()) {
               yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Lambda>(std::move(yystack_[4].value.as < ParamList > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
@@ -1520,66 +1523,66 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1524 "src/parser/parser.cpp"
+#line 1527 "src/parser/parser.cpp"
     break;
 
   case 47: // lambda_param_list: lambda_param
-#line 505 "src/parser/grammar.y"
+#line 508 "src/parser/grammar.y"
       {
           ParamList params;
           params.push_back(std::move(yystack_[0].value.as < Hulk::Param > ()));
           yylhs.value.as < ParamList > () = std::move(params);
       }
-#line 1534 "src/parser/parser.cpp"
+#line 1537 "src/parser/parser.cpp"
     break;
 
   case 48: // lambda_param_list: lambda_param_list COMMA lambda_param
-#line 511 "src/parser/grammar.y"
+#line 514 "src/parser/grammar.y"
       {
           yystack_[2].value.as < ParamList > ().push_back(std::move(yystack_[0].value.as < Hulk::Param > ()));
           yylhs.value.as < ParamList > () = std::move(yystack_[2].value.as < ParamList > ());
       }
-#line 1543 "src/parser/parser.cpp"
+#line 1546 "src/parser/parser.cpp"
     break;
 
   case 49: // lambda_param: IDENTIFIER COLON type_expr
-#line 519 "src/parser/grammar.y"
+#line 522 "src/parser/grammar.y"
       {
           yylhs.value.as < Hulk::Param > () = Hulk::Param(yystack_[2].value.as < std::string > (), yystack_[0].value.as < std::string > ());
       }
-#line 1551 "src/parser/parser.cpp"
+#line 1554 "src/parser/parser.cpp"
     break;
 
   case 50: // let_expr: LET binding_list IN expr
-#line 526 "src/parser/grammar.y"
+#line 529 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LetIn>(std::move(yystack_[2].value.as < BindingList > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1560 "src/parser/parser.cpp"
+#line 1563 "src/parser/parser.cpp"
     break;
 
   case 51: // binding_list: binding
-#line 534 "src/parser/grammar.y"
+#line 537 "src/parser/grammar.y"
       {
           BindingList bindings;
           bindings.push_back(std::move(yystack_[0].value.as < BindingPtr > ()));
           yylhs.value.as < BindingList > () = std::move(bindings);
       }
-#line 1570 "src/parser/parser.cpp"
+#line 1573 "src/parser/parser.cpp"
     break;
 
   case 52: // binding_list: binding_list COMMA binding
-#line 540 "src/parser/grammar.y"
+#line 543 "src/parser/grammar.y"
       {
           yystack_[2].value.as < BindingList > ().push_back(std::move(yystack_[0].value.as < BindingPtr > ()));
           yylhs.value.as < BindingList > () = std::move(yystack_[2].value.as < BindingList > ());
       }
-#line 1579 "src/parser/parser.cpp"
+#line 1582 "src/parser/parser.cpp"
     break;
 
   case 53: // binding: IDENTIFIER type_ann_opt ASSIGN expr
-#line 548 "src/parser/grammar.y"
+#line 551 "src/parser/grammar.y"
       {
           if (yystack_[2].value.as < std::string > ().empty()) {
               yylhs.value.as < BindingPtr > () = std::make_unique<Hulk::VariableBinding>(yystack_[3].value.as < std::string > (), std::move(yystack_[0].value.as < ExprPtr > ()));
@@ -1588,55 +1591,55 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < BindingPtr > ()->span = to_span(yylhs.location);
       }
-#line 1592 "src/parser/parser.cpp"
+#line 1595 "src/parser/parser.cpp"
     break;
 
   case 54: // if_expr: IF LPAREN expr RPAREN expr elif_clauses ELSE expr
-#line 560 "src/parser/grammar.y"
+#line 563 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::IfStmt>(std::move(yystack_[5].value.as < ExprPtr > ()), std::move(yystack_[3].value.as < ExprPtr > ()), std::move(yystack_[2].value.as < ElifList > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1601 "src/parser/parser.cpp"
+#line 1604 "src/parser/parser.cpp"
     break;
 
   case 55: // elif_clauses: %empty
-#line 568 "src/parser/grammar.y"
+#line 571 "src/parser/grammar.y"
       {
           yylhs.value.as < ElifList > () = ElifList {};
       }
-#line 1609 "src/parser/parser.cpp"
+#line 1612 "src/parser/parser.cpp"
     break;
 
   case 56: // elif_clauses: elif_clauses ELIF LPAREN expr RPAREN expr
-#line 572 "src/parser/grammar.y"
+#line 575 "src/parser/grammar.y"
       {
           yystack_[5].value.as < ElifList > ().emplace_back(std::move(yystack_[2].value.as < ExprPtr > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ElifList > () = std::move(yystack_[5].value.as < ElifList > ());
       }
-#line 1618 "src/parser/parser.cpp"
+#line 1621 "src/parser/parser.cpp"
     break;
 
   case 57: // while_expr: WHILE LPAREN expr RPAREN expr
-#line 580 "src/parser/grammar.y"
+#line 583 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::WhileStmt>(std::move(yystack_[2].value.as < ExprPtr > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1627 "src/parser/parser.cpp"
+#line 1630 "src/parser/parser.cpp"
     break;
 
   case 58: // for_expr: FOR LPAREN IDENTIFIER IN expr RPAREN expr
-#line 588 "src/parser/grammar.y"
+#line 591 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::For>(yystack_[4].value.as < std::string > (), std::move(yystack_[2].value.as < ExprPtr > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1636 "src/parser/parser.cpp"
+#line 1639 "src/parser/parser.cpp"
     break;
 
   case 59: // assign_expr: lvalue DESTRUCTIVE_ASSIGN expr
-#line 596 "src/parser/grammar.y"
+#line 599 "src/parser/grammar.y"
       {
           if (yystack_[2].value.as < hulk::parser::LValueTarget > ().isMember) {
               yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::DestructiveAssignMember>(std::move(yystack_[2].value.as < hulk::parser::LValueTarget > ().object), yystack_[2].value.as < hulk::parser::LValueTarget > ().name, std::move(yystack_[0].value.as < ExprPtr > ()));
@@ -1645,337 +1648,337 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1649 "src/parser/parser.cpp"
+#line 1652 "src/parser/parser.cpp"
     break;
 
   case 60: // assign_expr: logic_or
-#line 605 "src/parser/grammar.y"
+#line 608 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1657 "src/parser/parser.cpp"
+#line 1660 "src/parser/parser.cpp"
     break;
 
   case 61: // lvalue: IDENTIFIER
-#line 612 "src/parser/grammar.y"
+#line 615 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::LValueTarget > () = hulk::parser::LValueTarget { nullptr, yystack_[0].value.as < std::string > (), false };
       }
-#line 1665 "src/parser/parser.cpp"
+#line 1668 "src/parser/parser.cpp"
     break;
 
   case 62: // lvalue: postfix DOT IDENTIFIER
-#line 616 "src/parser/grammar.y"
+#line 619 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::LValueTarget > () = hulk::parser::LValueTarget { std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > (), true };
       }
-#line 1673 "src/parser/parser.cpp"
+#line 1676 "src/parser/parser.cpp"
     break;
 
   case 63: // logic_or: logic_or OR logic_and
-#line 623 "src/parser/grammar.y"
+#line 626 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::Or, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1684 "src/parser/parser.cpp"
+#line 1687 "src/parser/parser.cpp"
     break;
 
   case 64: // logic_or: logic_and
-#line 630 "src/parser/grammar.y"
+#line 633 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1692 "src/parser/parser.cpp"
+#line 1695 "src/parser/parser.cpp"
     break;
 
   case 65: // logic_and: logic_and AND equality
-#line 637 "src/parser/grammar.y"
+#line 640 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::And, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1703 "src/parser/parser.cpp"
+#line 1706 "src/parser/parser.cpp"
     break;
 
   case 66: // logic_and: equality
-#line 644 "src/parser/grammar.y"
+#line 647 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1711 "src/parser/parser.cpp"
+#line 1714 "src/parser/parser.cpp"
     break;
 
   case 67: // equality: equality EQUAL_EQUAL relation
-#line 651 "src/parser/grammar.y"
+#line 654 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::Equal, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1722 "src/parser/parser.cpp"
+#line 1725 "src/parser/parser.cpp"
     break;
 
   case 68: // equality: equality NOT_EQUAL relation
-#line 658 "src/parser/grammar.y"
+#line 661 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::NotEqual, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1733 "src/parser/parser.cpp"
+#line 1736 "src/parser/parser.cpp"
     break;
 
   case 69: // equality: relation
-#line 665 "src/parser/grammar.y"
+#line 668 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1741 "src/parser/parser.cpp"
+#line 1744 "src/parser/parser.cpp"
     break;
 
   case 70: // relation: relation LESS type_test_expr
-#line 672 "src/parser/grammar.y"
+#line 675 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::Less, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1752 "src/parser/parser.cpp"
+#line 1755 "src/parser/parser.cpp"
     break;
 
   case 71: // relation: relation LESS_EQUAL type_test_expr
-#line 679 "src/parser/grammar.y"
+#line 682 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::LessEqual, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1763 "src/parser/parser.cpp"
+#line 1766 "src/parser/parser.cpp"
     break;
 
   case 72: // relation: relation GREATER type_test_expr
-#line 686 "src/parser/grammar.y"
+#line 689 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::Greater, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1774 "src/parser/parser.cpp"
+#line 1777 "src/parser/parser.cpp"
     break;
 
   case 73: // relation: relation GREATER_EQUAL type_test_expr
-#line 693 "src/parser/grammar.y"
+#line 696 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::GreaterEqual, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1785 "src/parser/parser.cpp"
+#line 1788 "src/parser/parser.cpp"
     break;
 
   case 74: // relation: type_test_expr
-#line 700 "src/parser/grammar.y"
+#line 703 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1793 "src/parser/parser.cpp"
+#line 1796 "src/parser/parser.cpp"
     break;
 
   case 75: // type_test_expr: concat
-#line 707 "src/parser/grammar.y"
+#line 710 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1801 "src/parser/parser.cpp"
+#line 1804 "src/parser/parser.cpp"
     break;
 
   case 76: // type_test_expr: concat IS type_expr
-#line 711 "src/parser/grammar.y"
+#line 714 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::IsExpr>(std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1810 "src/parser/parser.cpp"
+#line 1813 "src/parser/parser.cpp"
     break;
 
   case 77: // type_test_expr: concat AS type_expr
-#line 716 "src/parser/grammar.y"
+#line 719 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::AsExpr>(std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1819 "src/parser/parser.cpp"
+#line 1822 "src/parser/parser.cpp"
     break;
 
   case 78: // concat: concat CONCAT additive
-#line 724 "src/parser/grammar.y"
+#line 727 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::StringBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::StringOp::Concat, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1830 "src/parser/parser.cpp"
+#line 1833 "src/parser/parser.cpp"
     break;
 
   case 79: // concat: concat DOUBLECONCAT additive
-#line 731 "src/parser/grammar.y"
+#line 734 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::StringBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::StringOp::SpaceConcat, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1841 "src/parser/parser.cpp"
+#line 1844 "src/parser/parser.cpp"
     break;
 
   case 80: // concat: additive
-#line 738 "src/parser/grammar.y"
+#line 741 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1849 "src/parser/parser.cpp"
+#line 1852 "src/parser/parser.cpp"
     break;
 
   case 81: // additive: additive PLUS multiplicative
-#line 745 "src/parser/grammar.y"
+#line 748 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Plus, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1860 "src/parser/parser.cpp"
+#line 1863 "src/parser/parser.cpp"
     break;
 
   case 82: // additive: additive MINUS multiplicative
-#line 752 "src/parser/grammar.y"
+#line 755 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Minus, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1871 "src/parser/parser.cpp"
+#line 1874 "src/parser/parser.cpp"
     break;
 
   case 83: // additive: multiplicative
-#line 759 "src/parser/grammar.y"
+#line 762 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1879 "src/parser/parser.cpp"
+#line 1882 "src/parser/parser.cpp"
     break;
 
   case 84: // multiplicative: multiplicative STAR power
-#line 766 "src/parser/grammar.y"
+#line 769 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Mult, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1890 "src/parser/parser.cpp"
+#line 1893 "src/parser/parser.cpp"
     break;
 
   case 85: // multiplicative: multiplicative SLASH power
-#line 773 "src/parser/grammar.y"
+#line 776 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Div, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1901 "src/parser/parser.cpp"
+#line 1904 "src/parser/parser.cpp"
     break;
 
   case 86: // multiplicative: multiplicative PERCENT power
-#line 780 "src/parser/grammar.y"
+#line 783 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Mod, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1912 "src/parser/parser.cpp"
+#line 1915 "src/parser/parser.cpp"
     break;
 
   case 87: // multiplicative: power
-#line 787 "src/parser/grammar.y"
+#line 790 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1920 "src/parser/parser.cpp"
+#line 1923 "src/parser/parser.cpp"
     break;
 
   case 88: // power: unary CARET power
-#line 794 "src/parser/grammar.y"
+#line 797 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Pow, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1931 "src/parser/parser.cpp"
+#line 1934 "src/parser/parser.cpp"
     break;
 
   case 89: // power: unary
-#line 801 "src/parser/grammar.y"
+#line 804 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1939 "src/parser/parser.cpp"
+#line 1942 "src/parser/parser.cpp"
     break;
 
   case 90: // unary: MINUS unary
-#line 808 "src/parser/grammar.y"
+#line 811 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticUnaryOp>(
               Hulk::ArithUnaryType::Minus, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1950 "src/parser/parser.cpp"
+#line 1953 "src/parser/parser.cpp"
     break;
 
   case 91: // unary: NOT unary
-#line 815 "src/parser/grammar.y"
+#line 818 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicUnaryOp>(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1959 "src/parser/parser.cpp"
+#line 1962 "src/parser/parser.cpp"
     break;
 
   case 92: // unary: postfix
-#line 820 "src/parser/grammar.y"
+#line 823 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1967 "src/parser/parser.cpp"
+#line 1970 "src/parser/parser.cpp"
     break;
 
   case 93: // postfix: primary
-#line 827 "src/parser/grammar.y"
+#line 830 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1975 "src/parser/parser.cpp"
+#line 1978 "src/parser/parser.cpp"
     break;
 
   case 94: // postfix: postfix LPAREN args_opt RPAREN
-#line 831 "src/parser/grammar.y"
+#line 834 "src/parser/grammar.y"
       {
           if (const auto* callee = dynamic_cast<const Hulk::VariableReference*>(yystack_[3].value.as < ExprPtr > ().get())) {
               yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::FunctionCall>(callee->GetName(), std::move(yystack_[1].value.as < ExprList > ()));
@@ -1989,153 +1992,153 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1993 "src/parser/parser.cpp"
+#line 1996 "src/parser/parser.cpp"
     break;
 
   case 95: // postfix: postfix DOT IDENTIFIER
-#line 845 "src/parser/grammar.y"
+#line 848 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::MemberAccess>(std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2002 "src/parser/parser.cpp"
+#line 2005 "src/parser/parser.cpp"
     break;
 
   case 96: // primary: NUMBER_LITERAL
-#line 853 "src/parser/grammar.y"
+#line 856 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Number>(yystack_[0].value.as < double > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2011 "src/parser/parser.cpp"
+#line 2014 "src/parser/parser.cpp"
     break;
 
   case 97: // primary: STRING_LITERAL
-#line 858 "src/parser/grammar.y"
+#line 861 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::String>(yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2020 "src/parser/parser.cpp"
+#line 2023 "src/parser/parser.cpp"
     break;
 
   case 98: // primary: TRUE
-#line 863 "src/parser/grammar.y"
+#line 866 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Boolean>(true);
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2029 "src/parser/parser.cpp"
+#line 2032 "src/parser/parser.cpp"
     break;
 
   case 99: // primary: FALSE
-#line 868 "src/parser/grammar.y"
+#line 871 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Boolean>(false);
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2038 "src/parser/parser.cpp"
+#line 2041 "src/parser/parser.cpp"
     break;
 
   case 100: // primary: IDENTIFIER
-#line 873 "src/parser/grammar.y"
+#line 876 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::VariableReference>(yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2047 "src/parser/parser.cpp"
+#line 2050 "src/parser/parser.cpp"
     break;
 
   case 101: // primary: NEW IDENTIFIER LPAREN args_opt RPAREN
-#line 878 "src/parser/grammar.y"
+#line 881 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::NewExpr>(yystack_[3].value.as < std::string > (), std::move(yystack_[1].value.as < ExprList > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2056 "src/parser/parser.cpp"
+#line 2059 "src/parser/parser.cpp"
     break;
 
   case 102: // primary: LPAREN expr RPAREN
-#line 883 "src/parser/grammar.y"
+#line 886 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[1].value.as < ExprPtr > ());
       }
-#line 2064 "src/parser/parser.cpp"
+#line 2067 "src/parser/parser.cpp"
     break;
 
   case 103: // primary: block
-#line 887 "src/parser/grammar.y"
+#line 890 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 2072 "src/parser/parser.cpp"
+#line 2075 "src/parser/parser.cpp"
     break;
 
   case 104: // primary: PRINT LPAREN expr RPAREN
-#line 891 "src/parser/grammar.y"
+#line 894 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Print>(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2081 "src/parser/parser.cpp"
+#line 2084 "src/parser/parser.cpp"
     break;
 
   case 105: // primary: SQRT LPAREN expr RPAREN
-#line 896 "src/parser/grammar.y"
+#line 899 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Sqrt, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2092 "src/parser/parser.cpp"
+#line 2095 "src/parser/parser.cpp"
     break;
 
   case 106: // primary: SIN LPAREN expr RPAREN
-#line 903 "src/parser/grammar.y"
+#line 906 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Sin, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2103 "src/parser/parser.cpp"
+#line 2106 "src/parser/parser.cpp"
     break;
 
   case 107: // primary: COS LPAREN expr RPAREN
-#line 910 "src/parser/grammar.y"
+#line 913 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Cos, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2114 "src/parser/parser.cpp"
+#line 2117 "src/parser/parser.cpp"
     break;
 
   case 108: // primary: RAND LPAREN RPAREN
-#line 917 "src/parser/grammar.y"
+#line 920 "src/parser/grammar.y"
       {
           ExprList args;
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Rand, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2124 "src/parser/parser.cpp"
+#line 2127 "src/parser/parser.cpp"
     break;
 
   case 109: // primary: EXP LPAREN expr RPAREN
-#line 923 "src/parser/grammar.y"
+#line 926 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Exp, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2135 "src/parser/parser.cpp"
+#line 2138 "src/parser/parser.cpp"
     break;
 
   case 110: // primary: LOG LPAREN expr COMMA expr RPAREN
-#line 930 "src/parser/grammar.y"
+#line 933 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[3].value.as < ExprPtr > ()));
@@ -2143,108 +2146,108 @@ namespace hulk { namespace parser {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Log, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2147 "src/parser/parser.cpp"
+#line 2150 "src/parser/parser.cpp"
     break;
 
   case 111: // primary: PI_CONST
-#line 938 "src/parser/grammar.y"
+#line 941 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Number>(3.14159265358979323846);
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2156 "src/parser/parser.cpp"
+#line 2159 "src/parser/parser.cpp"
     break;
 
   case 112: // primary: E_CONST
-#line 943 "src/parser/grammar.y"
+#line 946 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Number>(2.71828182845904523536);
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2165 "src/parser/parser.cpp"
+#line 2168 "src/parser/parser.cpp"
     break;
 
   case 113: // args_opt: arg_list
-#line 951 "src/parser/grammar.y"
+#line 954 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprList > () = std::move(yystack_[0].value.as < ExprList > ());
       }
-#line 2173 "src/parser/parser.cpp"
+#line 2176 "src/parser/parser.cpp"
     break;
 
   case 114: // args_opt: %empty
-#line 955 "src/parser/grammar.y"
+#line 958 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprList > () = ExprList {};
       }
-#line 2181 "src/parser/parser.cpp"
+#line 2184 "src/parser/parser.cpp"
     break;
 
   case 115: // arg_list: expr
-#line 962 "src/parser/grammar.y"
+#line 965 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprList > () = std::move(args);
       }
-#line 2191 "src/parser/parser.cpp"
+#line 2194 "src/parser/parser.cpp"
     break;
 
   case 116: // arg_list: arg_list COMMA expr
-#line 968 "src/parser/grammar.y"
+#line 971 "src/parser/grammar.y"
       {
           yystack_[2].value.as < ExprList > ().push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprList > () = std::move(yystack_[2].value.as < ExprList > ());
       }
-#line 2200 "src/parser/parser.cpp"
+#line 2203 "src/parser/parser.cpp"
     break;
 
   case 117: // block: LBRACE block_body_opt RBRACE
-#line 976 "src/parser/grammar.y"
+#line 979 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ExprBlock>(std::move(yystack_[1].value.as < ExprList > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2209 "src/parser/parser.cpp"
+#line 2212 "src/parser/parser.cpp"
     break;
 
   case 118: // block_body_opt: %empty
-#line 984 "src/parser/grammar.y"
+#line 987 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprList > () = ExprList {};
       }
-#line 2217 "src/parser/parser.cpp"
+#line 2220 "src/parser/parser.cpp"
     break;
 
   case 119: // block_body_opt: expr_list opt_semi
-#line 988 "src/parser/grammar.y"
+#line 991 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprList > () = std::move(yystack_[1].value.as < ExprList > ());
       }
-#line 2225 "src/parser/parser.cpp"
+#line 2228 "src/parser/parser.cpp"
     break;
 
   case 120: // expr_list: expr
-#line 995 "src/parser/grammar.y"
+#line 998 "src/parser/grammar.y"
       {
           ExprList nodes;
           nodes.push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprList > () = std::move(nodes);
       }
-#line 2235 "src/parser/parser.cpp"
+#line 2238 "src/parser/parser.cpp"
     break;
 
   case 121: // expr_list: expr_list SEMICOLON expr
-#line 1001 "src/parser/grammar.y"
+#line 1004 "src/parser/grammar.y"
       {
           yystack_[2].value.as < ExprList > ().push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprList > () = std::move(yystack_[2].value.as < ExprList > ());
       }
-#line 2244 "src/parser/parser.cpp"
+#line 2247 "src/parser/parser.cpp"
     break;
 
 
-#line 2248 "src/parser/parser.cpp"
+#line 2251 "src/parser/parser.cpp"
 
             default:
               break;
@@ -2823,19 +2826,19 @@ namespace hulk { namespace parser {
   const short
   Parser::yyrline_[] =
   {
-       0,   163,   163,   187,   191,   204,   209,   217,   218,   222,
-     226,   230,   237,   246,   258,   280,   289,   292,   300,   307,
-     312,   318,   323,   329,   334,   341,   344,   352,   367,   382,
-     400,   405,   411,   417,   425,   436,   441,   447,   452,   458,
-     465,   469,   473,   477,   481,   485,   492,   504,   510,   518,
-     525,   533,   539,   547,   559,   568,   571,   579,   587,   595,
-     604,   611,   615,   622,   629,   636,   643,   650,   657,   664,
-     671,   678,   685,   692,   699,   706,   710,   715,   723,   730,
-     737,   744,   751,   758,   765,   772,   779,   786,   793,   800,
-     807,   814,   819,   826,   830,   844,   852,   857,   862,   867,
-     872,   877,   882,   886,   890,   895,   902,   909,   916,   922,
-     929,   937,   942,   950,   955,   961,   967,   975,   984,   987,
-     994,  1000
+       0,   171,   171,   190,   194,   207,   212,   220,   221,   225,
+     229,   233,   240,   249,   261,   283,   292,   295,   303,   310,
+     315,   321,   326,   332,   337,   344,   347,   355,   370,   385,
+     403,   408,   414,   420,   428,   439,   444,   450,   455,   461,
+     468,   472,   476,   480,   484,   488,   495,   507,   513,   521,
+     528,   536,   542,   550,   562,   571,   574,   582,   590,   598,
+     607,   614,   618,   625,   632,   639,   646,   653,   660,   667,
+     674,   681,   688,   695,   702,   709,   713,   718,   726,   733,
+     740,   747,   754,   761,   768,   775,   782,   789,   796,   803,
+     810,   817,   822,   829,   833,   847,   855,   860,   865,   870,
+     875,   880,   885,   889,   893,   898,   905,   912,   919,   925,
+     932,   940,   945,   953,   958,   964,   970,   978,   987,   990,
+     997,  1003
   };
 
   void
@@ -2868,9 +2871,9 @@ namespace hulk { namespace parser {
 
 #line 4 "src/parser/grammar.y"
 } } // hulk::parser
-#line 2872 "src/parser/parser.cpp"
+#line 2875 "src/parser/parser.cpp"
 
-#line 1007 "src/parser/grammar.y"
+#line 1010 "src/parser/grammar.y"
 
 
 void hulk::parser::Parser::error(const location_type& loc,
