@@ -133,6 +133,7 @@ run_invalid_one() {
 
 run_invalid_semantic_one() {
     local hulk_file="$1"
+    local expected_diagnostic="${2:-}"
     local name
     name="$(basename "$hulk_file" .hulk)"
     local ir_file="$TMP_DIR/$name.invalid.hir"
@@ -145,6 +146,15 @@ run_invalid_semantic_one() {
     if "$BACKEND_BIN" "$hulk_file" > "$actual_file.default.out" 2>&1; then
         echo -e "  ${RED}FAIL${RESET} $name"
         echo "       backend executed an invalid semantic program"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if [[ -n "$expected_diagnostic" ]] &&
+       ! grep -q "$expected_diagnostic" "$actual_file.default.out"; then
+        echo -e "  ${RED}FAIL${RESET} $name"
+        echo "       expected semantic diagnostic was not reported"
+        sed 's/^/         /' "$actual_file.default.out"
         FAILED=$((FAILED + 1))
         return
     fi
@@ -557,6 +567,33 @@ run_runtime_error_context_one() {
     fi
 }
 
+run_runtime_error_contains_one() {
+    local hulk_file="$1"
+    local expected_diagnostic="$2"
+    local name
+    name="$(basename "$hulk_file" .hulk)"
+    local actual_file="$TMP_DIR/$name.runtime-error.out"
+
+    TOTAL=$((TOTAL + 1))
+
+    if "$BACKEND_BIN" "$hulk_file" > "$actual_file" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name runtime error"
+        echo "       backend accepted a runtime-error program"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if grep -q "$expected_diagnostic" "$actual_file"; then
+        echo -e "  ${GREEN}OK${RESET}  $name runtime error"
+        PASSED=$((PASSED + 1))
+    else
+        echo -e "  ${RED}FAIL${RESET} $name runtime error"
+        echo "       expected runtime diagnostic was not reported"
+        sed 's/^/       /' "$actual_file"
+        FAILED=$((FAILED + 1))
+    fi
+}
+
 run_ir_snapshot_one() {
     local hulk_file="$1"
     local expected_file="$2"
@@ -659,6 +696,12 @@ for f in "$ROOT"/tests/backend/invalid/*.hulk; do
     run_invalid_semantic_one "$f"
 done
 
+suite_header "BACKEND CONCAT INVALIDOS"
+for f in "$ROOT"/tests/backend/invalid_concat/*.hulk; do
+    [[ -f "$f" ]] || continue
+    run_invalid_semantic_one "$f" "Operador de concatenacion"
+done
+
 suite_header "BACKEND IR"
 run_emit_ir_one "$ROOT/tests/eval/c4_block_let_if.hulk"
 run_emit_ir_one "$ROOT/tests/eval/c5_recursion.hulk"
@@ -671,6 +714,9 @@ run_emit_compiled_banner_one "$ROOT/tests/eval/c6_objects_basic.hulk"
 
 suite_header "BACKEND RUNTIME ERRORS"
 run_runtime_error_context_one "$ROOT/tests/eval/err_div_zero.hulk"
+run_runtime_error_contains_one "$ROOT/tests/backend/runtime_errors/math_sqrt_domain.hulk" "dominio invalido para sqrt"
+run_runtime_error_contains_one "$ROOT/tests/backend/runtime_errors/math_log_domain.hulk" "dominio invalido para log"
+run_runtime_error_contains_one "$ROOT/tests/backend/runtime_errors/math_exp_nonfinite.hulk" "resultado numerico no finito en exp"
 
 suite_header "BACKEND BANNER C4"
 for f in "$ROOT"/tests/eval/c4_*.hulk; do

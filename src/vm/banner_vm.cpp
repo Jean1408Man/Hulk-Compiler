@@ -26,6 +26,47 @@ std::string slot_ref(std::size_t slot) {
     return "s" + std::to_string(slot);
 }
 
+double checked_number(Word value, const std::string& context) {
+    const double number = as_number(value);
+    if (!std::isfinite(number)) {
+        throw std::runtime_error("Runtime error: numero no finito en " + context + ".");
+    }
+    return number;
+}
+
+Word checked_number_result(double value, const std::string& context) {
+    if (!std::isfinite(value)) {
+        throw std::runtime_error("Runtime error: resultado numerico no finito en " + context + ".");
+    }
+    return make_number(value);
+}
+
+bool is_integral_number(double value) {
+    return std::trunc(value) == value;
+}
+
+bool is_concat_operand(Word value) {
+    return is_string(value) || is_number(value);
+}
+
+std::string concat_operand_to_string(Word value, const VMHeap& heap) {
+    if (!is_concat_operand(value)) {
+        throw std::runtime_error("Runtime error: operador de concatenacion solo admite String o Number.");
+    }
+    return to_string(value, heap);
+}
+
+std::string concat_values(Word lhs, Word rhs, const VMHeap& heap, bool with_space) {
+    if (!is_string(lhs) && !is_string(rhs)) {
+        throw std::runtime_error("Runtime error: operador de concatenacion requiere al menos un String.");
+    }
+
+    std::string result = concat_operand_to_string(lhs, heap);
+    if (with_space) result += " ";
+    result += concat_operand_to_string(rhs, heap);
+    return result;
+}
+
 void append_slot_list(std::ostringstream& out, const std::vector<std::size_t>& slots) {
     out << "(";
     for (std::size_t i = 0; i < slots.size(); ++i) {
@@ -98,7 +139,7 @@ Word BannerVM::run(const Banner::BannerProgram& program, const VMOptions& option
                 set(instr.dest_slot, make_nil());
                 break;
             case Banner::Op::ConstNumber:
-                set(instr.dest_slot, make_number(instr.number_value));
+                set(instr.dest_slot, checked_number_result(instr.number_value, "constante numerica"));
                 break;
             case Banner::Op::ConstBool:
                 set(instr.dest_slot, make_bool(instr.bool_value));
@@ -115,35 +156,49 @@ Word BannerVM::run(const Banner::BannerProgram& program, const VMOptions& option
                 set(instr.dest_slot, get(instr.src1_slot));
                 break;
             case Banner::Op::Add:
-                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) +
-                                                 as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, checked_number_result(
+                    checked_number(get(instr.src1_slot), "suma") +
+                    checked_number(get(instr.src2_slot), "suma"),
+                    "suma"));
                 break;
             case Banner::Op::Sub:
-                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) -
-                                                 as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, checked_number_result(
+                    checked_number(get(instr.src1_slot), "resta") -
+                    checked_number(get(instr.src2_slot), "resta"),
+                    "resta"));
                 break;
             case Banner::Op::Mul:
-                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) *
-                                                 as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, checked_number_result(
+                    checked_number(get(instr.src1_slot), "multiplicacion") *
+                    checked_number(get(instr.src2_slot), "multiplicacion"),
+                    "multiplicacion"));
                 break;
             case Banner::Op::Div: {
-                const double rhs = as_number(get(instr.src2_slot));
+                const double lhs = checked_number(get(instr.src1_slot), "division");
+                const double rhs = checked_number(get(instr.src2_slot), "division");
                 if (rhs == 0) throw std::runtime_error("Runtime error: division por cero.");
-                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) / rhs));
+                set(instr.dest_slot, checked_number_result(lhs / rhs, "division"));
                 break;
             }
             case Banner::Op::Mod: {
-                const double rhs = as_number(get(instr.src2_slot));
+                const double lhs = checked_number(get(instr.src1_slot), "modulo");
+                const double rhs = checked_number(get(instr.src2_slot), "modulo");
                 if (rhs == 0) throw std::runtime_error("Runtime error: modulo por cero.");
-                set(instr.dest_slot, make_number(std::fmod(as_number(get(instr.src1_slot)), rhs)));
+                set(instr.dest_slot, checked_number_result(std::fmod(lhs, rhs), "modulo"));
                 break;
             }
-            case Banner::Op::Pow:
-                set(instr.dest_slot, make_number(std::pow(as_number(get(instr.src1_slot)),
-                                                          as_number(get(instr.src2_slot)))));
+            case Banner::Op::Pow: {
+                const double base = checked_number(get(instr.src1_slot), "pow");
+                const double exponent = checked_number(get(instr.src2_slot), "pow");
+                if ((base < 0 && !is_integral_number(exponent)) || (base == 0 && exponent < 0)) {
+                    throw std::runtime_error("Runtime error: dominio invalido para pow.");
+                }
+                set(instr.dest_slot, checked_number_result(std::pow(base, exponent), "pow"));
                 break;
+            }
             case Banner::Op::Neg:
-                set(instr.dest_slot, make_number(-as_number(get(instr.src1_slot))));
+                set(instr.dest_slot, checked_number_result(-checked_number(get(instr.src1_slot), "negacion"),
+                                                           "negacion"));
                 break;
             case Banner::Op::And:
                 set(instr.dest_slot, make_bool(truthy(get(instr.src1_slot)) &&
@@ -167,32 +222,35 @@ Word BannerVM::run(const Banner::BannerProgram& program, const VMOptions& option
                                                            heap_)));
                 break;
             case Banner::Op::Less:
-                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) <
-                                               as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, make_bool(checked_number(get(instr.src1_slot), "comparacion") <
+                                               checked_number(get(instr.src2_slot), "comparacion")));
                 break;
             case Banner::Op::Greater:
-                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) >
-                                               as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, make_bool(checked_number(get(instr.src1_slot), "comparacion") >
+                                               checked_number(get(instr.src2_slot), "comparacion")));
                 break;
             case Banner::Op::LessEqual:
-                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) <=
-                                               as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, make_bool(checked_number(get(instr.src1_slot), "comparacion") <=
+                                               checked_number(get(instr.src2_slot), "comparacion")));
                 break;
             case Banner::Op::GreaterEqual:
-                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) >=
-                                               as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, make_bool(checked_number(get(instr.src1_slot), "comparacion") >=
+                                               checked_number(get(instr.src2_slot), "comparacion")));
                 break;
             case Banner::Op::Concat: {
-                set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
-                                                           to_string(get(instr.src2_slot), heap_)));
+                set(instr.dest_slot, heap_.allocate_string(concat_values(get(instr.src1_slot),
+                                                                         get(instr.src2_slot),
+                                                                         heap_,
+                                                                         false)));
                 collect_if_needed(stack, compiled);
                 enforce_heap_limit(options);
                 break;
             }
             case Banner::Op::ConcatSpace: {
-                set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
-                                                           " " +
-                                                           to_string(get(instr.src2_slot), heap_)));
+                set(instr.dest_slot, heap_.allocate_string(concat_values(get(instr.src1_slot),
+                                                                         get(instr.src2_slot),
+                                                                         heap_,
+                                                                         true)));
                 collect_if_needed(stack, compiled);
                 enforce_heap_limit(options);
                 break;
@@ -223,24 +281,36 @@ Word BannerVM::run(const Banner::BannerProgram& program, const VMOptions& option
                 set(instr.dest_slot, value);
                 break;
             }
-            case Banner::Op::Sqrt:
-                set(instr.dest_slot, make_number(std::sqrt(as_number(get(instr.arg_slots.at(0))))));
+            case Banner::Op::Sqrt: {
+                const double value = checked_number(get(instr.arg_slots.at(0)), "sqrt");
+                if (value < 0) throw std::runtime_error("Runtime error: dominio invalido para sqrt.");
+                set(instr.dest_slot, checked_number_result(std::sqrt(value), "sqrt"));
                 break;
+            }
             case Banner::Op::Sin:
-                set(instr.dest_slot, make_number(std::sin(as_number(get(instr.arg_slots.at(0))))));
+                set(instr.dest_slot, checked_number_result(
+                    std::sin(checked_number(get(instr.arg_slots.at(0)), "sin")), "sin"));
                 break;
             case Banner::Op::Cos:
-                set(instr.dest_slot, make_number(std::cos(as_number(get(instr.arg_slots.at(0))))));
+                set(instr.dest_slot, checked_number_result(
+                    std::cos(checked_number(get(instr.arg_slots.at(0)), "cos")), "cos"));
                 break;
             case Banner::Op::Exp:
-                set(instr.dest_slot, make_number(std::exp(as_number(get(instr.arg_slots.at(0))))));
+                set(instr.dest_slot, checked_number_result(
+                    std::exp(checked_number(get(instr.arg_slots.at(0)), "exp")), "exp"));
                 break;
-            case Banner::Op::Log:
-                set(instr.dest_slot, make_number(std::log(as_number(get(instr.arg_slots.at(1)))) /
-                                                 std::log(as_number(get(instr.arg_slots.at(0))))));
+            case Banner::Op::Log: {
+                const double base = checked_number(get(instr.arg_slots.at(0)), "log");
+                const double value = checked_number(get(instr.arg_slots.at(1)), "log");
+                if (base <= 0 || base == 1 || value <= 0) {
+                    throw std::runtime_error("Runtime error: dominio invalido para log.");
+                }
+                set(instr.dest_slot, checked_number_result(std::log(value) / std::log(base), "log"));
                 break;
+            }
             case Banner::Op::Rand:
-                set(instr.dest_slot, make_number(static_cast<double>(std::rand()) / RAND_MAX));
+                set(instr.dest_slot, checked_number_result(static_cast<double>(std::rand()) / RAND_MAX,
+                                                           "rand"));
                 break;
             case Banner::Op::Param:
                 frame.param_buffer.push_back(get(instr.src1_slot));

@@ -1,0 +1,5 @@
+type Box {
+    value = 1;
+}
+
+let b = new Box() in print("box: " @ b);

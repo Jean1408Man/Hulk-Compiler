@@ -3,7 +3,7 @@
 Fecha: 2026-05-24
 
 Este informe resume el trabajo realizado durante el chat para cerrar las
-vulnerabilidades 1 a 14 del documento
+vulnerabilidades 1 a 15 del documento
 `doc/vulnerabilidades-flujo-end-to-end.md`. El foco fue endurecer el flujo:
 
 ```text
@@ -35,6 +35,7 @@ HULK fuente
 | 12. Escapes de strings aceptados pero no interpretados | Resuelta | Los literales decodifican `\n`, `\r`, `\t`, `\"` y `\\`; escapes desconocidos bloquean el frontend. |
 | 13. `grammar.y` y parser generado desincronizados | Resuelta | `auto` y `_` quedan como pseudo-tipos via `IDENTIFIER`, el parser fue regenerado y se agrego `make parser-sync-check`. |
 | 14. Multiples expresiones globales | Resuelta | Se formalizo como extension local: `decl* expr+` se ejecuta como bloque implicito y queda documentado/probado. |
+| 15. Concatenacion `@` acepta valores fuera del contrato | Resuelta | `@`/`@@` ahora admiten solo `String`/`Number`, exigen al menos un `String` y la VM aplica la misma defensa. |
 
 ## 1. Tolerancias semanticas en BackendDriver
 
@@ -826,6 +827,69 @@ La suite de backend tambien conserva cubiertos los programas historicos que
 dependen de esta extension, como `c4_literals`, `c4_strings`, `c5_recursion` y
 `c6_inheritance`.
 
+## 15. Concatenacion restringida a `String` y `Number`
+
+### Problema
+
+El type checker visitaba `StringBinOp` sin validar los tipos de los operandos.
+Luego BannerVM implementaba `Concat` y `ConcatSpace` con `to_string(...)`, lo
+que convertia cualquier `Word` a texto. Eso hacia publicas conversiones no
+documentadas para booleanos, objetos o `nil`.
+
+### Solucion aplicada
+
+Se adopto la politica estricta alineada con la documentacion:
+
+- `@` y `@@` solo aceptan operandos `String` o `Number`;
+- al menos uno de los dos operandos debe ser `String`;
+- `Boolean`, objetos y `nil` quedan fuera del contrato de concatenacion.
+
+En `TypeChecker::visit(StringBinOp&)` se reportan diagnosticos semanticos
+bloqueantes cuando se incumple esa regla. Ejemplos:
+
+```text
+Operador de concatenacion '@' solo admite operandos String o Number; se encontro 'Boolean'.
+Operador de concatenacion '@' requiere al menos un operando String.
+```
+
+Tambien se agrego una defensa en BannerVM para BannerIR manual o malicioso:
+`Concat` y `ConcatSpace` ya no llaman directamente a `to_string` sobre cualquier
+`Word`, sino a una ruta que valida `String`/`Number` y exige un `String` antes
+de asignar el string resultante.
+
+### Archivos relevantes
+
+- `src/typecheck/type_checker.cpp`
+- `src/vm/banner_vm.cpp`
+- `tests/backend/run_backend_tests.sh`
+- `tests/backend/invalid_concat/concat_bool.hulk`
+- `tests/backend/invalid_concat/concat_number_number.hulk`
+- `tests/backend/invalid_concat/concat_object.hulk`
+- `tests/vm/banner_vm_semantics_tests.cpp`
+
+### Validacion
+
+Se agrego la seccion:
+
+```text
+BACKEND CONCAT INVALIDOS
+```
+
+Los casos nuevos verifican que el backend rechaza:
+
+- `"x" @ true`;
+- `1 @ 2`;
+- `"box: " @ b` con `b` objeto.
+
+Cada caso exige el diagnostico `Operador de concatenacion`, falla en modo
+default y comprueba que no se emitan IR, BannerIR ni BannerIR compilado.
+
+En `vm-tests` se agregaron pruebas directas de BannerVM para confirmar que:
+
+- `String @ Number` funciona;
+- `String @ Boolean` falla en runtime;
+- `Number @ Number` falla en runtime.
+
 ## Comandos de verificacion ejecutados
 
 Durante el cierre de estas vulnerabilidades se ejecutaron:
@@ -848,14 +912,17 @@ make semantic
 ./hulk_backend tests/backend/regression/string_escapes.hulk
 ./hulk_backend tests/backend/frontend_invalid/invalid_string_escape.hulk
 ./hulk_backend tests/backend/regression/multiple_global_exprs.hulk
+./hulk_backend tests/backend/invalid_concat/concat_bool.hulk
+./hulk_backend tests/backend/invalid_concat/concat_number_number.hulk
+./hulk_backend tests/backend/invalid_concat/concat_object.hulk
 ```
 
 Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 107
-  Passed : 107
+  Total  : 110
+  Passed : 110
   Failed : 0
 ```
 
@@ -870,7 +937,7 @@ trace.
 
 ## Estado final
 
-Las vulnerabilidades 1 a 14 quedaron cerradas con cambios de implementacion y
+Las vulnerabilidades 1 a 15 quedaron cerradas con cambios de implementacion y
 tests. El pipeline ahora respeta errores semanticos bloqueantes, libera heap no
 alcanzable, limita recursos de VM, permite inspeccionar la forma baja de
 BannerIR, reporta errores runtime con contexto suficiente para depurar desde
@@ -884,4 +951,6 @@ AST y al backend con sus escapes decodificados, y los escapes desconocidos
 fallan temprano. Finalmente, el parser generado queda protegido contra drift
 respecto a `grammar.y` mediante un chequeo reproducible. El soporte de multiples
 expresiones globales ya no queda implicito: es una extension local documentada,
-probada y definida como bloque global implicito.
+probada y definida como bloque global implicito. La concatenacion tambien queda
+acotada al contrato documentado, sin conversion publica de booleanos, objetos o
+`nil`.

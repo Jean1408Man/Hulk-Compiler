@@ -63,6 +63,13 @@ Banner::BannerInstr const_number(std::string dest, double value) {
     return out;
 }
 
+Banner::BannerInstr const_bool(std::string dest, bool value) {
+    auto out = instr(Banner::Op::ConstBool);
+    out.dest = std::move(dest);
+    out.bool_value = value;
+    return out;
+}
+
 Banner::BannerInstr load_data(std::string dest, std::string label) {
     auto out = instr(Banner::Op::LoadData);
     out.dest = std::move(dest);
@@ -75,6 +82,21 @@ Banner::BannerInstr binary(Banner::Op op, std::string dest, std::string left, st
     out.dest = std::move(dest);
     out.src1 = std::move(left);
     out.src2 = std::move(right);
+    return out;
+}
+
+Banner::BannerInstr builtin1(Banner::Op op, std::string dest, std::string arg) {
+    auto out = instr(op);
+    out.dest = std::move(dest);
+    out.args.push_back(std::move(arg));
+    return out;
+}
+
+Banner::BannerInstr builtin2(Banner::Op op, std::string dest, std::string arg1, std::string arg2) {
+    auto out = instr(op);
+    out.dest = std::move(dest);
+    out.args.push_back(std::move(arg1));
+    out.args.push_back(std::move(arg2));
     return out;
 }
 
@@ -268,6 +290,131 @@ void dynamic_string_concat_can_be_compared() {
     assert(VM::as_bool(result));
 }
 
+void concat_accepts_string_and_number_only() {
+    Banner::BannerProgram program;
+    program.entry_function = "hulk_main";
+    program.data.push_back(Banner::BannerData{"prefix", "n="});
+    program.data.push_back(Banner::BannerData{"expected", "n=7"});
+
+    auto main = make_function("hulk_main");
+    main.locals = {"prefix", "number", "joined", "expected", "ok"};
+    main.code.push_back(load_data("prefix", "prefix"));
+    main.code.push_back(const_number("number", 7.0));
+    main.code.push_back(binary(Banner::Op::Concat, "joined", "prefix", "number"));
+    main.code.push_back(load_data("expected", "expected"));
+    main.code.push_back(binary(Banner::Op::Equal, "ok", "joined", "expected"));
+    main.code.push_back(ret("ok"));
+    program.functions.push_back(std::move(main));
+
+    VM::BannerVM vm;
+    const VM::Word result = vm.run(program);
+    assert(VM::is_bool(result));
+    assert(VM::as_bool(result));
+}
+
+void concat_rejects_boolean_operand() {
+    Banner::BannerProgram program;
+    program.entry_function = "hulk_main";
+    program.data.push_back(Banner::BannerData{"prefix", "flag="});
+
+    auto main = make_function("hulk_main");
+    main.locals = {"prefix", "flag", "joined"};
+    main.code.push_back(load_data("prefix", "prefix"));
+    main.code.push_back(const_bool("flag", true));
+    main.code.push_back(binary(Banner::Op::Concat, "joined", "prefix", "flag"));
+    main.code.push_back(ret("joined"));
+    program.functions.push_back(std::move(main));
+
+    VM::BannerVM vm;
+    assert(throws_with_message([&] { (void)vm.run(program); },
+                               "operador de concatenacion solo admite String o Number"));
+}
+
+void concat_rejects_without_string_operand() {
+    Banner::BannerProgram program;
+    program.entry_function = "hulk_main";
+
+    auto main = make_function("hulk_main");
+    main.locals = {"left", "right", "joined"};
+    main.code.push_back(const_number("left", 1.0));
+    main.code.push_back(const_number("right", 2.0));
+    main.code.push_back(binary(Banner::Op::Concat, "joined", "left", "right"));
+    main.code.push_back(ret("joined"));
+    program.functions.push_back(std::move(main));
+
+    VM::BannerVM vm;
+    assert(throws_with_message([&] { (void)vm.run(program); },
+                               "operador de concatenacion requiere al menos un String"));
+}
+
+void math_rejects_non_finite_results() {
+    {
+        Banner::BannerProgram program;
+        program.entry_function = "hulk_main";
+
+        auto main = make_function("hulk_main");
+        main.locals = {"value", "result"};
+        main.code.push_back(const_number("value", -1.0));
+        main.code.push_back(builtin1(Banner::Op::Sqrt, "result", "value"));
+        main.code.push_back(ret("result"));
+        program.functions.push_back(std::move(main));
+
+        VM::BannerVM vm;
+        assert(throws_with_message([&] { (void)vm.run(program); },
+                                   "dominio invalido para sqrt"));
+    }
+
+    {
+        Banner::BannerProgram program;
+        program.entry_function = "hulk_main";
+
+        auto main = make_function("hulk_main");
+        main.locals = {"base", "value", "result"};
+        main.code.push_back(const_number("base", 1.0));
+        main.code.push_back(const_number("value", 10.0));
+        main.code.push_back(builtin2(Banner::Op::Log, "result", "base", "value"));
+        main.code.push_back(ret("result"));
+        program.functions.push_back(std::move(main));
+
+        VM::BannerVM vm;
+        assert(throws_with_message([&] { (void)vm.run(program); },
+                                   "dominio invalido para log"));
+    }
+
+    {
+        Banner::BannerProgram program;
+        program.entry_function = "hulk_main";
+
+        auto main = make_function("hulk_main");
+        main.locals = {"value", "result"};
+        main.code.push_back(const_number("value", 1000.0));
+        main.code.push_back(builtin1(Banner::Op::Exp, "result", "value"));
+        main.code.push_back(ret("result"));
+        program.functions.push_back(std::move(main));
+
+        VM::BannerVM vm;
+        assert(throws_with_message([&] { (void)vm.run(program); },
+                                   "resultado numerico no finito en exp"));
+    }
+
+    {
+        Banner::BannerProgram program;
+        program.entry_function = "hulk_main";
+
+        auto main = make_function("hulk_main");
+        main.locals = {"base", "exponent", "result"};
+        main.code.push_back(const_number("base", -1.0));
+        main.code.push_back(const_number("exponent", 0.5));
+        main.code.push_back(binary(Banner::Op::Pow, "result", "base", "exponent"));
+        main.code.push_back(ret("result"));
+        program.functions.push_back(std::move(main));
+
+        VM::BannerVM vm;
+        assert(throws_with_message([&] { (void)vm.run(program); },
+                                   "dominio invalido para pow"));
+    }
+}
+
 void vcall_dispatches_through_type_vtable() {
     Banner::BannerProgram program;
     program.entry_function = "hulk_main";
@@ -406,6 +553,10 @@ int main() {
     finite_recursion_uses_vm_frames_correctly();
     object_field_storage_round_trips_through_vm();
     dynamic_string_concat_can_be_compared();
+    concat_accepts_string_and_number_only();
+    concat_rejects_boolean_operand();
+    concat_rejects_without_string_operand();
+    math_rejects_non_finite_results();
     vcall_dispatches_through_type_vtable();
     ambiguous_field_name_falls_back_to_runtime_type_lookup();
     ambiguous_method_name_falls_back_to_runtime_type_lookup();
