@@ -3,7 +3,7 @@
 Fecha: 2026-05-24
 
 Este informe resume el trabajo realizado durante el chat para cerrar las
-vulnerabilidades 1 a 15 del documento
+vulnerabilidades 1 a 17 del documento
 `doc/vulnerabilidades-flujo-end-to-end.md`. El foco fue endurecer el flujo:
 
 ```text
@@ -36,6 +36,8 @@ HULK fuente
 | 13. `grammar.y` y parser generado desincronizados | Resuelta | `auto` y `_` quedan como pseudo-tipos via `IDENTIFIER`, el parser fue regenerado y se agrego `make parser-sync-check`. |
 | 14. Multiples expresiones globales | Resuelta | Se formalizo como extension local: `decl* expr+` se ejecuta como bloque implicito y queda documentado/probado. |
 | 15. Concatenacion `@` acepta valores fuera del contrato | Resuelta | `@`/`@@` ahora admiten solo `String`/`Number`, exigen al menos un `String` y la VM aplica la misma defensa. |
+| 16. Funciones matematicas producen `nan`/`inf` | Resuelta | BannerVM rechaza dominios invalidos y cualquier resultado numerico no finito con error runtime controlado. |
+| 17. Firma semantica de `print` desalineada con VM | Resuelta | La tabla builtin ya no declara `print` como `String`; el contrato queda alineado con retorno identidad. |
 
 ## 1. Tolerancias semanticas en BackendDriver
 
@@ -890,6 +892,128 @@ En `vm-tests` se agregaron pruebas directas de BannerVM para confirmar que:
 - `String @ Boolean` falla en runtime;
 - `Number @ Number` falla en runtime.
 
+## 16. Operaciones matematicas sin `NaN` ni `Infinity` publicos
+
+### Problema
+
+BannerVM delegaba operaciones numericas y builtins matematicos directamente a
+`<cmath>`. Casos como `sqrt(-1)`, `log(1, 10)` o `exp(1000)` podian introducir
+`nan` o `inf` como valores `Number` observables por el programa.
+
+### Solucion aplicada
+
+Se definio la politica conservadora: HULK no expone `NaN` ni `Infinity` como
+valores del lenguaje. La VM ahora valida:
+
+- que toda constante numerica y todo operando numerico recibido por operaciones
+  aritmeticas sea finito;
+- que todo resultado numerico producido por aritmetica o builtins sea finito;
+- dominio de `sqrt`: argumento `>= 0`;
+- dominio de `log`: base `> 0`, base distinta de `1`, valor `> 0`;
+- dominio de `pow`: base negativa solo con exponente entero, y `0` no puede
+  elevarse a exponente negativo.
+
+Cuando alguna regla falla, se lanza un error runtime controlado. Ejemplos:
+
+```text
+Runtime error: dominio invalido para sqrt.
+Runtime error: dominio invalido para log.
+Runtime error: resultado numerico no finito en exp.
+Runtime error: dominio invalido para pow.
+```
+
+La validacion se hace en BannerVM, cerca del punto donde se producen los
+`Word` numericos, para cubrir tanto codigo generado desde HULK como BannerIR
+manual o malicioso.
+
+### Archivos relevantes
+
+- `src/vm/banner_vm.cpp`
+- `tests/backend/run_backend_tests.sh`
+- `tests/backend/runtime_errors/math_sqrt_domain.hulk`
+- `tests/backend/runtime_errors/math_log_domain.hulk`
+- `tests/backend/runtime_errors/math_exp_nonfinite.hulk`
+- `tests/vm/banner_vm_semantics_tests.cpp`
+
+### Validacion
+
+Se ampliaron `vm-tests` con checks directos de BannerVM para:
+
+- `sqrt(-1)`;
+- `log(1, 10)`;
+- `exp(1000)`;
+- `(-1) ^ 0.5`.
+
+Tambien se agregaron pruebas end-to-end en la seccion `BACKEND RUNTIME ERRORS`
+para confirmar que los programas HULK reciben diagnosticos runtime y no imprimen
+`nan` ni `inf`:
+
+```hulk
+print(sqrt(-1));
+print(log(1, 10));
+print(exp(1000));
+```
+
+## 17. Firma de `print` alineada con retorno identidad
+
+### Problema
+
+La tabla semantica registraba:
+
+```text
+print(Object) -> String
+```
+
+pero el AST, la inferencia especial de `Print` y BannerVM ya trataban `print`
+como una operacion de identidad: imprime el valor y retorna ese mismo valor. En
+la practica habia dos contratos internos posibles:
+
+```text
+print(Object) -> String
+print(x: T) -> T
+```
+
+Ese desajuste podia producir falsos positivos o falsos negativos si alguna ruta
+consultaba la tabla builtin en vez del nodo especial `Print`.
+
+### Solucion aplicada
+
+Se cambio la firma builtin conservadora a:
+
+```text
+print(Object) -> Object
+```
+
+Como el sistema de tipos actual no tiene genericos, la tabla ya no afirma que
+`print` retorna `String`. Al mismo tiempo se conserva la semantica concreta del
+nodo `Print`: la inferencia mantiene el tipo del argumento y BannerVM sigue
+guardando en el slot destino el mismo `Word` que acaba de imprimir.
+
+### Archivos relevantes
+
+- `src/semantic/semantic_tables.cpp`
+- `src/inference/type_inferencer.cpp`
+- `src/vm/banner_vm.cpp`
+- `tests/backend/run_backend_tests.sh`
+- `tests/backend/regression/print_identity_return.hulk`
+- `tests/expected/backend/print_identity_return.expected`
+- `tests/backend/invalid_print/print_return_mismatch.hulk`
+
+### Validacion
+
+Se agrego la regresion `print_identity_return.hulk`, que demuestra que el valor
+retornado por `print` conserva su tipo observable:
+
+```hulk
+print(print(1) + 2);
+print(print("x") @ "y");
+print(if (print(true)) "yes" else "no");
+```
+
+Tambien se agrego `print_return_mismatch.hulk` para comprobar que el type checker
+rechaza una funcion declarada como `String` cuyo cuerpo real es `print(1)`, es
+decir, `Number`.
+
 ## Comandos de verificacion ejecutados
 
 Durante el cierre de estas vulnerabilidades se ejecutaron:
@@ -915,14 +1039,19 @@ make semantic
 ./hulk_backend tests/backend/invalid_concat/concat_bool.hulk
 ./hulk_backend tests/backend/invalid_concat/concat_number_number.hulk
 ./hulk_backend tests/backend/invalid_concat/concat_object.hulk
+./hulk_backend tests/backend/runtime_errors/math_sqrt_domain.hulk
+./hulk_backend tests/backend/runtime_errors/math_log_domain.hulk
+./hulk_backend tests/backend/runtime_errors/math_exp_nonfinite.hulk
+./hulk_backend tests/backend/regression/print_identity_return.hulk
+./hulk_backend tests/backend/invalid_print/print_return_mismatch.hulk
 ```
 
 Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 110
-  Passed : 110
+  Total  : 115
+  Passed : 115
   Failed : 0
 ```
 
@@ -937,7 +1066,7 @@ trace.
 
 ## Estado final
 
-Las vulnerabilidades 1 a 15 quedaron cerradas con cambios de implementacion y
+Las vulnerabilidades 1 a 17 quedaron cerradas con cambios de implementacion y
 tests. El pipeline ahora respeta errores semanticos bloqueantes, libera heap no
 alcanzable, limita recursos de VM, permite inspeccionar la forma baja de
 BannerIR, reporta errores runtime con contexto suficiente para depurar desde
@@ -953,4 +1082,8 @@ respecto a `grammar.y` mediante un chequeo reproducible. El soporte de multiples
 expresiones globales ya no queda implicito: es una extension local documentada,
 probada y definida como bloque global implicito. La concatenacion tambien queda
 acotada al contrato documentado, sin conversion publica de booleanos, objetos o
-`nil`.
+`nil`. Las operaciones numericas de VM ahora rechazan dominios invalidos y
+resultados no finitos, evitando que `NaN` o `Infinity` se vuelvan valores
+observables del lenguaje. La firma oficial de `print` tambien queda alineada
+con su comportamiento real: imprimir no convierte el resultado a `String`, sino
+que conserva el valor retornado por la expresion impresa.

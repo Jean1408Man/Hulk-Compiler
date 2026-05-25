@@ -14,7 +14,7 @@ SemanticTables::SemanticTables() {
     // Funciones builtin (nombre, aridad, param_types, return_type)
     struct BuiltinDef { const char* name; int arity; std::vector<std::string> param_types; const char* return_type; };
     for (auto& def : std::initializer_list<BuiltinDef>{
-            {"print",  1, {"Object"}, "String"}, // o vacío según preferencia
+            {"print",  1, {"Object"}, "Object"},
             {"sqrt",   1, {"Number"}, "Number"},
             {"sin",    1, {"Number"}, "Number"},
             {"cos",    1, {"Number"}, "Number"},

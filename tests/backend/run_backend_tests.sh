@@ -702,6 +702,12 @@ for f in "$ROOT"/tests/backend/invalid_concat/*.hulk; do
     run_invalid_semantic_one "$f" "Operador de concatenacion"
 done
 
+suite_header "BACKEND PRINT INVALIDOS"
+for f in "$ROOT"/tests/backend/invalid_print/*.hulk; do
+    [[ -f "$f" ]] || continue
+    run_invalid_semantic_one "$f" "retorno de función 'f'"
+done
+
 suite_header "BACKEND IR"
 run_emit_ir_one "$ROOT/tests/eval/c4_block_let_if.hulk"
 run_emit_ir_one "$ROOT/tests/eval/c5_recursion.hulk"
