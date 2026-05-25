@@ -117,11 +117,12 @@
 
         struct TopLevelItems {
             DeclList decls;
-            ExprList exprs;
+            ExprPtr globalExpr;
+            bool hasGlobalExpr = false;
         };
     }
 
-#line 125 "src/parser/parser.hpp"
+#line 126 "src/parser/parser.hpp"
 
 
 # include <cstdlib> // std::abort
@@ -257,7 +258,7 @@
 
 #line 4 "src/parser/grammar.y"
 namespace hulk { namespace parser {
-#line 261 "src/parser/parser.hpp"
+#line 262 "src/parser/parser.hpp"
 
 
 
@@ -3119,17 +3120,17 @@ switch (yykind)
 
 #line 4 "src/parser/grammar.y"
 } } // hulk::parser
-#line 3123 "src/parser/parser.hpp"
+#line 3124 "src/parser/parser.hpp"
 
 
 // "%code provides" blocks.
-#line 89 "src/parser/grammar.y"
+#line 90 "src/parser/grammar.y"
 
     namespace hulk::parser {
         Parser::symbol_type yylex(ParserDriver& driver);
     }
 
-#line 3133 "src/parser/parser.hpp"
+#line 3134 "src/parser/parser.hpp"
 
 
 #endif // !YY_YY_SRC_PARSER_PARSER_HPP_INCLUDED

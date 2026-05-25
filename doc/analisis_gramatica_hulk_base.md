@@ -37,13 +37,9 @@ program ::= decl* expr opt_semi
 
 Esto captura bien la idea de HULK: cero o más declaraciones globales y una única expresión global final.
 
-Nota del dialecto implementado en el flujo end-to-end: el parser del repositorio
-tambien acepta una secuencia de expresiones globales (`decl* expr+`). Esa forma
-se trata como una extension local equivalente a envolver dichas expresiones en
-un bloque implicito: se ejecutan en orden de aparicion y el valor del programa
-es el valor de la ultima expresion. Para codigo HULK estrictamente alineado con
-la referencia academica, use una unica expresion global final, por ejemplo un
-bloque `{ ... }`.
+El flujo end-to-end implementado en este repositorio aplica esta forma estricta.
+Si se necesitan varias operaciones al final del programa, deben escribirse como
+un bloque explicito `{ ... }`, que sigue siendo una unica expresion global.
 
 ### 2. Funciones
 
@@ -492,10 +488,9 @@ Define la unidad completa de compilación:
 - al final va una sola expresión global, que es el entrypoint;
 - puede terminar o no en `;`.
 
-En el dialecto end-to-end de este repositorio tambien se acepta `decl* expr+`.
-Cuando hay mas de una expresion global, el frontend las empaqueta en un
-`ExprBlock` implicito con la misma semantica de orden y valor final de los
-bloques explicitos.
+El frontend no acepta `decl* expr+` como extension implicita. Varias expresiones
+globales consecutivas producen un error de sintaxis; para conservar orden de
+ejecucion y valor final debe usarse un bloque explicito como expresion final.
 
 ### `opt_semi ::= ";" | ε`
 

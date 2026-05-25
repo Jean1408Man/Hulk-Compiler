@@ -1,4 +1,6 @@
-print("a\nb");
-print("tab\tend");
-print("quote: \"ok\"");
-print("slash: \\");
+{
+    print("a\nb");
+    print("tab\tend");
+    print("quote: \"ok\"");
+    print("slash: \\");
+}

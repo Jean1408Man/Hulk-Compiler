@@ -42,7 +42,7 @@ Por ahora el parser implementa y prueba:
 - funciones;
 - tipos;
 - acceso a miembros, llamadas a métodos, `new`, `is`, `as`;
-- secuencias top-level de expresiones y declaraciones.
+- una única expresión global final, con bloques explícitos para secuencias.
 
 ## Sintaxis documentada pero aún no soportada por este parser
 
@@ -55,7 +55,6 @@ Por ahora el parser implementa y prueba:
 
 ## Nota importante
 
-Algunos ejemplos del PDF terminan en `;` a nivel global. El parser actual todavía está
-trabajando sobre un subconjunto mínimo y no acepta todavía esa forma final en todos los
-casos, así que varios tests usan la versión sin `;` para poder validar el núcleo del frontend
-sin mezclar extensiones aún no cerradas.
+El parser acepta `;` opcional tras la expresión global final. Si un ejemplo
+necesita ejecutar varias expresiones al final del programa, los tests usan un
+bloque explícito `{ ... }` para mantener el contrato `decl* expr`.

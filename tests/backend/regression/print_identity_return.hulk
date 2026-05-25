@@ -1,3 +1,5 @@
-print(print(1) + 2);
-print(print("x") @ "y");
-print(if (print(true)) "yes" else "no");
+{
+    print(print(1) + 2);
+    print(print("x") @ "y");
+    print(if (print(true)) "yes" else "no");
+}

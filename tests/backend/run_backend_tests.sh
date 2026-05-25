@@ -689,6 +689,7 @@ run_unsupported_feature_one "$ROOT/tests/backend/unsupported/unsupported_protoco
 suite_header "BACKEND FRONTEND INVALIDOS"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/out_of_range_number.hulk" "Literal numerico fuera de rango"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/invalid_string_escape.hulk" "Escape de string no soportado"
+run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/multiple_global_exprs.hulk" "Solo se permite una expresion global final"
 
 suite_header "BACKEND SEMANTICOS INVALIDOS"
 for f in "$ROOT"/tests/backend/invalid/*.hulk; do

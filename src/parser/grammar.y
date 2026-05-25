@@ -81,7 +81,8 @@
 
         struct TopLevelItems {
             DeclList decls;
-            ExprList exprs;
+            ExprPtr globalExpr;
+            bool hasGlobalExpr = false;
         };
     }
 }
@@ -106,13 +107,6 @@
         };
     }
 
-    static hulk::parser::ExprPtr make_global_entrypoint(hulk::parser::ExprList exprs) {
-        if (exprs.size() == 1) return std::move(exprs.front());
-
-        // Extension local del flujo end-to-end: varias expresiones globales se
-        // ejecutan como un bloque implicito y el valor del programa es el de la ultima.
-        return std::make_unique<Hulk::ExprBlock>(std::move(exprs));
-    }
 }
 
 %token <std::string> IDENTIFIER STRING_LITERAL ERROR_TOKEN
@@ -170,8 +164,8 @@
 program
     : top_level_items
       {
-          if ($1.exprs.empty()) {
-              driver.report_syntax_error("el programa debe contener al menos una expresion global");
+          if (!$1.hasGlobalExpr) {
+              driver.report_syntax_error("el programa debe contener una expresion global final");
               $$ = std::make_unique<Hulk::Program>(
                   std::move($1.decls),
                   std::make_unique<Hulk::ExprBlock>(ExprList {})
@@ -179,7 +173,7 @@ program
           } else {
               $$ = std::make_unique<Hulk::Program>(
                   std::move($1.decls),
-                  make_global_entrypoint(std::move($1.exprs))
+                  std::move($1.globalExpr)
               );
           }
           driver.set_result(std::move($$));
@@ -193,11 +187,15 @@ top_level_items
       }
     | top_level_items top_level_item opt_semi
       {
-          for (auto& decl : $2.decls) {
-              $1.decls.push_back(std::move(decl));
-          }
-          for (auto& expr : $2.exprs) {
-              $1.exprs.push_back(std::move(expr));
+          if ($1.hasGlobalExpr) {
+              driver.report_syntax_error("Solo se permite una expresion global final", to_span(@2));
+          } else if ($2.hasGlobalExpr) {
+              $1.globalExpr = std::move($2.globalExpr);
+              $1.hasGlobalExpr = true;
+          } else {
+              for (auto& decl : $2.decls) {
+                  $1.decls.push_back(std::move(decl));
+              }
           }
           $$ = std::move($1);
       }
@@ -212,7 +210,8 @@ top_level_item
     | expr
       {
           $$ = hulk::parser::TopLevelItems {};
-          $$.exprs.push_back(std::move($1));
+          $$.globalExpr = std::move($1);
+          $$.hasGlobalExpr = true;
       }
     ;
 

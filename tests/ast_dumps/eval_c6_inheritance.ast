@@ -2,7 +2,7 @@
 type Animal(name) { ... }
 type Dog(name) inherits Animal(Variable(name)) { ... }
 type Cat(name) inherits Animal(Variable(name)) { ... }
-{ let d = new Dog(StringLiteral: Rex) in Variable(d).speak(); let c = new Cat(StringLiteral: Mishi) in Variable(c).speak(); let a = new Dog(StringLiteral: Buddy) in { print(Variable(a) is Dog); print(Variable(a) is Animal); print(Variable(a) is Cat); }; }
+{ let d = new Dog(StringLiteral: Rex) in Variable(d).speak(); let c = new Cat(StringLiteral: Mishi) in Variable(c).speak(); let a : Animal = new Dog(StringLiteral: Buddy) in { print(Variable(a) is Dog); print(Variable(a) is Animal); print(Variable(a) is Cat); }; }
 
 === TREE ===
 Program
@@ -69,7 +69,7 @@ Program
             args
       LetIn
         bindings
-          VariableBinding(name=a)
+          VariableBinding(name=a, type=Animal)
             NewExpr(type=Dog)
               String(value="Buddy")
         body

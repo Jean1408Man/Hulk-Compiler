@@ -1,6 +1,6 @@
 # Informe de vulnerabilidades resueltas en el flujo end-to-end
 
-Fecha: 2026-05-24
+Fecha: 2026-05-25
 
 Este informe resume el trabajo realizado durante el chat para cerrar las
 vulnerabilidades 1 a 17 del documento
@@ -34,7 +34,7 @@ HULK fuente
 | 11. Literales numericos invalidos convertidos a `0` | Resuelta | Los numeros no representables reportan error sintactico y no se transforman en `Number(0)`. |
 | 12. Escapes de strings aceptados pero no interpretados | Resuelta | Los literales decodifican `\n`, `\r`, `\t`, `\"` y `\\`; escapes desconocidos bloquean el frontend. |
 | 13. `grammar.y` y parser generado desincronizados | Resuelta | `auto` y `_` quedan como pseudo-tipos via `IDENTIFIER`, el parser fue regenerado y se agrego `make parser-sync-check`. |
-| 14. Multiples expresiones globales | Resuelta | Se formalizo como extension local: `decl* expr+` se ejecuta como bloque implicito y queda documentado/probado. |
+| 14. Multiples expresiones globales | Resuelta | El parser exige una unica expresion global final; las secuencias deben usar bloque explicito. |
 | 15. Concatenacion `@` acepta valores fuera del contrato | Resuelta | `@`/`@@` ahora admiten solo `String`/`Number`, exigen al menos un `String` y la VM aplica la misma defensa. |
 | 16. Funciones matematicas producen `nan`/`inf` | Resuelta | BannerVM rechaza dominios invalidos y cualquier resultado numerico no finito con error runtime controlado. |
 | 17. Firma semantica de `print` desalineada con VM | Resuelta | La tabla builtin ya no declara `print` como `String`; el contrato queda alineado con retorno identidad. |
@@ -767,43 +767,51 @@ parser-sync-check: parser generado sincronizado con grammar.y
 Tambien se mantienen verdes las pruebas que usan `auto` y `_` como pseudo-tipos
 en `tests/extension`, incluyendo los casos de inferencia restringida.
 
-## 14. Multiples expresiones globales como extension local
+## 14. Una sola expresion global final
 
 ### Problema
 
 La referencia academica describe un programa como cero o mas declaraciones
 globales y una unica expresion final. El parser del repositorio aceptaba varias
-expresiones globales y las empaquetaba en un `ExprBlock`, pero esa extension no
-estaba documentada como parte del dialecto end-to-end.
+expresiones globales y las empaquetaba en un `ExprBlock`. Eso extendia el
+lenguaje de forma silenciosa:
+
+```hulk
+print(1);
+print(2);
+print(3);
+```
+
+El programa anterior se aceptaba como si fuera un bloque global implicito, aunque
+la forma oficial exige una sola expresion global.
 
 ### Solucion aplicada
 
-Se formalizo la decision de mantener la extension porque buena parte de la
-suite y de los ejemplos operativos del proyecto ya dependen de ella. La regla
-del dialecto implementado queda asi:
+Se elimino la extension implicita. La regla efectiva del frontend vuelve a ser:
 
 ```text
-decl* expr+
+decl* expr opt_semi
 ```
 
-Si hay una sola expresion global, se conserva como entrypoint directo. Si hay
-mas de una, el parser construye un bloque implicito equivalente a:
+Si un programa necesita varias operaciones al final, ahora debe escribirlas como
+un bloque explicito, que cuenta como la unica expresion global:
 
 ```hulk
 {
-    expr1;
-    expr2;
-    exprN;
+    print(1);
+    print(2);
+    print(3);
 }
 ```
 
-Las expresiones se ejecutan en orden de aparicion y el valor del programa es el
-valor de la ultima expresion, igual que en un bloque explicito.
+El parser reporta el diagnostico estable:
 
-Para que no sea un comportamiento escondido, se agrego el helper
-`make_global_entrypoint` en `grammar.y` y un comentario junto a la construccion
-del `ExprBlock` implicito. Tambien se documento la diferencia entre HULK base y
-el dialecto end-to-end en `doc/analisis_gramatica_hulk_base.md`.
+```text
+Solo se permite una expresion global final
+```
+
+cuando aparece cualquier declaracion o expresion despues del entrypoint. Tambien
+se conserva el error para programas sin expresion final.
 
 ### Archivos relevantes
 
@@ -811,23 +819,30 @@ el dialecto end-to-end en `doc/analisis_gramatica_hulk_base.md`.
 - `src/parser/parser.cpp`
 - `src/parser/parser.hpp`
 - `doc/analisis_gramatica_hulk_base.md`
-- `tests/backend/regression/multiple_global_exprs.hulk`
-- `tests/expected/backend/multiple_global_exprs.expected`
+- `tests/parser/README.md`
+- `tests/backend/regression/global_block_exprs.hulk`
+- `tests/backend/frontend_invalid/multiple_global_exprs.hulk`
 
 ### Validacion
 
-Se agrego la regresion `multiple_global_exprs.hulk`, que verifica ejecucion en
-orden de varias expresiones globales:
+Se reemplazo la regresion positiva de multiples globales por
+`global_block_exprs.hulk`, que prueba la forma valida con bloque explicito:
 
 ```hulk
-print("global 1");
-print("global 2");
-print("global 3");
+{
+    print("global 1");
+    print("global 2");
+    print("global 3");
+}
 ```
 
-La suite de backend tambien conserva cubiertos los programas historicos que
-dependen de esta extension, como `c4_literals`, `c4_strings`, `c5_recursion` y
-`c6_inheritance`.
+Tambien se agrego `tests/backend/frontend_invalid/multiple_global_exprs.hulk`
+con el caso antiguo para verificar que backend no ejecute ni emita IR/BannerIR
+cuando aparecen varias expresiones globales sin bloque.
+
+Los tests validos que dependian de la extension se reescribieron con bloques
+explicitos y, cuando habia declaraciones intercaladas, se movieron antes de la
+expresion global final.
 
 ## 15. Concatenacion restringida a `String` y `Number`
 
@@ -1026,6 +1041,8 @@ make -B backend
 make vm-tests
 make backend-tests
 make semantic
+make run-tests
+git diff --check
 ./hulk_semantic tests/extension/restricted_invalid_implicit_let.hulk --restricted-inference
 ./hulk_semantic tests/extension/restricted_valid_let.hulk --restricted-inference
 ./hulk_backend tests/extension/restricted_invalid_implicit_let.hulk
@@ -1035,7 +1052,8 @@ make semantic
 ./hulk_backend tests/backend/frontend_invalid/out_of_range_number.hulk
 ./hulk_backend tests/backend/regression/string_escapes.hulk
 ./hulk_backend tests/backend/frontend_invalid/invalid_string_escape.hulk
-./hulk_backend tests/backend/regression/multiple_global_exprs.hulk
+./hulk_backend tests/backend/regression/global_block_exprs.hulk
+./hulk_backend tests/backend/frontend_invalid/multiple_global_exprs.hulk
 ./hulk_backend tests/backend/invalid_concat/concat_bool.hulk
 ./hulk_backend tests/backend/invalid_concat/concat_number_number.hulk
 ./hulk_backend tests/backend/invalid_concat/concat_object.hulk
@@ -1050,8 +1068,8 @@ Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 115
-  Passed : 115
+  Total  : 116
+  Passed : 116
   Failed : 0
 ```
 
@@ -1079,8 +1097,9 @@ ya no pueden convertirse silenciosamente en `0`. Los strings tambien llegan al
 AST y al backend con sus escapes decodificados, y los escapes desconocidos
 fallan temprano. Finalmente, el parser generado queda protegido contra drift
 respecto a `grammar.y` mediante un chequeo reproducible. El soporte de multiples
-expresiones globales ya no queda implicito: es una extension local documentada,
-probada y definida como bloque global implicito. La concatenacion tambien queda
+expresiones globales sin bloque fue eliminado: el programa debe tener una unica
+expresion global final, y las secuencias se expresan con bloques explicitos.
+La concatenacion tambien queda
 acotada al contrato documentado, sin conversion publica de booleanos, objetos o
 `nil`. Las operaciones numericas de VM ahora rechazan dominios invalidos y
 resultados no finitos, evitando que `NaN` o `Infinity` se vuelvan valores
