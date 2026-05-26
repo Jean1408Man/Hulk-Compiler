@@ -1,7 +1,10 @@
 #ifndef HULK_IR_IR_H
 #define HULK_IR_IR_H
 
+#include "../common/span.hpp"
+
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -62,6 +65,11 @@ enum class IRFunctionKind {
     Method
 };
 
+struct SourceSpan {
+    std::string file;
+    hulk::common::Span span {};
+};
+
 struct IRField {
     std::string owner_type;
     std::string name;
@@ -105,6 +113,7 @@ struct IRInstr {
     std::vector<std::string> args;
     double number_value = 0.0;
     bool bool_value = false;
+    std::optional<SourceSpan> source;
 };
 
 struct IRFunction {

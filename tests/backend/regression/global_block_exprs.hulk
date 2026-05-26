@@ -1,0 +1,5 @@
+{
+    print("global 1");
+    print("global 2");
+    print("global 3");
+}

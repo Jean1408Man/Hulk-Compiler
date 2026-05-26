@@ -32,6 +32,7 @@ inline const std::unordered_map<std::string_view, TokenKind> kKeywords = {
     {"for", TokenKind::For},
     {"function", TokenKind::Function},
     {"type", TokenKind::Type},
+    {"protocol", TokenKind::Protocol},
     {"inherits", TokenKind::Inherits},
     {"new", TokenKind::New},
     {"is", TokenKind::Is},

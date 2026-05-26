@@ -6,15 +6,24 @@
 #include "vm_value.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace Hulk::VM {
 
+struct VMOptions {
+    std::size_t max_frames = 100000;
+    std::uint64_t max_steps = 10000000;
+    std::size_t max_heap_values = 1000000;
+};
+
 class BannerVM {
 public:
-    Word run(const Banner::BannerProgram& program);
+    Word run(const Banner::BannerProgram& program, const VMOptions& options = {});
+    std::string compiled_view(const Banner::BannerProgram& program);
 
 private:
     struct CompiledInstr {
@@ -37,6 +46,7 @@ private:
         std::vector<std::size_t> arg_slots;
         double number_value = 0.0;
         bool bool_value = false;
+        std::optional<IR::SourceSpan> source;
     };
 
     struct CompiledFunction {
@@ -95,6 +105,16 @@ private:
     std::size_t field_slot(const CompiledType& type, const std::string& field_name) const;
     std::size_t method_slot(const CompiledType& type, const std::string& method_name) const;
     bool is_instance(Word value, const std::string& type_name, const CompiledProgram& program) const;
+    std::vector<Word> gc_roots(const std::vector<Frame>& stack,
+                               const CompiledProgram& program) const;
+    void collect_if_needed(const std::vector<Frame>& stack, const CompiledProgram& program);
+    std::string format_compiled_instr(const CompiledInstr& instr) const;
+    std::string format_runtime_error(const std::string& cause,
+                                     const std::vector<Frame>& stack,
+                                     const CompiledInstr& instr,
+                                     std::size_t pc) const;
+    void enforce_frame_limit(std::size_t next_size, const VMOptions& options) const;
+    void enforce_heap_limit(const VMOptions& options) const;
     [[noreturn]] void unsupported(const std::string& feature) const;
 
     VMHeap heap_;

@@ -1,10 +1,12 @@
 #include "banner_vm.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <unordered_set>
 
@@ -20,11 +22,74 @@ bool word_equal(Word a, Word b, const VMHeap& heap) {
     return false;
 }
 
+std::string slot_ref(std::size_t slot) {
+    return "s" + std::to_string(slot);
 }
 
-Word BannerVM::run(const Banner::BannerProgram& program) {
+double checked_number(Word value, const std::string& context) {
+    const double number = as_number(value);
+    if (!std::isfinite(number)) {
+        throw std::runtime_error("Runtime error: numero no finito en " + context + ".");
+    }
+    return number;
+}
+
+Word checked_number_result(double value, const std::string& context) {
+    if (!std::isfinite(value)) {
+        throw std::runtime_error("Runtime error: resultado numerico no finito en " + context + ".");
+    }
+    return make_number(value);
+}
+
+bool is_integral_number(double value) {
+    return std::trunc(value) == value;
+}
+
+bool is_concat_operand(Word value) {
+    return is_string(value) || is_number(value);
+}
+
+std::string concat_operand_to_string(Word value, const VMHeap& heap) {
+    if (!is_concat_operand(value)) {
+        throw std::runtime_error("Runtime error: operador de concatenacion solo admite String o Number.");
+    }
+    return to_string(value, heap);
+}
+
+std::string concat_values(Word lhs, Word rhs, const VMHeap& heap, bool with_space) {
+    if (!is_string(lhs) && !is_string(rhs)) {
+        throw std::runtime_error("Runtime error: operador de concatenacion requiere al menos un String.");
+    }
+
+    std::string result = concat_operand_to_string(lhs, heap);
+    if (with_space) result += " ";
+    result += concat_operand_to_string(rhs, heap);
+    return result;
+}
+
+void append_slot_list(std::ostringstream& out, const std::vector<std::size_t>& slots) {
+    out << "(";
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        if (i > 0) out << ", ";
+        out << slot_ref(slots.at(i));
+    }
+    out << ")";
+}
+
+std::string format_source_ref(const IR::SourceSpan& source) {
+    std::ostringstream out;
+    out << (source.file.empty() ? "<desconocido>" : source.file)
+        << ":" << source.span.start.line
+        << ":" << source.span.start.column;
+    return out.str();
+}
+
+}
+
+Word BannerVM::run(const Banner::BannerProgram& program, const VMOptions& options) {
     heap_ = VMHeap{};
     CompiledProgram compiled = compile_program(program);
+    enforce_heap_limit(options);
 
     auto entry = compiled.function_ids.find(program.entry_function);
     if (entry == compiled.function_ids.end()) {
@@ -32,7 +97,9 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
     }
 
     std::vector<Frame> stack;
+    enforce_frame_limit(1, options);
     stack.push_back(make_frame(compiled.functions.at(entry->second), {}));
+    std::uint64_t steps = 0;
 
     while (!stack.empty()) {
         Frame& frame = stack.back();
@@ -57,8 +124,14 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
             continue;
         }
 
-        const auto& instr = code[frame.pc++];
-        switch (instr.op) {
+        const std::size_t instr_pc = frame.pc;
+        const auto& instr = code.at(instr_pc);
+        ++frame.pc;
+        try {
+            if (++steps > options.max_steps) {
+                throw std::runtime_error("Runtime error: limite de instrucciones de VM excedido.");
+            }
+            switch (instr.op) {
             case Banner::Op::Nop:
             case Banner::Op::Label:
                 break;
@@ -66,7 +139,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 set(instr.dest_slot, make_nil());
                 break;
             case Banner::Op::ConstNumber:
-                set(instr.dest_slot, make_number(instr.number_value));
+                set(instr.dest_slot, checked_number_result(instr.number_value, "constante numerica"));
                 break;
             case Banner::Op::ConstBool:
                 set(instr.dest_slot, make_bool(instr.bool_value));
@@ -83,35 +156,49 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 set(instr.dest_slot, get(instr.src1_slot));
                 break;
             case Banner::Op::Add:
-                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) +
-                                                 as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, checked_number_result(
+                    checked_number(get(instr.src1_slot), "suma") +
+                    checked_number(get(instr.src2_slot), "suma"),
+                    "suma"));
                 break;
             case Banner::Op::Sub:
-                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) -
-                                                 as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, checked_number_result(
+                    checked_number(get(instr.src1_slot), "resta") -
+                    checked_number(get(instr.src2_slot), "resta"),
+                    "resta"));
                 break;
             case Banner::Op::Mul:
-                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) *
-                                                 as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, checked_number_result(
+                    checked_number(get(instr.src1_slot), "multiplicacion") *
+                    checked_number(get(instr.src2_slot), "multiplicacion"),
+                    "multiplicacion"));
                 break;
             case Banner::Op::Div: {
-                const double rhs = as_number(get(instr.src2_slot));
+                const double lhs = checked_number(get(instr.src1_slot), "division");
+                const double rhs = checked_number(get(instr.src2_slot), "division");
                 if (rhs == 0) throw std::runtime_error("Runtime error: division por cero.");
-                set(instr.dest_slot, make_number(as_number(get(instr.src1_slot)) / rhs));
+                set(instr.dest_slot, checked_number_result(lhs / rhs, "division"));
                 break;
             }
             case Banner::Op::Mod: {
-                const double rhs = as_number(get(instr.src2_slot));
+                const double lhs = checked_number(get(instr.src1_slot), "modulo");
+                const double rhs = checked_number(get(instr.src2_slot), "modulo");
                 if (rhs == 0) throw std::runtime_error("Runtime error: modulo por cero.");
-                set(instr.dest_slot, make_number(std::fmod(as_number(get(instr.src1_slot)), rhs)));
+                set(instr.dest_slot, checked_number_result(std::fmod(lhs, rhs), "modulo"));
                 break;
             }
-            case Banner::Op::Pow:
-                set(instr.dest_slot, make_number(std::pow(as_number(get(instr.src1_slot)),
-                                                          as_number(get(instr.src2_slot)))));
+            case Banner::Op::Pow: {
+                const double base = checked_number(get(instr.src1_slot), "pow");
+                const double exponent = checked_number(get(instr.src2_slot), "pow");
+                if ((base < 0 && !is_integral_number(exponent)) || (base == 0 && exponent < 0)) {
+                    throw std::runtime_error("Runtime error: dominio invalido para pow.");
+                }
+                set(instr.dest_slot, checked_number_result(std::pow(base, exponent), "pow"));
                 break;
+            }
             case Banner::Op::Neg:
-                set(instr.dest_slot, make_number(-as_number(get(instr.src1_slot))));
+                set(instr.dest_slot, checked_number_result(-checked_number(get(instr.src1_slot), "negacion"),
+                                                           "negacion"));
                 break;
             case Banner::Op::And:
                 set(instr.dest_slot, make_bool(truthy(get(instr.src1_slot)) &&
@@ -135,30 +222,39 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                                                            heap_)));
                 break;
             case Banner::Op::Less:
-                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) <
-                                               as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, make_bool(checked_number(get(instr.src1_slot), "comparacion") <
+                                               checked_number(get(instr.src2_slot), "comparacion")));
                 break;
             case Banner::Op::Greater:
-                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) >
-                                               as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, make_bool(checked_number(get(instr.src1_slot), "comparacion") >
+                                               checked_number(get(instr.src2_slot), "comparacion")));
                 break;
             case Banner::Op::LessEqual:
-                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) <=
-                                               as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, make_bool(checked_number(get(instr.src1_slot), "comparacion") <=
+                                               checked_number(get(instr.src2_slot), "comparacion")));
                 break;
             case Banner::Op::GreaterEqual:
-                set(instr.dest_slot, make_bool(as_number(get(instr.src1_slot)) >=
-                                               as_number(get(instr.src2_slot))));
+                set(instr.dest_slot, make_bool(checked_number(get(instr.src1_slot), "comparacion") >=
+                                               checked_number(get(instr.src2_slot), "comparacion")));
                 break;
-            case Banner::Op::Concat:
-                set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
-                                                           to_string(get(instr.src2_slot), heap_)));
+            case Banner::Op::Concat: {
+                set(instr.dest_slot, heap_.allocate_string(concat_values(get(instr.src1_slot),
+                                                                         get(instr.src2_slot),
+                                                                         heap_,
+                                                                         false)));
+                collect_if_needed(stack, compiled);
+                enforce_heap_limit(options);
                 break;
-            case Banner::Op::ConcatSpace:
-                set(instr.dest_slot, heap_.allocate_string(to_string(get(instr.src1_slot), heap_) +
-                                                           " " +
-                                                           to_string(get(instr.src2_slot), heap_)));
+            }
+            case Banner::Op::ConcatSpace: {
+                set(instr.dest_slot, heap_.allocate_string(concat_values(get(instr.src1_slot),
+                                                                         get(instr.src2_slot),
+                                                                         heap_,
+                                                                         true)));
+                collect_if_needed(stack, compiled);
+                enforce_heap_limit(options);
                 break;
+            }
             case Banner::Op::Jump:
                 frame.pc = instr.label_pc;
                 break;
@@ -185,24 +281,36 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 set(instr.dest_slot, value);
                 break;
             }
-            case Banner::Op::Sqrt:
-                set(instr.dest_slot, make_number(std::sqrt(as_number(get(instr.arg_slots.at(0))))));
+            case Banner::Op::Sqrt: {
+                const double value = checked_number(get(instr.arg_slots.at(0)), "sqrt");
+                if (value < 0) throw std::runtime_error("Runtime error: dominio invalido para sqrt.");
+                set(instr.dest_slot, checked_number_result(std::sqrt(value), "sqrt"));
                 break;
+            }
             case Banner::Op::Sin:
-                set(instr.dest_slot, make_number(std::sin(as_number(get(instr.arg_slots.at(0))))));
+                set(instr.dest_slot, checked_number_result(
+                    std::sin(checked_number(get(instr.arg_slots.at(0)), "sin")), "sin"));
                 break;
             case Banner::Op::Cos:
-                set(instr.dest_slot, make_number(std::cos(as_number(get(instr.arg_slots.at(0))))));
+                set(instr.dest_slot, checked_number_result(
+                    std::cos(checked_number(get(instr.arg_slots.at(0)), "cos")), "cos"));
                 break;
             case Banner::Op::Exp:
-                set(instr.dest_slot, make_number(std::exp(as_number(get(instr.arg_slots.at(0))))));
+                set(instr.dest_slot, checked_number_result(
+                    std::exp(checked_number(get(instr.arg_slots.at(0)), "exp")), "exp"));
                 break;
-            case Banner::Op::Log:
-                set(instr.dest_slot, make_number(std::log(as_number(get(instr.arg_slots.at(1)))) /
-                                                 std::log(as_number(get(instr.arg_slots.at(0))))));
+            case Banner::Op::Log: {
+                const double base = checked_number(get(instr.arg_slots.at(0)), "log");
+                const double value = checked_number(get(instr.arg_slots.at(1)), "log");
+                if (base <= 0 || base == 1 || value <= 0) {
+                    throw std::runtime_error("Runtime error: dominio invalido para log.");
+                }
+                set(instr.dest_slot, checked_number_result(std::log(value) / std::log(base), "log"));
                 break;
+            }
             case Banner::Op::Rand:
-                set(instr.dest_slot, make_number(static_cast<double>(std::rand()) / RAND_MAX));
+                set(instr.dest_slot, checked_number_result(static_cast<double>(std::rand()) / RAND_MAX,
+                                                           "rand"));
                 break;
             case Banner::Op::Param:
                 frame.param_buffer.push_back(get(instr.src1_slot));
@@ -210,6 +318,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
             case Banner::Op::Call: {
                 std::vector<Word> args = frame.param_buffer;
                 frame.param_buffer.clear();
+                enforce_frame_limit(stack.size() + 1, options);
                 stack.push_back(make_frame(compiled.functions.at(instr.callee_id),
                                            args,
                                            instr.dest_slot,
@@ -220,6 +329,8 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 set(instr.dest_slot, heap_.allocate_object(instr.type_id,
                                                            type_of(compiled, instr.type_name)
                                                                .field_slots.size()));
+                collect_if_needed(stack, compiled);
+                enforce_heap_limit(options);
                 break;
             case Banner::Op::GetAttr: {
                 const Word receiver = get(instr.src1_slot);
@@ -269,6 +380,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 call_args.reserve(args.size() + 1);
                 call_args.push_back(receiver);
                 call_args.insert(call_args.end(), args.begin(), args.end());
+                enforce_frame_limit(stack.size() + 1, options);
                 stack.push_back(make_frame(compiled.functions.at(runtime_type.vtable.at(slot)),
                                            call_args,
                                            instr.dest_slot,
@@ -295,6 +407,7 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 call_args.reserve(args.size() + 1);
                 call_args.push_back(receiver);
                 call_args.insert(call_args.end(), args.begin(), args.end());
+                enforce_frame_limit(stack.size() + 1, options);
                 stack.push_back(make_frame(compiled.functions.at(start_type.vtable.at(slot)),
                                            call_args,
                                            instr.dest_slot,
@@ -316,10 +429,90 @@ Word BannerVM::run(const Banner::BannerProgram& program) {
                 set(instr.dest_slot, value);
                 break;
             }
+            }
+        } catch (const std::exception& err) {
+            throw std::runtime_error(format_runtime_error(err.what(), stack, instr, instr_pc));
         }
     }
 
     return make_nil();
+}
+
+std::string BannerVM::compiled_view(const Banner::BannerProgram& program) {
+    heap_ = VMHeap{};
+    const CompiledProgram compiled = compile_program(program);
+
+    std::ostringstream out;
+    out << ".COMPILED_BANNER\n";
+    out << "entry function #" << compiled.function_ids.at(program.entry_function)
+        << " " << program.entry_function << "\n";
+
+    for (std::size_t function_id = 0; function_id < compiled.functions.size(); ++function_id) {
+        const auto& function = compiled.functions.at(function_id);
+        out << "\nfunction #" << function_id << " " << function.function->name;
+        if (!function.function->source_name.empty() &&
+            function.function->source_name != function.function->name) {
+            out << " ; source=" << function.function->source_name;
+        }
+        out << "\n";
+
+        std::vector<std::pair<std::string, std::size_t>> slots(function.slots.begin(),
+                                                              function.slots.end());
+        std::sort(slots.begin(),
+                  slots.end(),
+                  [](const auto& left, const auto& right) {
+                      if (left.second != right.second) return left.second < right.second;
+                      return left.first < right.first;
+                  });
+
+        out << "  slots:\n";
+        for (const auto& [name, slot] : slots) {
+            out << "    " << slot_ref(slot) << " = " << name << "\n";
+        }
+
+        out << "  code:\n";
+        for (std::size_t pc = 0; pc < function.code.size(); ++pc) {
+            const auto& instr = function.code.at(pc);
+            out << "    " << pc << ": " << format_compiled_instr(instr);
+            if (instr.source) out << " ; source=" << format_source_ref(*instr.source);
+            out << "\n";
+        }
+    }
+
+    if (!compiled.types.empty()) {
+        out << "\ntypes:\n";
+        std::vector<const CompiledType*> types;
+        types.reserve(compiled.types.size());
+        for (const auto& [_, type] : compiled.types) {
+            types.push_back(&type);
+        }
+        std::sort(types.begin(),
+                  types.end(),
+                  [](const auto* left, const auto* right) {
+                      return left->type_id < right->type_id;
+                  });
+
+        for (const auto* type : types) {
+            out << "  type #" << type->type_id << " " << type->type->name;
+            if (type->parent_type_id != -1) out << " parent=#" << type->parent_type_id;
+            out << "\n";
+        }
+    }
+
+    if (!compiled.data.empty()) {
+        out << "\ndata:\n";
+        std::vector<std::string> labels;
+        labels.reserve(compiled.data.size());
+        for (const auto& [label, _] : compiled.data) {
+            labels.push_back(label);
+        }
+        std::sort(labels.begin(), labels.end());
+        for (const auto& label : labels) {
+            out << "  " << label << " = <string>\n";
+        }
+    }
+
+    return out.str();
 }
 
 BannerVM::CompiledProgram BannerVM::compile_program(const Banner::BannerProgram& program) {
@@ -462,6 +655,7 @@ void BannerVM::compile_function_code(
         for (const auto& arg : source.args) {
             instr.arg_slots.push_back(slot_of(function, arg));
         }
+        instr.source = source.source;
 
         function.code.push_back(std::move(instr));
     }
@@ -631,6 +825,259 @@ bool BannerVM::is_instance(Word value,
     }
 
     return type_name == "Object";
+}
+
+std::vector<Word> BannerVM::gc_roots(const std::vector<Frame>& stack,
+                                     const CompiledProgram& program) const {
+    std::vector<Word> roots;
+    for (const auto& frame : stack) {
+        roots.insert(roots.end(), frame.slots.begin(), frame.slots.end());
+        roots.insert(roots.end(), frame.param_buffer.begin(), frame.param_buffer.end());
+    }
+    for (const auto& [_, value] : program.data) {
+        roots.push_back(value);
+    }
+    return roots;
+}
+
+void BannerVM::collect_if_needed(const std::vector<Frame>& stack,
+                                 const CompiledProgram& program) {
+    if (!heap_.should_collect()) return;
+    heap_.collect(gc_roots(stack, program));
+}
+
+std::string BannerVM::format_compiled_instr(const CompiledInstr& instr) const {
+    std::ostringstream out;
+    auto dest = [&] {
+        if (instr.has_dest) out << slot_ref(instr.dest_slot) << " = ";
+    };
+    auto binary = [&](const char* name) {
+        dest();
+        out << name << " " << slot_ref(instr.src1_slot) << ", " << slot_ref(instr.src2_slot);
+    };
+    auto unary = [&](const char* name) {
+        dest();
+        out << name << " " << slot_ref(instr.src1_slot);
+    };
+    auto builtin = [&](const char* name) {
+        dest();
+        out << name << " ";
+        append_slot_list(out, instr.arg_slots);
+    };
+
+    switch (instr.op) {
+        case Banner::Op::Nop:
+            out << "NOP";
+            break;
+        case Banner::Op::Label:
+            out << "LABEL pc=" << instr.label_pc;
+            break;
+        case Banner::Op::ConstNil:
+            dest();
+            out << "CONST_NIL";
+            break;
+        case Banner::Op::ConstNumber:
+            dest();
+            out << "CONST_NUMBER " << instr.number_value;
+            break;
+        case Banner::Op::ConstBool:
+            dest();
+            out << "CONST_BOOL " << (instr.bool_value ? "true" : "false");
+            break;
+        case Banner::Op::LoadData:
+            dest();
+            out << "LOAD_DATA " << instr.data_label;
+            break;
+        case Banner::Op::Move:
+            unary("MOVE");
+            break;
+        case Banner::Op::Add:
+            binary("ADD");
+            break;
+        case Banner::Op::Sub:
+            binary("SUB");
+            break;
+        case Banner::Op::Mul:
+            binary("MUL");
+            break;
+        case Banner::Op::Div:
+            binary("DIV");
+            break;
+        case Banner::Op::Mod:
+            binary("MOD");
+            break;
+        case Banner::Op::Pow:
+            binary("POW");
+            break;
+        case Banner::Op::Neg:
+            unary("NEG");
+            break;
+        case Banner::Op::And:
+            binary("AND");
+            break;
+        case Banner::Op::Or:
+            binary("OR");
+            break;
+        case Banner::Op::Not:
+            unary("NOT");
+            break;
+        case Banner::Op::Equal:
+            binary("EQUAL");
+            break;
+        case Banner::Op::NotEqual:
+            binary("NOT_EQUAL");
+            break;
+        case Banner::Op::Less:
+            binary("LESS");
+            break;
+        case Banner::Op::Greater:
+            binary("GREATER");
+            break;
+        case Banner::Op::LessEqual:
+            binary("LESS_EQUAL");
+            break;
+        case Banner::Op::GreaterEqual:
+            binary("GREATER_EQUAL");
+            break;
+        case Banner::Op::Concat:
+            binary("CONCAT");
+            break;
+        case Banner::Op::ConcatSpace:
+            binary("CONCAT_SPACE");
+            break;
+        case Banner::Op::Jump:
+            out << "JUMP pc=" << instr.label_pc;
+            break;
+        case Banner::Op::JumpIfTrue:
+            out << "JUMP_IF_TRUE " << slot_ref(instr.src1_slot) << " pc=" << instr.label_pc;
+            break;
+        case Banner::Op::JumpIfFalse:
+            out << "JUMP_IF_FALSE " << slot_ref(instr.src1_slot) << " pc=" << instr.label_pc;
+            break;
+        case Banner::Op::Param:
+            out << "PARAM " << slot_ref(instr.src1_slot);
+            break;
+        case Banner::Op::Call:
+            dest();
+            out << "CALL function #" << instr.callee_id;
+            break;
+        case Banner::Op::Return:
+            out << "RETURN " << slot_ref(instr.src1_slot);
+            break;
+        case Banner::Op::Allocate:
+            dest();
+            out << "ALLOCATE type #" << instr.type_id << " " << instr.type_name;
+            break;
+        case Banner::Op::GetAttr:
+            dest();
+            out << "GET_ATTR " << slot_ref(instr.src1_slot);
+            out << "." << (instr.has_field_slot ? "#" + std::to_string(instr.field_slot)
+                                                : instr.field_name);
+            break;
+        case Banner::Op::SetAttr:
+            dest();
+            out << "SET_ATTR " << slot_ref(instr.src1_slot);
+            out << "." << (instr.has_field_slot ? "#" + std::to_string(instr.field_slot)
+                                                : instr.field_name);
+            out << ", " << slot_ref(instr.src2_slot);
+            break;
+        case Banner::Op::VCall:
+            dest();
+            out << "VCALL " << slot_ref(instr.src1_slot) << ".";
+            out << (instr.has_method_slot ? "#" + std::to_string(instr.method_slot)
+                                          : instr.method_name);
+            if (!instr.arg_slots.empty()) {
+                out << " ";
+                append_slot_list(out, instr.arg_slots);
+            }
+            break;
+        case Banner::Op::SCall:
+            dest();
+            out << "SCALL " << instr.type_name << "::";
+            out << (instr.has_method_slot ? "#" + std::to_string(instr.method_slot)
+                                          : instr.method_name);
+            out << " receiver=" << slot_ref(instr.src1_slot);
+            if (!instr.arg_slots.empty()) {
+                out << " ";
+                append_slot_list(out, instr.arg_slots);
+            }
+            break;
+        case Banner::Op::IsType:
+            dest();
+            out << "IS_TYPE " << slot_ref(instr.src1_slot) << ", " << instr.type_name;
+            break;
+        case Banner::Op::AsType:
+            dest();
+            out << "AS_TYPE " << slot_ref(instr.src1_slot) << ", " << instr.type_name;
+            break;
+        case Banner::Op::Print:
+            builtin("PRINT");
+            break;
+        case Banner::Op::Sqrt:
+            builtin("SQRT");
+            break;
+        case Banner::Op::Sin:
+            builtin("SIN");
+            break;
+        case Banner::Op::Cos:
+            builtin("COS");
+            break;
+        case Banner::Op::Exp:
+            builtin("EXP");
+            break;
+        case Banner::Op::Log:
+            builtin("LOG");
+            break;
+        case Banner::Op::Rand:
+            dest();
+            out << "RAND";
+            break;
+    }
+
+    return out.str();
+}
+
+std::string BannerVM::format_runtime_error(const std::string& cause,
+                                           const std::vector<Frame>& stack,
+                                           const CompiledInstr& instr,
+                                           std::size_t pc) const {
+    const Frame* current = stack.empty() ? nullptr : &stack.back();
+    const std::string function_name =
+        current != nullptr && current->function != nullptr && current->function->function != nullptr
+            ? current->function->function->name
+            : "<sin-funcion>";
+
+    std::ostringstream out;
+    out << "Runtime error en " << function_name << " pc=" << pc << "\n";
+    if (instr.source) {
+        out << "  source: " << format_source_ref(*instr.source) << "\n";
+    }
+    out << "  instr: " << format_compiled_instr(instr) << "\n";
+    out << "  causa: " << cause << "\n";
+    out << "  stack:\n";
+    for (std::size_t i = stack.size(); i > 0; --i) {
+        const auto& frame = stack.at(i - 1);
+        const std::string name =
+            frame.function != nullptr && frame.function->function != nullptr
+                ? frame.function->function->name
+                : "<sin-funcion>";
+        const std::size_t frame_pc = (i == stack.size()) ? pc : frame.pc;
+        out << "    at " << name << " pc=" << frame_pc << "\n";
+    }
+    return out.str();
+}
+
+void BannerVM::enforce_frame_limit(std::size_t next_size, const VMOptions& options) const {
+    if (next_size > options.max_frames) {
+        throw std::runtime_error("Runtime error: limite de frames de VM excedido.");
+    }
+}
+
+void BannerVM::enforce_heap_limit(const VMOptions& options) const {
+    const std::size_t live_values = heap_.live_object_count() + heap_.live_string_count();
+    if (live_values > options.max_heap_values) {
+        throw std::runtime_error("Runtime error: limite de heap de VM excedido.");
+    }
 }
 
 [[noreturn]] void BannerVM::unsupported(const std::string& feature) const {

@@ -16,6 +16,10 @@ namespace Hulk {
 
 namespace Hulk {
 
+    struct SemanticOptions {
+        bool restricted_inference = false;
+    };
+
     // -----------------------------------------------------------------------
     // SemanticAnalyzer
     //
@@ -36,7 +40,8 @@ namespace Hulk {
     // -----------------------------------------------------------------------
     class SemanticAnalyzer {
     public:
-        explicit SemanticAnalyzer(hulk::common::DiagnosticEngine& engine);
+        explicit SemanticAnalyzer(hulk::common::DiagnosticEngine& engine,
+                                  SemanticOptions options = {});
         ~SemanticAnalyzer();
 
         // Ejecuta el análisis semántico completo sobre el programa.
@@ -54,6 +59,7 @@ namespace Hulk {
 
     private:
         hulk::common::DiagnosticEngine& engine_;
+        SemanticOptions                 options_;
         SemanticTables                  tables_;
         std::unique_ptr<SymbolResolver> resolver_;
         std::unique_ptr<TypeInferencer> inferencer_;

@@ -1,2 +1,4 @@
-print(PI);
-print(E);
+{
+    print(PI);
+    print(E);
+}

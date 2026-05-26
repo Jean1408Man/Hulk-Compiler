@@ -37,6 +37,7 @@ LEXER_AST_SRCS := \
 	src/ast/others/group.cpp \
 	src/ast/others/program.cpp \
 	src/ast/others/selfRef.cpp \
+	src/ast/protocols/protocolDecl.cpp \
 	src/ast/types/asExpr.cpp \
 	src/ast/types/isExpr.cpp \
 	src/ast/types/memberAccess.cpp \
@@ -85,7 +86,7 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend backend-tests run-tests update-expected clean
+.PHONY: all parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
 
@@ -114,6 +115,28 @@ $(OBJDIR)/parser/parser_lexer_adapter.o: src/parser/parser_lexer_adapter.cpp
 # ─────────────────────────────────────────────────────────────────────────────
 parser-gen:
 	bison -d -o src/parser/parser.cpp src/parser/grammar.y
+
+parser-sync-check:
+	@set -e; \
+	if grep -n -E 'AUTO|UNDERSCORE_TYPE' \
+		src/parser/grammar.y \
+		src/parser/parser.cpp \
+		src/parser/parser.hpp \
+		src/lexer/token_kind.hpp \
+		src/lexer/keywords.hpp \
+		src/parser/parser_lexer_adapter.cpp; then \
+		echo "parser-sync-check: tokens AUTO/UNDERSCORE_TYPE no deben reaparecer; use IDENTIFIER como pseudo-tipo."; \
+		exit 1; \
+	fi; \
+	tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	mkdir -p "$$tmp_dir/src/parser"; \
+	cp src/parser/grammar.y "$$tmp_dir/src/parser/grammar.y"; \
+	( cd "$$tmp_dir" && bison -d -o src/parser/parser.cpp src/parser/grammar.y ); \
+	diff -u src/parser/parser.cpp "$$tmp_dir/src/parser/parser.cpp"; \
+	diff -u src/parser/parser.hpp "$$tmp_dir/src/parser/parser.hpp"; \
+	diff -u src/parser/location.hh "$$tmp_dir/src/parser/location.hh"; \
+	echo "parser-sync-check: parser generado sincronizado con grammar.y"
 
 lexer:
 	$(CXX) $(CXXFLAGS) \
@@ -193,6 +216,33 @@ backend: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) $(BACKEND_OBJS)
 		$(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) $(BACKEND_OBJS) \
 		$(OBJDIR)/backend_main/main.o \
 		-o hulk_backend
+
+vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o $(OBJDIR)/banner/banner_ir.o
+	@mkdir -p $(OBJDIR)/vm_tests
+	$(CXX) $(CXXFLAGS) -c tests/vm/vm_value_tests.cpp -o $(OBJDIR)/vm_tests/vm_value_tests.o
+	$(CXX) $(CXXFLAGS) -c tests/vm/vm_heap_tests.cpp -o $(OBJDIR)/vm_tests/vm_heap_tests.o
+	$(CXX) $(CXXFLAGS) -c tests/vm/banner_vm_limits_tests.cpp -o $(OBJDIR)/vm_tests/banner_vm_limits_tests.o
+	$(CXX) $(CXXFLAGS) -c tests/vm/banner_vm_semantics_tests.cpp -o $(OBJDIR)/vm_tests/banner_vm_semantics_tests.o
+	$(CXX) $(CXXFLAGS) \
+		$(OBJDIR)/vm_tests/vm_value_tests.o \
+		$(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o \
+		-o hulk_vm_value_tests
+	$(CXX) $(CXXFLAGS) \
+		$(OBJDIR)/vm_tests/vm_heap_tests.o \
+		$(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o \
+		-o hulk_vm_tests
+	$(CXX) $(CXXFLAGS) \
+		$(OBJDIR)/vm_tests/banner_vm_limits_tests.o \
+		$(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o $(OBJDIR)/banner/banner_ir.o \
+		-o hulk_vm_limits_tests
+	$(CXX) $(CXXFLAGS) \
+		$(OBJDIR)/vm_tests/banner_vm_semantics_tests.o \
+		$(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o $(OBJDIR)/banner/banner_ir.o \
+		-o hulk_vm_semantics_tests
+	./hulk_vm_value_tests
+	./hulk_vm_tests
+	./hulk_vm_limits_tests
+	./hulk_vm_semantics_tests
 
 backend-tests: backend
 	@bash tests/backend/run_backend_tests.sh

@@ -12,6 +12,9 @@ namespace Hulk {
         std::vector<Param> params;
         std::string returnType;
 
+        ProtocolMethodSig()
+            : name(""), params(), returnType("") {}
+
         ProtocolMethodSig(const std::string& name,
                           std::vector<Param> params,
                           const std::string& returnType)

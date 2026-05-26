@@ -12,5 +12,7 @@ type Dog(name) inherits Animal(name) {
     speak() => print("Woof! I am " @ self.name);
 }
 
-let d = new Dog("Rex") in d.speak();
-print(greet("mundo"));
+{
+    let d = new Dog("Rex") in d.speak();
+    print(greet("mundo"));
+}

@@ -4,6 +4,7 @@
 #include "../ir/ir.h"
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -100,6 +101,7 @@ struct BannerInstr {
     std::vector<std::string> args;
     double number_value = 0.0;
     bool bool_value = false;
+    std::optional<IR::SourceSpan> source;
 };
 
 struct BannerFunction {

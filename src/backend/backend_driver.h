@@ -1,6 +1,8 @@
 #ifndef HULK_BACKEND_DRIVER_H
 #define HULK_BACKEND_DRIVER_H
 
+#include "../semantic/analyzer.h"
+
 #include <string>
 
 namespace Hulk::Backend {
@@ -8,8 +10,10 @@ namespace Hulk::Backend {
 struct BackendOptions {
     std::string input_path;
     std::string output_path;
+    SemanticOptions semantic;
     bool emit_ir = false;
     bool emit_banner = false;
+    bool emit_banner_compiled = false;
     bool run_banner = false;
 };
 

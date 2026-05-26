@@ -14,6 +14,10 @@ constexpr Word kTagMask = 0xffff000000000000ULL;
 constexpr Word kTagBase = 0x7ffc000000000000ULL;
 constexpr Word kKindShift = 40;
 constexpr Word kPayloadMask = 0x000000ffffffffffULL;
+constexpr Word kHandleIndexBits = 24;
+constexpr Word kHandleIndexMask = (Word{1} << kHandleIndexBits) - 1;
+constexpr Word kHandleGenerationShift = kHandleIndexBits;
+constexpr Word kHandleGenerationMask = 0xffffULL;
 
 Word make_tagged(WordKind kind, std::size_t payload) {
     if ((static_cast<Word>(payload) & ~kPayloadMask) != 0) {
@@ -30,6 +34,24 @@ WordKind kind_of(Word value) {
 
 std::size_t payload_of(Word value) {
     return static_cast<std::size_t>(value & kPayloadMask);
+}
+
+std::size_t handle_index(Word value) {
+    return static_cast<std::size_t>(payload_of(value) & kHandleIndexMask);
+}
+
+std::uint32_t handle_generation(Word value) {
+    return static_cast<std::uint32_t>((payload_of(value) >> kHandleGenerationShift) &
+                                      kHandleGenerationMask);
+}
+
+std::size_t make_handle_payload(std::size_t index, std::uint32_t generation) {
+    if ((static_cast<Word>(index) & ~kHandleIndexMask) != 0 ||
+        (static_cast<Word>(generation) & ~kHandleGenerationMask) != 0) {
+        throw std::runtime_error("Runtime error: handle de VM fuera de rango.");
+    }
+    return static_cast<std::size_t>((static_cast<Word>(generation) << kHandleGenerationShift) |
+                                    static_cast<Word>(index));
 }
 
 }
@@ -52,12 +74,12 @@ Word make_bool(bool value) {
     return make_tagged(WordKind::Bool, value ? 1 : 0);
 }
 
-Word make_string_ref(std::size_t index) {
-    return make_tagged(WordKind::String, index);
+Word make_string_ref(std::size_t index, std::uint32_t generation) {
+    return make_tagged(WordKind::String, make_handle_payload(index, generation));
 }
 
-Word make_object_ref(std::size_t index) {
-    return make_tagged(WordKind::Object, index);
+Word make_object_ref(std::size_t index, std::uint32_t generation) {
+    return make_tagged(WordKind::Object, make_handle_payload(index, generation));
 }
 
 bool is_nil(Word value) { return kind_of(value) == WordKind::Nil; }
@@ -80,12 +102,22 @@ bool as_bool(Word value) {
 
 std::size_t as_string_index(Word value) {
     if (!is_string(value)) throw std::runtime_error("Runtime error: se esperaba String.");
-    return payload_of(value);
+    return handle_index(value);
 }
 
 std::size_t as_object_index(Word value) {
     if (!is_object(value)) throw std::runtime_error("Runtime error: se esperaba Object.");
-    return payload_of(value);
+    return handle_index(value);
+}
+
+std::uint32_t as_string_generation(Word value) {
+    if (!is_string(value)) throw std::runtime_error("Runtime error: se esperaba String.");
+    return handle_generation(value);
+}
+
+std::uint32_t as_object_generation(Word value) {
+    if (!is_object(value)) throw std::runtime_error("Runtime error: se esperaba Object.");
+    return handle_generation(value);
 }
 
 bool truthy(Word value) {

@@ -72,6 +72,7 @@ enum class TokenKind {
     Semicolon,         // ;
     Colon,             // :
     Dot,               // .
+    Protocol,          // protocol
 };
 
 } // namespace hulk::lexer

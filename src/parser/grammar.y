@@ -28,6 +28,7 @@
     #include "../ast/domainFunctions/print.h"
     #include "../ast/functions/functionCall.h"
     #include "../ast/functions/functionDecl.h"
+    #include "../ast/functions/lambda.h"
     #include "../ast/functions/param.h"
     #include "../ast/literales/boolean.h"
     #include "../ast/literales/number.h"
@@ -36,6 +37,8 @@
     #include "../ast/loops/while.h"
     #include "../ast/others/exprBlock.h"
     #include "../ast/others/program.h"
+    #include "../ast/protocols/protocolDecl.h"
+    #include "../ast/protocols/protocolMethodSig.h"
     #include "../ast/types/asExpr.h"
     #include "../ast/types/isExpr.h"
     #include "../ast/types/memberAccess.h"
@@ -60,6 +63,7 @@
         using BindingPtr = std::unique_ptr<Hulk::VariableBinding>;
         using BindingList = std::vector<BindingPtr>;
         using ParamList = std::vector<Hulk::Param>;
+        using ProtocolMethodList = std::vector<Hulk::ProtocolMethodSig>;
         using ElifList = std::vector<Hulk::ElifBranch>;
         using TypeMemberList = std::vector<Hulk::TypeMember>;
 
@@ -77,7 +81,8 @@
 
         struct TopLevelItems {
             DeclList decls;
-            ExprList exprs;
+            ExprPtr globalExpr;
+            bool hasGlobalExpr = false;
         };
     }
 }
@@ -91,13 +96,6 @@
 %code {
     #define yylex() yylex(driver)
 
-    static std::string unquote_string_literal(const std::string& lexeme) {
-        if (lexeme.size() >= 2 && lexeme.front() == '"' && lexeme.back() == '"') {
-            return lexeme.substr(1, lexeme.size() - 2);
-        }
-        return lexeme;
-    }
-
     static hulk::common::Span to_span(const hulk::parser::Parser::location_type& loc) {
         return hulk::common::Span {
             .start = { .index = 0,
@@ -108,6 +106,7 @@
                        .column = static_cast<std::size_t>(loc.end.column) },
         };
     }
+
 }
 
 %token <std::string> IDENTIFIER STRING_LITERAL ERROR_TOKEN
@@ -116,7 +115,7 @@
 %token TRUE FALSE
 %token PRINT SQRT SIN COS EXP LOG RAND PI_CONST E_CONST
 %token LET IN IF ELIF ELSE WHILE FOR
-%token FUNCTION TYPE INHERITS NEW IS AS
+%token FUNCTION TYPE PROTOCOL INHERITS NEW IS AS
 
 %token PLUS MINUS STAR SLASH PERCENT CARET
 %token ASSIGN DESTRUCTIVE_ASSIGN
@@ -141,14 +140,17 @@
 %right UMINUS
 
 %type <ProgramPtr> program
-%type <ExprPtr> expr let_expr if_expr while_expr for_expr assign_expr
+%type <ExprPtr> expr lambda_expr let_expr if_expr while_expr for_expr assign_expr
 %type <ExprPtr> logic_or logic_and equality relation type_test_expr concat additive multiplicative power unary postfix primary block
-%type <DeclPtr> decl function_decl type_decl
+%type <DeclPtr> decl function_decl type_decl protocol_decl
 %type <BindingList> binding_list
 %type <BindingPtr> binding
 %type <ExprList> expr_list args_opt arg_list block_body_opt parent_args_opt
-%type <ParamList> params_opt param_list ctor_params_opt
+%type <ParamList> params_opt param_list ctor_params_opt lambda_param_list
+%type <ProtocolMethodList> protocol_member_list
+%type <Hulk::ProtocolMethodSig> protocol_member
 %type <Hulk::Param> param
+%type <Hulk::Param> lambda_param
 %type <std::string> type_expr type_ann_opt return_ann_opt
 %type <ElifList> elif_clauses
 %type <hulk::parser::InheritsInfo> inherits_opt
@@ -162,21 +164,16 @@
 program
     : top_level_items
       {
-          if ($1.exprs.empty()) {
-              driver.report_syntax_error("el programa debe contener al menos una expresion global");
+          if (!$1.hasGlobalExpr) {
+              driver.report_syntax_error("el programa debe contener una expresion global final");
               $$ = std::make_unique<Hulk::Program>(
                   std::move($1.decls),
                   std::make_unique<Hulk::ExprBlock>(ExprList {})
               );
-          } else if ($1.exprs.size() == 1) {
-              $$ = std::make_unique<Hulk::Program>(
-                  std::move($1.decls),
-                  std::move($1.exprs.front())
-              );
           } else {
               $$ = std::make_unique<Hulk::Program>(
                   std::move($1.decls),
-                  std::make_unique<Hulk::ExprBlock>(std::move($1.exprs))
+                  std::move($1.globalExpr)
               );
           }
           driver.set_result(std::move($$));
@@ -190,11 +187,15 @@ top_level_items
       }
     | top_level_items top_level_item opt_semi
       {
-          for (auto& decl : $2.decls) {
-              $1.decls.push_back(std::move(decl));
-          }
-          for (auto& expr : $2.exprs) {
-              $1.exprs.push_back(std::move(expr));
+          if ($1.hasGlobalExpr) {
+              driver.report_syntax_error("Solo se permite una expresion global final", to_span(@2));
+          } else if ($2.hasGlobalExpr) {
+              $1.globalExpr = std::move($2.globalExpr);
+              $1.hasGlobalExpr = true;
+          } else {
+              for (auto& decl : $2.decls) {
+                  $1.decls.push_back(std::move(decl));
+              }
           }
           $$ = std::move($1);
       }
@@ -209,7 +210,8 @@ top_level_item
     | expr
       {
           $$ = hulk::parser::TopLevelItems {};
-          $$.exprs.push_back(std::move($1));
+          $$.globalExpr = std::move($1);
+          $$.hasGlobalExpr = true;
       }
     ;
 
@@ -224,6 +226,10 @@ decl
           $$ = std::move($1);
       }
     | type_decl
+      {
+          $$ = std::move($1);
+      }
+    | protocol_decl
       {
           $$ = std::move($1);
       }
@@ -269,6 +275,33 @@ type_decl
               );
           }
           $$->span = to_span(@$);
+      }
+    ;
+
+protocol_decl
+    : PROTOCOL IDENTIFIER LBRACE protocol_member_list RBRACE
+      {
+          $$ = std::make_unique<Hulk::ProtocolDecl>($2, std::move($4));
+          $$->span = to_span(@$);
+      }
+    ;
+
+protocol_member_list
+    :
+      {
+          $$ = hulk::parser::ProtocolMethodList {};
+      }
+    | protocol_member_list protocol_member
+      {
+          $1.push_back(std::move($2));
+          $$ = std::move($1);
+      }
+    ;
+
+protocol_member
+    : IDENTIFIER LPAREN params_opt RPAREN return_ann_opt SEMICOLON
+      {
+          $$ = Hulk::ProtocolMethodSig($1, std::move($3), $5);
       }
     ;
 
@@ -428,18 +461,14 @@ type_expr
       {
           $$ = std::move($1);
       }
-    | AUTO
-      {
-          $$ = "auto";
-      }
-    | UNDERSCORE_TYPE
-      {
-          $$ = "_";
-      }
     ;
 
 expr
-    : let_expr
+    : lambda_expr
+      {
+          $$ = std::move($1);
+      }
+    | let_expr
       {
           $$ = std::move($1);
       }
@@ -458,6 +487,39 @@ expr
     | assign_expr
       {
           $$ = std::move($1);
+      }
+    ;
+
+lambda_expr
+    : LPAREN lambda_param_list RPAREN return_ann_opt FATARROW expr
+      {
+          if ($4.empty()) {
+              $$ = std::make_unique<Hulk::Lambda>(std::move($2), std::move($6));
+          } else {
+              $$ = std::make_unique<Hulk::Lambda>(std::move($2), $4, std::move($6));
+          }
+          $$->span = to_span(@$);
+      }
+    ;
+
+lambda_param_list
+    : lambda_param
+      {
+          ParamList params;
+          params.push_back(std::move($1));
+          $$ = std::move(params);
+      }
+    | lambda_param_list COMMA lambda_param
+      {
+          $1.push_back(std::move($3));
+          $$ = std::move($1);
+      }
+    ;
+
+lambda_param
+    : IDENTIFIER COLON type_expr
+      {
+          $$ = Hulk::Param($1, $3);
       }
     ;
 
@@ -796,7 +858,7 @@ primary
       }
     | STRING_LITERAL
       {
-          $$ = std::make_unique<Hulk::String>(unquote_string_literal($1));
+          $$ = std::make_unique<Hulk::String>($1);
           $$->span = to_span(@$);
       }
     | TRUE

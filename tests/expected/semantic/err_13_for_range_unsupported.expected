@@ -1,0 +1,2 @@
+error [1:1 - 1:32]: Feature no soportado en el flujo end-to-end: for sobre Iterable/range.
+error [1:11 - 1:22]: Feature no soportado en el flujo end-to-end: range.

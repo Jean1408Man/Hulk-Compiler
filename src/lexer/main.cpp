@@ -46,6 +46,7 @@ const char* to_string(TokenKind kind) {
         case TokenKind::For: return "For";
         case TokenKind::Function: return "Function";
         case TokenKind::Type: return "Type";
+        case TokenKind::Protocol: return "Protocol";
         case TokenKind::Inherits: return "Inherits";
         case TokenKind::New: return "New";
         case TokenKind::Is: return "Is";

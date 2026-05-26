@@ -1,0 +1,5 @@
+type Box(value) {
+    value = value;
+}
+
+let b = new Box(7) in print(7);

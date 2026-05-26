@@ -1,3 +1,5 @@
-print("hola" @ " mundo");
-print("foo" @@ "bar");
-print("numero: " @ 42);
+{
+    print("hola" @ " mundo");
+    print("foo" @@ "bar");
+    print("numero: " @ 42);
+}

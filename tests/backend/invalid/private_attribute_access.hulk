@@ -1,0 +1,5 @@
+type A {
+    x = 1;
+}
+
+let a = new A() in print(a.x);

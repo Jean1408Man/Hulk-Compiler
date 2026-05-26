@@ -1,4 +1,7 @@
-print(PI);
-print(E);
 function inc(x: Number): Number => x + 1;
-print(inc(4))
+
+{
+    print(PI);
+    print(E);
+    print(inc(4))
+}

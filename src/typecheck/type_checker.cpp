@@ -34,6 +34,27 @@
 #include "../ast/types/typeMemberAttribute.h"
 #include "../ast/types/typeMemberMethod.h"
 
+namespace {
+
+bool is_concat_operand_type(const Hulk::HulkType& type) {
+    return type.kind() == Hulk::HulkType::Kind::String ||
+           type.kind() == Hulk::HulkType::Kind::Number;
+}
+
+bool is_string_type(const Hulk::HulkType& type) {
+    return type.kind() == Hulk::HulkType::Kind::String;
+}
+
+const char* string_operator_name(Hulk::StringOp op) {
+    switch (op) {
+        case Hulk::StringOp::Concat: return "@";
+        case Hulk::StringOp::SpaceConcat: return "@@";
+    }
+    return "@";
+}
+
+}
+
 namespace Hulk {
 
     TypeChecker::TypeChecker(const SemanticTables& tables,
@@ -188,6 +209,36 @@ namespace Hulk {
     void TypeChecker::visit(StringBinOp& node) {
         node.GetLeft()->accept(*this);
         node.GetRight()->accept(*this);
+
+        const HulkType left = get_type(node.GetLeft());
+        const HulkType right = get_type(node.GetRight());
+        if (left.is_error() || right.is_error()) return;
+
+        const std::string op = string_operator_name(node.GetOperator());
+        const bool left_known = !left.is_unknown();
+        const bool right_known = !right.is_unknown();
+
+        if (left_known && !is_concat_operand_type(left)) {
+            report_error(node.GetLeft()->span,
+                         "Operador de concatenacion '" + op +
+                         "' solo admite operandos String o Number; se encontro '" +
+                         left.to_string() + "'.");
+        }
+
+        if (right_known && !is_concat_operand_type(right)) {
+            report_error(node.GetRight()->span,
+                         "Operador de concatenacion '" + op +
+                         "' solo admite operandos String o Number; se encontro '" +
+                         right.to_string() + "'.");
+        }
+
+        if (left_known && right_known &&
+            is_concat_operand_type(left) && is_concat_operand_type(right) &&
+            !is_string_type(left) && !is_string_type(right)) {
+            report_error(node.span,
+                         "Operador de concatenacion '" + op +
+                         "' requiere al menos un operando String.");
+        }
     }
 
     void TypeChecker::visit(ArithmeticUnaryOp& node) {

@@ -1,6 +1,9 @@
 #include "parser.hpp"
 
+#include <cmath>
 #include <exception>
+#include <optional>
+#include <stdexcept>
 #include <string>
 
 #include "../common/span.hpp"
@@ -18,12 +21,64 @@ hulk::parser::Parser::location_type to_location(const hulk::common::Span& span) 
     return loc;
 }
 
-double parse_number_lexeme(const std::string& lexeme) {
+std::optional<double> parse_number_lexeme(const std::string& lexeme,
+                                          hulk::parser::ParserDriver& driver,
+                                          const hulk::common::Span& span) {
     try {
-        return std::stod(lexeme);
+        std::size_t consumed = 0;
+        const double value = std::stod(lexeme, &consumed);
+        if (consumed != lexeme.size() || !std::isfinite(value)) {
+            driver.report_syntax_error("Literal numerico invalido", span);
+            return std::nullopt;
+        }
+        return value;
+    } catch (const std::out_of_range&) {
+        driver.report_syntax_error("Literal numerico fuera de rango", span);
+        return std::nullopt;
     } catch (const std::exception&) {
-        return 0.0;
+        driver.report_syntax_error("Literal numerico invalido", span);
+        return std::nullopt;
     }
+}
+
+std::optional<std::string> decode_string_lexeme(const std::string& lexeme,
+                                                hulk::parser::ParserDriver& driver,
+                                                const hulk::common::Span& span) {
+    if (lexeme.size() < 2 || lexeme.front() != '"' || lexeme.back() != '"') {
+        driver.report_syntax_error("Literal de string invalido", span);
+        return std::nullopt;
+    }
+
+    std::string decoded;
+    for (std::size_t i = 1; i + 1 < lexeme.size(); ++i) {
+        const char c = lexeme[i];
+        if (c != '\\') {
+            decoded += c;
+            continue;
+        }
+
+        if (i + 2 >= lexeme.size()) {
+            driver.report_syntax_error("Escape de string incompleto", span);
+            return std::nullopt;
+        }
+
+        const char escaped = lexeme[++i];
+        switch (escaped) {
+            case 'n': decoded += '\n'; break;
+            case 'r': decoded += '\r'; break;
+            case 't': decoded += '\t'; break;
+            case '"': decoded += '"'; break;
+            case '\\': decoded += '\\'; break;
+            default: {
+                std::string message = "Escape de string no soportado: \\";
+                message += escaped;
+                driver.report_syntax_error(message, span);
+                return std::nullopt;
+            }
+        }
+    }
+
+    return decoded;
 }
 
 } // namespace
@@ -41,8 +96,16 @@ Parser::symbol_type yylex(ParserDriver& driver) {
         case TK::Error: return Parser::make_ERROR_TOKEN(token.lexeme, loc);
 
         case TK::Identifier: return Parser::make_IDENTIFIER(token.lexeme, loc);
-        case TK::Number: return Parser::make_NUMBER_LITERAL(parse_number_lexeme(token.lexeme), loc);
-        case TK::String: return Parser::make_STRING_LITERAL(token.lexeme, loc);
+        case TK::Number: {
+            const auto value = parse_number_lexeme(token.lexeme, driver, token.span);
+            if (!value.has_value()) return Parser::make_YYerror(loc);
+            return Parser::make_NUMBER_LITERAL(*value, loc);
+        }
+        case TK::String: {
+            const auto value = decode_string_lexeme(token.lexeme, driver, token.span);
+            if (!value.has_value()) return Parser::make_YYerror(loc);
+            return Parser::make_STRING_LITERAL(*value, loc);
+        }
 
         case TK::True: return Parser::make_TRUE(loc);
         case TK::False: return Parser::make_FALSE(loc);
@@ -100,6 +163,7 @@ Parser::symbol_type yylex(ParserDriver& driver) {
         case TK::Semicolon: return Parser::make_SEMICOLON(loc);
         case TK::Colon: return Parser::make_COLON(loc);
         case TK::Dot: return Parser::make_DOT(loc);
+        case TK::Protocol: return Parser::make_PROTOCOL(loc);
     }
 
     return Parser::make_ERROR_TOKEN("<unknown>", loc);

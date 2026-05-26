@@ -1,0 +1,6 @@
+type Box(value: _) {
+    value: _ = value;
+    get(): Number => self.value;
+}
+
+let b: _ = new Box(7) in print(b.get());
