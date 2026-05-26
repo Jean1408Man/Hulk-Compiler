@@ -21,6 +21,7 @@
 #include "../ast/loops/while.h"
 #include "../ast/others/exprBlock.h"
 #include "../ast/others/program.h"
+#include "../ast/protocols/protocolDecl.h"
 #include "../ast/types/asExpr.h"
 #include "../ast/types/isExpr.h"
 #include "../ast/types/memberAccess.h"
@@ -394,6 +395,34 @@ void dump_decl(const Hulk::Decl* decl, int depth = 0) {
             std::cout << indent(depth + 1) << "members\n";
             for (const auto& member : node->GetMembers()) {
                 dump_decl(member.node.get(), depth + 2);
+            }
+        }
+        return;
+    }
+
+    if (const auto* node = dynamic_cast<const Hulk::ProtocolDecl*>(decl)) {
+        std::cout << indent(depth) << "ProtocolDecl(name=" << node->GetName() << ")\n";
+        if (node->HasParent()) {
+            std::cout << indent(depth + 1) << "extends=" << node->GetParentName() << "\n";
+        }
+        if (!node->GetMethodSigs().empty()) {
+            std::cout << indent(depth + 1) << "methods\n";
+            for (const auto& sig : node->GetMethodSigs()) {
+                std::cout << indent(depth + 2) << "ProtocolMethod(name=" << sig.name;
+                if (!sig.returnType.empty()) {
+                    std::cout << ", return=" << sig.returnType;
+                }
+                std::cout << ")\n";
+                if (!sig.params.empty()) {
+                    std::cout << indent(depth + 3) << "params\n";
+                    for (const auto& param : sig.params) {
+                        std::cout << indent(depth + 4) << "Param(name=" << param.name;
+                        if (param.HasTypeAnnotation()) {
+                            std::cout << ", type=" << param.typeAnnotation;
+                        }
+                        std::cout << ")\n";
+                    }
+                }
             }
         }
         return;

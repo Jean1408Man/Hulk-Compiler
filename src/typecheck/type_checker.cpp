@@ -335,6 +335,7 @@ namespace Hulk {
 
     void TypeChecker::visit(For& node) {
         node.GetIterable()->accept(*this);
+        check_conforms(node.GetIterable(), HulkType::make_object("Iterable"), "iterable de 'for'");
         node.GetBody()->accept(*this);
     }
 
@@ -404,7 +405,7 @@ namespace Hulk {
         for (auto& arg : node.GetArgs()) arg->accept(*this);
         if (node.GetFunc() == BuiltinFunc::Sqrt || node.GetFunc() == BuiltinFunc::Sin || 
             node.GetFunc() == BuiltinFunc::Cos || node.GetFunc() == BuiltinFunc::Exp || 
-            node.GetFunc() == BuiltinFunc::Log) {
+            node.GetFunc() == BuiltinFunc::Log || node.GetFunc() == BuiltinFunc::Range) {
             for (auto& arg : node.GetArgs()) {
                 check_conforms(arg.get(), HulkType::make_number(), "argumento de función builtin");
             }
@@ -446,6 +447,16 @@ namespace Hulk {
 
     void TypeChecker::visit(NewExpr& node) {
         for (auto& arg : node.GetArgs()) arg->accept(*this);
+
+        if (tables_.lookup_protocol(node.GetTypeName())) {
+            report_error(node.span, "No se puede instanciar el protocolo '" +
+                         node.GetTypeName() + "'.");
+            return;
+        }
+        if (node.GetTypeName() == "Range") {
+            report_error(node.span, "El tipo builtin 'Range' solo se construye mediante range(...).");
+            return;
+        }
         
         std::vector<Param> params = tables_.get_effective_constructor(node.GetTypeName());
         if (params.size() != node.GetArgs().size()) {
@@ -478,10 +489,18 @@ namespace Hulk {
 
         HulkType obj_type = get_type(node.GetObject());
         const SemanticMethodInfo* info = nullptr;
+        const SemanticProtocolMethodInfo* proto_info = nullptr;
 
         auto it = resolution_map_.find(&node);
         if (it != resolution_map_.end() && it->second.kind == ResolutionKind::Method) {
             info = it->second.method_info;
+        } else if (obj_type.kind() == HulkType::Kind::Object &&
+                   tables_.lookup_protocol(obj_type.name())) {
+            proto_info = tables_.find_protocol_method(obj_type.name(), node.GetMethodName());
+            if (!proto_info && !obj_type.is_unknown() && !obj_type.is_error()) {
+                report_error(node.span, "Protocolo '" + obj_type.name() +
+                             "' no tiene un método '" + node.GetMethodName() + "'.");
+            }
         } else if (obj_type.kind() == HulkType::Kind::Object) {
             // Resolución dinámica basada en el tipo inferido (Corte 9)
             info = tables_.find_method(obj_type.name(), node.GetMethodName());
@@ -508,6 +527,23 @@ namespace Hulk {
                     if (!ann.is_unknown()) {
                         check_conforms(node.GetArgs()[i].get(), ann,
                             "argumento " + std::to_string(i+1) + " de método '" + node.GetMethodName() + "'");
+                    }
+                }
+            }
+        }
+        if (proto_info) {
+            if (proto_info->params.size() != node.GetArgs().size()) {
+                report_error(node.span, "Método '" + node.GetMethodName() + "' espera " +
+                             std::to_string(proto_info->params.size()) +
+                             " argumento(s) pero recibió " +
+                             std::to_string(node.GetArgs().size()) + ".");
+            } else {
+                for (size_t i = 0; i < proto_info->params.size(); ++i) {
+                    HulkType ann = from_string_type(proto_info->params[i].typeAnnotation);
+                    if (!ann.is_unknown()) {
+                        check_conforms(node.GetArgs()[i].get(), ann,
+                            "argumento " + std::to_string(i+1) +
+                            " de método '" + node.GetMethodName() + "'");
                     }
                 }
             }

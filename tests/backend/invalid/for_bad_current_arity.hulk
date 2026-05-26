@@ -1,0 +1,7 @@
+type BadCurrent {
+    next(): Boolean => true;
+    current(x: Number): Number => x;
+}
+
+let x = new BadCurrent() in
+    for (item in x) print(item);

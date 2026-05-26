@@ -1,0 +1,9 @@
+protocol A extends B {
+    a(): Number;
+}
+
+protocol B extends A {
+    b(): Number;
+}
+
+0;

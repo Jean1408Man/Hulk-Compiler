@@ -92,6 +92,10 @@ namespace Hulk {
         // Busca un método en el tipo y sus ancestros (para herencia)
         const MethodDef* find_method(const std::string& type_name,
                                      const std::string& method_name) const;
+        HulkValue call_method_value(const hulk::common::Span& span,
+                                    const HulkValue& obj_val,
+                                    const std::string& method_name,
+                                    const std::vector<HulkValue>& arg_vals);
         // Valida que padres existen y no hay ciclos (DFS con 3 colores)
         void validate_type_hierarchy();
         // Inicializa los atributos de un objeto según su TypeDef (y la del padre)

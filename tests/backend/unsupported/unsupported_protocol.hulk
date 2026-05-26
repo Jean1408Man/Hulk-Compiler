@@ -1,5 +1,0 @@
-protocol Named {
-    name(): String;
-}
-
-print(0);

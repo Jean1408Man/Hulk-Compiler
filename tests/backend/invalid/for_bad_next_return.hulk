@@ -1,0 +1,7 @@
+type BadNext {
+    next(): Number => 1;
+    current(): Number => 1;
+}
+
+let x = new BadNext() in
+    for (item in x) print(item);

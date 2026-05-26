@@ -40,6 +40,140 @@
 #include <sstream>
 #include <utility>
 
+namespace {
+
+using namespace Hulk;
+
+bool expr_uses_range(const Expr* expr);
+
+bool expr_list_uses_range(const std::vector<std::unique_ptr<Expr>>& exprs) {
+    for (const auto& expr : exprs) {
+        if (expr_uses_range(expr.get())) return true;
+    }
+    return false;
+}
+
+bool type_member_uses_range(const TypeMember& member) {
+    if (member.kind == TypeMember::Kind::Attribute) {
+        auto* attr = dynamic_cast<const TypeMemberAttribute*>(member.node.get());
+        return attr && expr_uses_range(attr->GetInitializer());
+    }
+    auto* method = dynamic_cast<const TypeMemberMethod*>(member.node.get());
+    return method && expr_uses_range(method->GetBody());
+}
+
+bool decl_uses_range(const Decl* decl) {
+    if (auto* fn = dynamic_cast<const FunctionDecl*>(decl)) {
+        return expr_uses_range(fn->GetBody());
+    }
+    if (auto* type = dynamic_cast<const TypeDecl*>(decl)) {
+        if (expr_list_uses_range(type->GetParentArgs())) return true;
+        for (const auto& member : type->GetMembers()) {
+            if (type_member_uses_range(member)) return true;
+        }
+    }
+    return false;
+}
+
+bool program_uses_range(const Program& program) {
+    for (const auto& decl : program.GetDeclarations()) {
+        if (decl_uses_range(decl.get())) return true;
+    }
+    return expr_uses_range(program.GetGlobalExpr());
+}
+
+bool expr_uses_range(const Expr* expr) {
+    if (!expr) return false;
+
+    if (auto* node = dynamic_cast<const ArithmeticBinOp*>(expr)) {
+        return expr_uses_range(node->GetLeft()) || expr_uses_range(node->GetRight());
+    }
+    if (auto* node = dynamic_cast<const LogicBinOp*>(expr)) {
+        return expr_uses_range(node->GetLeft()) || expr_uses_range(node->GetRight());
+    }
+    if (auto* node = dynamic_cast<const StringBinOp*>(expr)) {
+        return expr_uses_range(node->GetLeft()) || expr_uses_range(node->GetRight());
+    }
+    if (auto* node = dynamic_cast<const ArithmeticUnaryOp*>(expr)) {
+        return expr_uses_range(node->GetOperand());
+    }
+    if (auto* node = dynamic_cast<const LogicUnaryOp*>(expr)) {
+        return expr_uses_range(node->GetOperand());
+    }
+    if (auto* node = dynamic_cast<const VariableBinding*>(expr)) {
+        return expr_uses_range(node->GetInitializer());
+    }
+    if (auto* node = dynamic_cast<const LetIn*>(expr)) {
+        for (const auto& binding : node->GetBindings()) {
+            if (expr_uses_range(binding.get())) return true;
+        }
+        return expr_uses_range(node->GetBody());
+    }
+    if (auto* node = dynamic_cast<const DestructiveAssign*>(expr)) {
+        return expr_uses_range(node->GetValue());
+    }
+    if (auto* node = dynamic_cast<const DestructiveAssignMember*>(expr)) {
+        return expr_uses_range(node->GetObject()) || expr_uses_range(node->GetValue());
+    }
+    if (auto* node = dynamic_cast<const IfStmt*>(expr)) {
+        if (expr_uses_range(node->GetCondition()) || expr_uses_range(node->GetThenBranch())) {
+            return true;
+        }
+        for (const auto& branch : node->GetElifBranches()) {
+            if (expr_uses_range(branch.condition.get()) || expr_uses_range(branch.body.get())) {
+                return true;
+            }
+        }
+        return expr_uses_range(node->GetElseBranch());
+    }
+    if (auto* node = dynamic_cast<const WhileStmt*>(expr)) {
+        return expr_uses_range(node->GetCondition()) || expr_uses_range(node->GetBody());
+    }
+    if (auto* node = dynamic_cast<const For*>(expr)) {
+        return expr_uses_range(node->GetIterable()) || expr_uses_range(node->GetBody());
+    }
+    if (auto* node = dynamic_cast<const FunctionCall*>(expr)) {
+        return node->GetName() == "range" || expr_list_uses_range(node->GetArgs());
+    }
+    if (auto* node = dynamic_cast<const Lambda*>(expr)) {
+        return expr_uses_range(node->GetBody());
+    }
+    if (auto* node = dynamic_cast<const Print*>(expr)) {
+        return expr_uses_range(node->GetExpr());
+    }
+    if (auto* node = dynamic_cast<const BuiltinCall*>(expr)) {
+        return node->GetFunc() == BuiltinFunc::Range || expr_list_uses_range(node->GetArgs());
+    }
+    if (auto* node = dynamic_cast<const ExprBlock*>(expr)) {
+        return expr_list_uses_range(node->GetExprs());
+    }
+    if (auto* node = dynamic_cast<const Group*>(expr)) {
+        return expr_uses_range(node->GetExpr());
+    }
+    if (auto* node = dynamic_cast<const BaseCall*>(expr)) {
+        return expr_list_uses_range(node->GetArgs());
+    }
+    if (auto* node = dynamic_cast<const NewExpr*>(expr)) {
+        return expr_list_uses_range(node->GetArgs());
+    }
+    if (auto* node = dynamic_cast<const MemberAccess*>(expr)) {
+        return expr_uses_range(node->GetObject());
+    }
+    if (auto* node = dynamic_cast<const MethodCall*>(expr)) {
+        return expr_uses_range(node->GetObject()) || expr_list_uses_range(node->GetArgs());
+    }
+    if (auto* node = dynamic_cast<const IsExpr*>(expr)) {
+        return expr_uses_range(node->GetExpr());
+    }
+    if (auto* node = dynamic_cast<const AsExpr*>(expr)) {
+        return expr_uses_range(node->GetExpr());
+    }
+
+    return false;
+}
+
+}
+
 namespace Hulk::Backend {
 
 IRGen::IRGen(const SemanticTables& tables,
@@ -63,9 +197,17 @@ IR::IRProgram IRGen::generate(Program& program) {
     ctor_names_.clear();
     method_names_.clear();
     span_stack_.clear();
+    needs_range_builtin_ = program_uses_range(program);
 
     collect_declarations(program);
+    if (needs_range_builtin_) {
+        collect_builtin_declarations();
+        emit_builtin_range_metadata();
+    }
     emit_type_metadata(program);
+    if (needs_range_builtin_) {
+        emit_builtin_range_functions();
+    }
 
     for (const auto& decl : program.GetDeclarations()) {
         if (auto* fn = dynamic_cast<FunctionDecl*>(decl.get())) {
@@ -100,6 +242,11 @@ void IRGen::collect_declarations(Program& program) {
             }
         }
     }
+}
+
+void IRGen::collect_builtin_declarations() {
+    method_names_["Range"]["next"] = "hulk_builtin_Range_next";
+    method_names_["Range"]["current"] = "hulk_builtin_Range_current";
 }
 
 void IRGen::emit_type_metadata(Program& program) {
@@ -137,6 +284,103 @@ void IRGen::emit_type_metadata(Program& program) {
             }
         }
         program_.types.push_back(std::move(ir_type));
+    }
+}
+
+void IRGen::emit_builtin_range_metadata() {
+    IR::IRType range;
+    range.name = "Range";
+    range.parent = "Object";
+    range.init_name = "hulk_builtin_Range_init";
+    range.ctor_name = "hulk_builtin_Range_ctor";
+
+    range.fields.push_back(IR::IRField{"Range", "current", "Range_current", "Number", 0});
+    range.fields.push_back(IR::IRField{"Range", "max", "Range_max", "Number", 1});
+    range.methods.push_back(IR::IRMethod{"Range", "next", method_names_.at("Range").at("next"), 0, 0});
+    range.methods.push_back(IR::IRMethod{"Range", "current", method_names_.at("Range").at("current"), 0, 1});
+
+    program_.types.push_back(std::move(range));
+}
+
+void IRGen::emit_builtin_range_functions() {
+    {
+        auto ir_fn = start_function(method_names_.at("Range").at("next"),
+                                    "Range.next",
+                                    IR::IRFunctionKind::Method);
+        current_function_ = &ir_fn;
+        current_type_name_ = "Range";
+        current_method_name_ = "next";
+        current_self_name_ = "hulk_self_value";
+        add_param(current_self_name_);
+
+        const std::string current = new_temp("range_current");
+        IR::IRInstr get_current;
+        get_current.op = IR::IROp::GetField;
+        get_current.dest = current;
+        get_current.src1 = current_self_name_;
+        get_current.field_name = "current";
+        emit(std::move(get_current));
+
+        const std::string one = new_temp("range_one");
+        IR::IRInstr const_one;
+        const_one.op = IR::IROp::ConstNumber;
+        const_one.dest = one;
+        const_one.number_value = 1.0;
+        emit(std::move(const_one));
+
+        const std::string advanced = new_temp("range_advanced");
+        emit_binary(IR::IROp::Add, advanced, current, one);
+
+        const std::string ignored = new_temp("range_set_current");
+        IR::IRInstr set_current;
+        set_current.op = IR::IROp::SetField;
+        set_current.dest = ignored;
+        set_current.src1 = current_self_name_;
+        set_current.src2 = advanced;
+        set_current.field_name = "current";
+        emit(std::move(set_current));
+
+        const std::string max = new_temp("range_max");
+        IR::IRInstr get_max;
+        get_max.op = IR::IROp::GetField;
+        get_max.dest = max;
+        get_max.src1 = current_self_name_;
+        get_max.field_name = "max";
+        emit(std::move(get_max));
+
+        const std::string has_next = new_temp("range_has_next");
+        emit_binary(IR::IROp::Less, has_next, advanced, max);
+        emit_return(has_next);
+
+        current_self_name_.clear();
+        current_method_name_.clear();
+        current_type_name_.clear();
+        finish_function(std::move(ir_fn));
+    }
+
+    {
+        auto ir_fn = start_function(method_names_.at("Range").at("current"),
+                                    "Range.current",
+                                    IR::IRFunctionKind::Method);
+        current_function_ = &ir_fn;
+        current_type_name_ = "Range";
+        current_method_name_ = "current";
+        current_self_name_ = "hulk_self_value";
+        add_param(current_self_name_);
+
+        const std::string current = new_temp("range_current");
+        IR::IRInstr get_current;
+        get_current.op = IR::IROp::GetField;
+        get_current.dest = current;
+        get_current.src1 = current_self_name_;
+        get_current.field_name = "current";
+        emit(std::move(get_current));
+        emit_return(current);
+
+        current_self_name_.clear();
+        current_method_name_.clear();
+        current_type_name_.clear();
+        finish_function(std::move(ir_fn));
     }
 }
 
@@ -461,6 +705,50 @@ std::string IRGen::emit_base_call(const std::vector<std::unique_ptr<Expr>>& args
     return dest;
 }
 
+std::string IRGen::emit_range_call(const std::vector<std::unique_ptr<Expr>>& args) {
+    if (args.size() != 2) unsupported("range con aridad invalida");
+
+    const std::string start = lower_expr(args[0].get());
+    const std::string end = lower_expr(args[1].get());
+
+    const std::string object = new_temp("range");
+    IR::IRInstr new_instr;
+    new_instr.op = IR::IROp::NewObject;
+    new_instr.dest = object;
+    new_instr.type_name = "Range";
+    emit(std::move(new_instr));
+
+    const std::string one = new_temp("range_one");
+    IR::IRInstr const_one;
+    const_one.op = IR::IROp::ConstNumber;
+    const_one.dest = one;
+    const_one.number_value = 1.0;
+    emit(std::move(const_one));
+
+    const std::string initial_current = new_temp("range_initial_current");
+    emit_binary(IR::IROp::Sub, initial_current, start, one);
+
+    const std::string ignored_current = new_temp("range_set_current");
+    IR::IRInstr set_current;
+    set_current.op = IR::IROp::SetField;
+    set_current.dest = ignored_current;
+    set_current.src1 = object;
+    set_current.src2 = initial_current;
+    set_current.field_name = "current";
+    emit(std::move(set_current));
+
+    const std::string ignored_max = new_temp("range_set_max");
+    IR::IRInstr set_max;
+    set_max.op = IR::IROp::SetField;
+    set_max.dest = ignored_max;
+    set_max.src1 = object;
+    set_max.src2 = end;
+    set_max.field_name = "max";
+    emit(std::move(set_max));
+
+    return object;
+}
+
 std::string IRGen::lookup_symbol(Expr& node, const std::string& fallback_name) {
     auto it = resolution_map_.find(&node);
     if (it == resolution_map_.end()) {
@@ -481,7 +769,9 @@ std::string IRGen::lookup_symbol(Expr& node, const std::string& fallback_name) {
     }
     if (res.kind == ResolutionKind::Synthetic) {
         if (res.synthetic->kind == SyntheticKind::Self) return current_self_name_;
-        unsupported("for/range");
+        auto name = context_.lookup(res.synthetic);
+        if (!name) throw CodegenError("Backend IR: simbolo sintetico sin nombre.");
+        return *name;
     }
 
     throw CodegenError("Backend IR: simbolo no soportado en referencia '" + fallback_name + "'.");
@@ -713,8 +1003,56 @@ void IRGen::visit(WhileStmt& node) {
     expr_result_ = dest;
 }
 
-void IRGen::visit(For&) {
-    unsupported("for/range");
+void IRGen::visit(For& node) {
+    const std::string iterable = lower_expr(node.GetIterable());
+    const std::string result = new_temp("for_result");
+    const std::string initial = const_nil();
+    emit_move(result, initial);
+
+    auto res_it = resolution_map_.find(&node);
+    if (res_it == resolution_map_.end() ||
+        res_it->second.kind != ResolutionKind::Synthetic ||
+        res_it->second.synthetic->kind != SyntheticKind::ForVariable) {
+        throw CodegenError("Backend IR: variable sintetica de for sin resolver.");
+    }
+
+    const std::string item_local = mangler_.make_unique("hulk_for", node.GetVarName());
+    add_local(item_local);
+
+    const std::string start_label = new_label("for_start");
+    const std::string end_label = new_label("for_end");
+
+    context_.push_scope();
+    context_.bind(res_it->second.synthetic, item_local);
+
+    emit_label(start_label);
+
+    const std::string has_next = new_temp("for_next");
+    IR::IRInstr next_call;
+    next_call.op = IR::IROp::VCall;
+    next_call.dest = has_next;
+    next_call.src1 = iterable;
+    next_call.method_name = "next";
+    emit(std::move(next_call));
+
+    emit_jump_if(IR::IROp::JumpIfFalse, has_next, end_label);
+
+    const std::string current = new_temp("for_current");
+    IR::IRInstr current_call;
+    current_call.op = IR::IROp::VCall;
+    current_call.dest = current;
+    current_call.src1 = iterable;
+    current_call.method_name = "current";
+    emit(std::move(current_call));
+
+    emit_move(item_local, current);
+    const std::string body = lower_expr(node.GetBody());
+    emit_move(result, body);
+    emit_jump(start_label);
+    emit_label(end_label);
+
+    context_.pop_scope();
+    expr_result_ = result;
 }
 
 void IRGen::visit(FunctionCall& node) {
@@ -722,6 +1060,12 @@ void IRGen::visit(FunctionCall& node) {
     if (node.GetName() == "base" ||
         (res_it != resolution_map_.end() && res_it->second.kind == ResolutionKind::Method)) {
         expr_result_ = emit_base_call(node.GetArgs());
+        return;
+    }
+
+    if (res_it != resolution_map_.end() && res_it->second.kind == ResolutionKind::BuiltinFunction &&
+        res_it->second.builtin_func->name == "range") {
+        expr_result_ = emit_range_call(node.GetArgs());
         return;
     }
 
@@ -764,6 +1108,11 @@ void IRGen::visit(Print& node) {
 }
 
 void IRGen::visit(BuiltinCall& node) {
+    if (node.GetFunc() == BuiltinFunc::Range) {
+        expr_result_ = emit_range_call(node.GetArgs());
+        return;
+    }
+
     IR::IROp op = IR::IROp::BuiltinSqrt;
     switch (node.GetFunc()) {
         case BuiltinFunc::Sqrt: op = IR::IROp::BuiltinSqrt; break;
@@ -772,7 +1121,7 @@ void IRGen::visit(BuiltinCall& node) {
         case BuiltinFunc::Exp: op = IR::IROp::BuiltinExp; break;
         case BuiltinFunc::Log: op = IR::IROp::BuiltinLog; break;
         case BuiltinFunc::Rand: op = IR::IROp::BuiltinRand; break;
-        case BuiltinFunc::Range: unsupported("range");
+        case BuiltinFunc::Range: break;
     }
 
     const std::string dest = new_temp("builtin");
@@ -893,8 +1242,6 @@ void IRGen::visit(FunctionDecl&) {}
 void IRGen::visit(TypeDecl&) {}
 void IRGen::visit(TypeMemberAttribute&) {}
 void IRGen::visit(TypeMemberMethod&) {}
-void IRGen::visit(ProtocolDecl&) {
-    unsupported("protocol");
-}
+void IRGen::visit(ProtocolDecl&) {}
 
 }

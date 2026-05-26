@@ -115,7 +115,7 @@
 %token TRUE FALSE
 %token PRINT SQRT SIN COS EXP LOG RAND PI_CONST E_CONST
 %token LET IN IF ELIF ELSE WHILE FOR
-%token FUNCTION TYPE PROTOCOL INHERITS NEW IS AS
+%token FUNCTION TYPE PROTOCOL EXTENDS INHERITS NEW IS AS
 
 %token PLUS MINUS STAR SLASH PERCENT CARET
 %token ASSIGN DESTRUCTIVE_ASSIGN
@@ -153,7 +153,7 @@
 %type <Hulk::Param> lambda_param
 %type <std::string> type_expr type_ann_opt return_ann_opt
 %type <ElifList> elif_clauses
-%type <hulk::parser::InheritsInfo> inherits_opt
+%type <hulk::parser::InheritsInfo> inherits_opt protocol_extends_opt
 %type <Hulk::TypeMember> type_member
 %type <TypeMemberList> type_member_list
 %type <hulk::parser::LValueTarget> lvalue
@@ -279,10 +279,25 @@ type_decl
     ;
 
 protocol_decl
-    : PROTOCOL IDENTIFIER LBRACE protocol_member_list RBRACE
+    : PROTOCOL IDENTIFIER protocol_extends_opt LBRACE protocol_member_list RBRACE
       {
-          $$ = std::make_unique<Hulk::ProtocolDecl>($2, std::move($4));
+          if ($3.hasParent) {
+              $$ = std::make_unique<Hulk::ProtocolDecl>($2, $3.parentName, std::move($5));
+          } else {
+              $$ = std::make_unique<Hulk::ProtocolDecl>($2, std::move($5));
+          }
           $$->span = to_span(@$);
+      }
+    ;
+
+protocol_extends_opt
+    : EXTENDS IDENTIFIER
+      {
+          $$ = hulk::parser::InheritsInfo { $2, ExprList {}, true };
+      }
+    |
+      {
+          $$ = hulk::parser::InheritsInfo {};
       }
     ;
 

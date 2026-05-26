@@ -1,0 +1,5 @@
+protocol Bad {
+    item(x): Number;
+}
+
+0;

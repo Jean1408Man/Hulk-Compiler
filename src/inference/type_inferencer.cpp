@@ -390,7 +390,30 @@ namespace Hulk {
     }
 
     void TypeInferencer::visit(For& node) {
-        infer_expr(*node.GetIterable());
+        HulkType iterable_type = infer_expr(*node.GetIterable());
+        HulkType item_type = HulkType::make_object("Object");
+
+        if (iterable_type.kind() == HulkType::Kind::Object) {
+            if (tables_.lookup_protocol(iterable_type.name())) {
+                if (const auto* current = tables_.find_protocol_method(iterable_type.name(), "current")) {
+                    item_type = from_string_type(current->return_type_annotation);
+                }
+            } else if (const auto* current = tables_.find_method(iterable_type.name(), "current")) {
+                if (!current->return_type_annotation.empty()) {
+                    item_type = from_string_type(current->return_type_annotation);
+                }
+            }
+        }
+
+        auto res_it = resolution_map_.find(&node);
+        if (res_it != resolution_map_.end() && res_it->second.kind == ResolutionKind::Synthetic) {
+            auto& current = synthetic_types_[res_it->second.synthetic];
+            if (current.is_unknown() || current != item_type) {
+                current = item_type;
+                changed_ = true;
+            }
+        }
+
         HulkType body_type = infer_expr(*node.GetBody());
         set_type(node, body_type);
     }
@@ -471,7 +494,7 @@ namespace Hulk {
                         set_type(node, HulkType::make_object("Object"));
                     }
                 }
-                else if (res.builtin_func->name == "range") set_type(node, HulkType::make_object("Iterable"));
+                else if (res.builtin_func->name == "range") set_type(node, HulkType::make_object("Range"));
                 else set_type(node, HulkType::make_number());
                 return;
             }
@@ -499,6 +522,8 @@ namespace Hulk {
         // Todas las funciones matemáticas (sin, cos, sqrt) retornan Number. 
         if (node.GetFunc() == BuiltinFunc::Sqrt || node.GetFunc() == BuiltinFunc::Sin || node.GetFunc() == BuiltinFunc::Cos || node.GetFunc() == BuiltinFunc::Exp || node.GetFunc() == BuiltinFunc::Log || node.GetFunc() == BuiltinFunc::Rand) {
             set_type(node, HulkType::make_number());
+        } else if (node.GetFunc() == BuiltinFunc::Range) {
+            set_type(node, HulkType::make_object("Range"));
         } else {
             set_type(node, HulkType::make_unknown());
         }
@@ -605,7 +630,8 @@ namespace Hulk {
             if (res.kind == ResolutionKind::Method) {
                 info = res.method_info;
             }
-        } else if (obj_type.kind() == HulkType::Kind::Object) {
+        } else if (obj_type.kind() == HulkType::Kind::Object &&
+                   !tables_.lookup_protocol(obj_type.name())) {
             info = tables_.find_method(obj_type.name(), node.GetMethodName());
         }
 
@@ -637,6 +663,21 @@ namespace Hulk {
                     set_type(node, body_it->second);
                     return;
                 }
+            }
+        }
+        if (obj_type.kind() == HulkType::Kind::Object &&
+            tables_.lookup_protocol(obj_type.name())) {
+            if (const auto* proto_method =
+                    tables_.find_protocol_method(obj_type.name(), node.GetMethodName())) {
+                for (size_t i = 0; i < node.GetArgs().size() &&
+                                   i < proto_method->params.size(); ++i) {
+                    HulkType param_type = from_string_type(proto_method->params[i].typeAnnotation);
+                    if (!param_type.is_unknown()) {
+                        refine_type(*node.GetArgs()[i], param_type);
+                    }
+                }
+                set_type(node, from_string_type(proto_method->return_type_annotation));
+                return;
             }
         }
         set_type(node, HulkType::make_unknown());

@@ -1,0 +1,9 @@
+protocol Base {
+    value(): Number;
+}
+
+protocol Bad extends Base {
+    value(): String;
+}
+
+0;

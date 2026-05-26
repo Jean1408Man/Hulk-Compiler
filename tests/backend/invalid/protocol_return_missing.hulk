@@ -1,0 +1,5 @@
+protocol Bad {
+    item();
+}
+
+0;

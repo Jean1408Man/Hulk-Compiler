@@ -526,6 +526,7 @@ namespace hulk { namespace parser {
       // NUMBER_LITERAL
       char dummy14[sizeof (double)];
 
+      // protocol_extends_opt
       // inherits_opt
       char dummy15[sizeof (hulk::parser::InheritsInfo)];
 
@@ -617,39 +618,40 @@ namespace hulk { namespace parser {
     FUNCTION = 280,                // FUNCTION
     TYPE = 281,                    // TYPE
     PROTOCOL = 282,                // PROTOCOL
-    INHERITS = 283,                // INHERITS
-    NEW = 284,                     // NEW
-    IS = 285,                      // IS
-    AS = 286,                      // AS
-    PLUS = 287,                    // PLUS
-    MINUS = 288,                   // MINUS
-    STAR = 289,                    // STAR
-    SLASH = 290,                   // SLASH
-    PERCENT = 291,                 // PERCENT
-    CARET = 292,                   // CARET
-    ASSIGN = 293,                  // ASSIGN
-    DESTRUCTIVE_ASSIGN = 294,      // DESTRUCTIVE_ASSIGN
-    EQUAL_EQUAL = 295,             // EQUAL_EQUAL
-    NOT_EQUAL = 296,               // NOT_EQUAL
-    LESS = 297,                    // LESS
-    LESS_EQUAL = 298,              // LESS_EQUAL
-    GREATER = 299,                 // GREATER
-    GREATER_EQUAL = 300,           // GREATER_EQUAL
-    AND = 301,                     // AND
-    OR = 302,                      // OR
-    NOT = 303,                     // NOT
-    CONCAT = 304,                  // CONCAT
-    DOUBLECONCAT = 305,            // DOUBLECONCAT
-    FATARROW = 306,                // FATARROW
-    LPAREN = 307,                  // LPAREN
-    RPAREN = 308,                  // RPAREN
-    LBRACE = 309,                  // LBRACE
-    RBRACE = 310,                  // RBRACE
-    COMMA = 311,                   // COMMA
-    SEMICOLON = 312,               // SEMICOLON
-    COLON = 313,                   // COLON
-    DOT = 314,                     // DOT
-    UMINUS = 315                   // UMINUS
+    EXTENDS = 283,                 // EXTENDS
+    INHERITS = 284,                // INHERITS
+    NEW = 285,                     // NEW
+    IS = 286,                      // IS
+    AS = 287,                      // AS
+    PLUS = 288,                    // PLUS
+    MINUS = 289,                   // MINUS
+    STAR = 290,                    // STAR
+    SLASH = 291,                   // SLASH
+    PERCENT = 292,                 // PERCENT
+    CARET = 293,                   // CARET
+    ASSIGN = 294,                  // ASSIGN
+    DESTRUCTIVE_ASSIGN = 295,      // DESTRUCTIVE_ASSIGN
+    EQUAL_EQUAL = 296,             // EQUAL_EQUAL
+    NOT_EQUAL = 297,               // NOT_EQUAL
+    LESS = 298,                    // LESS
+    LESS_EQUAL = 299,              // LESS_EQUAL
+    GREATER = 300,                 // GREATER
+    GREATER_EQUAL = 301,           // GREATER_EQUAL
+    AND = 302,                     // AND
+    OR = 303,                      // OR
+    NOT = 304,                     // NOT
+    CONCAT = 305,                  // CONCAT
+    DOUBLECONCAT = 306,            // DOUBLECONCAT
+    FATARROW = 307,                // FATARROW
+    LPAREN = 308,                  // LPAREN
+    RPAREN = 309,                  // RPAREN
+    LBRACE = 310,                  // LBRACE
+    RBRACE = 311,                  // RBRACE
+    COMMA = 312,                   // COMMA
+    SEMICOLON = 313,               // SEMICOLON
+    COLON = 314,                   // COLON
+    DOT = 315,                     // DOT
+    UMINUS = 316                   // UMINUS
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -666,7 +668,7 @@ namespace hulk { namespace parser {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 61, ///< Number of tokens.
+        YYNTOKENS = 62, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // END
         S_YYerror = 1,                           // error
@@ -696,91 +698,93 @@ namespace hulk { namespace parser {
         S_FUNCTION = 25,                         // FUNCTION
         S_TYPE = 26,                             // TYPE
         S_PROTOCOL = 27,                         // PROTOCOL
-        S_INHERITS = 28,                         // INHERITS
-        S_NEW = 29,                              // NEW
-        S_IS = 30,                               // IS
-        S_AS = 31,                               // AS
-        S_PLUS = 32,                             // PLUS
-        S_MINUS = 33,                            // MINUS
-        S_STAR = 34,                             // STAR
-        S_SLASH = 35,                            // SLASH
-        S_PERCENT = 36,                          // PERCENT
-        S_CARET = 37,                            // CARET
-        S_ASSIGN = 38,                           // ASSIGN
-        S_DESTRUCTIVE_ASSIGN = 39,               // DESTRUCTIVE_ASSIGN
-        S_EQUAL_EQUAL = 40,                      // EQUAL_EQUAL
-        S_NOT_EQUAL = 41,                        // NOT_EQUAL
-        S_LESS = 42,                             // LESS
-        S_LESS_EQUAL = 43,                       // LESS_EQUAL
-        S_GREATER = 44,                          // GREATER
-        S_GREATER_EQUAL = 45,                    // GREATER_EQUAL
-        S_AND = 46,                              // AND
-        S_OR = 47,                               // OR
-        S_NOT = 48,                              // NOT
-        S_CONCAT = 49,                           // CONCAT
-        S_DOUBLECONCAT = 50,                     // DOUBLECONCAT
-        S_FATARROW = 51,                         // FATARROW
-        S_LPAREN = 52,                           // LPAREN
-        S_RPAREN = 53,                           // RPAREN
-        S_LBRACE = 54,                           // LBRACE
-        S_RBRACE = 55,                           // RBRACE
-        S_COMMA = 56,                            // COMMA
-        S_SEMICOLON = 57,                        // SEMICOLON
-        S_COLON = 58,                            // COLON
-        S_DOT = 59,                              // DOT
-        S_UMINUS = 60,                           // UMINUS
-        S_YYACCEPT = 61,                         // $accept
-        S_program = 62,                          // program
-        S_top_level_items = 63,                  // top_level_items
-        S_top_level_item = 64,                   // top_level_item
-        S_opt_semi = 65,                         // opt_semi
-        S_decl = 66,                             // decl
-        S_function_decl = 67,                    // function_decl
-        S_type_decl = 68,                        // type_decl
-        S_protocol_decl = 69,                    // protocol_decl
-        S_protocol_member_list = 70,             // protocol_member_list
-        S_protocol_member = 71,                  // protocol_member
-        S_ctor_params_opt = 72,                  // ctor_params_opt
-        S_inherits_opt = 73,                     // inherits_opt
-        S_parent_args_opt = 74,                  // parent_args_opt
-        S_type_member_list = 75,                 // type_member_list
-        S_type_member = 76,                      // type_member
-        S_params_opt = 77,                       // params_opt
-        S_param_list = 78,                       // param_list
-        S_param = 79,                            // param
-        S_return_ann_opt = 80,                   // return_ann_opt
-        S_type_ann_opt = 81,                     // type_ann_opt
-        S_type_expr = 82,                        // type_expr
-        S_expr = 83,                             // expr
-        S_lambda_expr = 84,                      // lambda_expr
-        S_lambda_param_list = 85,                // lambda_param_list
-        S_lambda_param = 86,                     // lambda_param
-        S_let_expr = 87,                         // let_expr
-        S_binding_list = 88,                     // binding_list
-        S_binding = 89,                          // binding
-        S_if_expr = 90,                          // if_expr
-        S_elif_clauses = 91,                     // elif_clauses
-        S_while_expr = 92,                       // while_expr
-        S_for_expr = 93,                         // for_expr
-        S_assign_expr = 94,                      // assign_expr
-        S_lvalue = 95,                           // lvalue
-        S_logic_or = 96,                         // logic_or
-        S_logic_and = 97,                        // logic_and
-        S_equality = 98,                         // equality
-        S_relation = 99,                         // relation
-        S_type_test_expr = 100,                  // type_test_expr
-        S_concat = 101,                          // concat
-        S_additive = 102,                        // additive
-        S_multiplicative = 103,                  // multiplicative
-        S_power = 104,                           // power
-        S_unary = 105,                           // unary
-        S_postfix = 106,                         // postfix
-        S_primary = 107,                         // primary
-        S_args_opt = 108,                        // args_opt
-        S_arg_list = 109,                        // arg_list
-        S_block = 110,                           // block
-        S_block_body_opt = 111,                  // block_body_opt
-        S_expr_list = 112                        // expr_list
+        S_EXTENDS = 28,                          // EXTENDS
+        S_INHERITS = 29,                         // INHERITS
+        S_NEW = 30,                              // NEW
+        S_IS = 31,                               // IS
+        S_AS = 32,                               // AS
+        S_PLUS = 33,                             // PLUS
+        S_MINUS = 34,                            // MINUS
+        S_STAR = 35,                             // STAR
+        S_SLASH = 36,                            // SLASH
+        S_PERCENT = 37,                          // PERCENT
+        S_CARET = 38,                            // CARET
+        S_ASSIGN = 39,                           // ASSIGN
+        S_DESTRUCTIVE_ASSIGN = 40,               // DESTRUCTIVE_ASSIGN
+        S_EQUAL_EQUAL = 41,                      // EQUAL_EQUAL
+        S_NOT_EQUAL = 42,                        // NOT_EQUAL
+        S_LESS = 43,                             // LESS
+        S_LESS_EQUAL = 44,                       // LESS_EQUAL
+        S_GREATER = 45,                          // GREATER
+        S_GREATER_EQUAL = 46,                    // GREATER_EQUAL
+        S_AND = 47,                              // AND
+        S_OR = 48,                               // OR
+        S_NOT = 49,                              // NOT
+        S_CONCAT = 50,                           // CONCAT
+        S_DOUBLECONCAT = 51,                     // DOUBLECONCAT
+        S_FATARROW = 52,                         // FATARROW
+        S_LPAREN = 53,                           // LPAREN
+        S_RPAREN = 54,                           // RPAREN
+        S_LBRACE = 55,                           // LBRACE
+        S_RBRACE = 56,                           // RBRACE
+        S_COMMA = 57,                            // COMMA
+        S_SEMICOLON = 58,                        // SEMICOLON
+        S_COLON = 59,                            // COLON
+        S_DOT = 60,                              // DOT
+        S_UMINUS = 61,                           // UMINUS
+        S_YYACCEPT = 62,                         // $accept
+        S_program = 63,                          // program
+        S_top_level_items = 64,                  // top_level_items
+        S_top_level_item = 65,                   // top_level_item
+        S_opt_semi = 66,                         // opt_semi
+        S_decl = 67,                             // decl
+        S_function_decl = 68,                    // function_decl
+        S_type_decl = 69,                        // type_decl
+        S_protocol_decl = 70,                    // protocol_decl
+        S_protocol_extends_opt = 71,             // protocol_extends_opt
+        S_protocol_member_list = 72,             // protocol_member_list
+        S_protocol_member = 73,                  // protocol_member
+        S_ctor_params_opt = 74,                  // ctor_params_opt
+        S_inherits_opt = 75,                     // inherits_opt
+        S_parent_args_opt = 76,                  // parent_args_opt
+        S_type_member_list = 77,                 // type_member_list
+        S_type_member = 78,                      // type_member
+        S_params_opt = 79,                       // params_opt
+        S_param_list = 80,                       // param_list
+        S_param = 81,                            // param
+        S_return_ann_opt = 82,                   // return_ann_opt
+        S_type_ann_opt = 83,                     // type_ann_opt
+        S_type_expr = 84,                        // type_expr
+        S_expr = 85,                             // expr
+        S_lambda_expr = 86,                      // lambda_expr
+        S_lambda_param_list = 87,                // lambda_param_list
+        S_lambda_param = 88,                     // lambda_param
+        S_let_expr = 89,                         // let_expr
+        S_binding_list = 90,                     // binding_list
+        S_binding = 91,                          // binding
+        S_if_expr = 92,                          // if_expr
+        S_elif_clauses = 93,                     // elif_clauses
+        S_while_expr = 94,                       // while_expr
+        S_for_expr = 95,                         // for_expr
+        S_assign_expr = 96,                      // assign_expr
+        S_lvalue = 97,                           // lvalue
+        S_logic_or = 98,                         // logic_or
+        S_logic_and = 99,                        // logic_and
+        S_equality = 100,                        // equality
+        S_relation = 101,                        // relation
+        S_type_test_expr = 102,                  // type_test_expr
+        S_concat = 103,                          // concat
+        S_additive = 104,                        // additive
+        S_multiplicative = 105,                  // multiplicative
+        S_power = 106,                           // power
+        S_unary = 107,                           // unary
+        S_postfix = 108,                         // postfix
+        S_primary = 109,                         // primary
+        S_args_opt = 110,                        // args_opt
+        S_arg_list = 111,                        // arg_list
+        S_block = 112,                           // block
+        S_block_body_opt = 113,                  // block_body_opt
+        S_expr_list = 114                        // expr_list
       };
     };
 
@@ -903,6 +907,7 @@ namespace hulk { namespace parser {
         value.move< double > (std::move (that.value));
         break;
 
+      case symbol_kind::S_protocol_extends_opt: // protocol_extends_opt
       case symbol_kind::S_inherits_opt: // inherits_opt
         value.move< hulk::parser::InheritsInfo > (std::move (that.value));
         break;
@@ -1310,6 +1315,7 @@ switch (yykind)
         value.template destroy< double > ();
         break;
 
+      case symbol_kind::S_protocol_extends_opt: // protocol_extends_opt
       case symbol_kind::S_inherits_opt: // inherits_opt
         value.template destroy< hulk::parser::InheritsInfo > ();
         break;
@@ -1910,6 +1916,21 @@ switch (yykind)
       make_PROTOCOL (const location_type& l)
       {
         return symbol_type (token::PROTOCOL, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_EXTENDS (location_type l)
+      {
+        return symbol_type (token::EXTENDS, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_EXTENDS (const location_type& l)
+      {
+        return symbol_type (token::EXTENDS, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2732,8 +2753,8 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 350,     ///< Last index in yytable_.
-      yynnts_ = 52,  ///< Number of nonterminal symbols.
+      yylast_ = 408,     ///< Last index in yytable_.
+      yynnts_ = 53,  ///< Number of nonterminal symbols.
       yyfinal_ = 84 ///< Termination state number.
     };
 
@@ -2784,10 +2805,10 @@ switch (yykind)
       25,    26,    27,    28,    29,    30,    31,    32,    33,    34,
       35,    36,    37,    38,    39,    40,    41,    42,    43,    44,
       45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
-      55,    56,    57,    58,    59,    60
+      55,    56,    57,    58,    59,    60,    61
     };
     // Last valid token kind.
-    const int code_max = 315;
+    const int code_max = 316;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -2892,6 +2913,7 @@ switch (yykind)
         value.copy< double > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_protocol_extends_opt: // protocol_extends_opt
       case symbol_kind::S_inherits_opt: // inherits_opt
         value.copy< hulk::parser::InheritsInfo > (YY_MOVE (that.value));
         break;
@@ -3031,6 +3053,7 @@ switch (yykind)
         value.move< double > (YY_MOVE (s.value));
         break;
 
+      case symbol_kind::S_protocol_extends_opt: // protocol_extends_opt
       case symbol_kind::S_inherits_opt: // inherits_opt
         value.move< hulk::parser::InheritsInfo > (YY_MOVE (s.value));
         break;
@@ -3120,7 +3143,7 @@ switch (yykind)
 
 #line 4 "src/parser/grammar.y"
 } } // hulk::parser
-#line 3124 "src/parser/parser.hpp"
+#line 3147 "src/parser/parser.hpp"
 
 
 // "%code provides" blocks.
@@ -3130,7 +3153,7 @@ switch (yykind)
         Parser::symbol_type yylex(ParserDriver& driver);
     }
 
-#line 3134 "src/parser/parser.hpp"
+#line 3157 "src/parser/parser.hpp"
 
 
 #endif // !YY_YY_SRC_PARSER_PARSER_HPP_INCLUDED

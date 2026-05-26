@@ -2,6 +2,19 @@
 #include "../semantic/semantic_tables.h"
 
 namespace Hulk {
+namespace {
+
+std::string nominal_name(const HulkType& type) {
+    switch (type.kind()) {
+        case HulkType::Kind::Number: return "Number";
+        case HulkType::Kind::String: return "String";
+        case HulkType::Kind::Boolean: return "Boolean";
+        case HulkType::Kind::Object: return type.name();
+        default: return "";
+    }
+}
+
+}
 
     HulkType::HulkType() : kind_(Kind::Unknown), name_("") {}
 
@@ -38,7 +51,20 @@ namespace Hulk {
 
         if (other.kind() == Kind::Object && other.name() == "Object") return true;
 
-        if (kind_ == Kind::Object && other.kind() == Kind::Object) {
+        const std::string this_name = nominal_name(*this);
+        const std::string other_name = nominal_name(other);
+
+        if (!other_name.empty() && tables.lookup_protocol(other_name)) {
+            if (!this_name.empty() && tables.lookup_protocol(this_name)) {
+                return tables.protocol_conforms_to_protocol(this_name, other_name);
+            }
+            if (!this_name.empty()) {
+                return tables.type_conforms_to_protocol(this_name, other_name);
+            }
+        }
+
+        if (kind_ == Kind::Object && other.kind() == Kind::Object &&
+            !tables.lookup_protocol(name_) && !tables.lookup_protocol(other.name())) {
             return tables.is_subtype(name_, other.name());
         }
 

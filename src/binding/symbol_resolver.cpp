@@ -78,6 +78,23 @@ bool SymbolResolver::run(Program& program) {
                     check_type_annotation(method->span, method->GetReturnTypeAnnotation());
                 }
             }
+        } else if (auto* pd = dynamic_cast<ProtocolDecl*>(decl.get())) {
+            for (const auto& sig : pd->GetMethodSigs()) {
+                if (sig.returnType.empty()) {
+                    report_raw(pd->span, "Método '" + sig.name +
+                               "' de protocolo '" + pd->GetName() +
+                               "' debe declarar tipo de retorno.");
+                }
+                check_type_annotation(pd->span, sig.returnType);
+                for (const auto& p : sig.params) {
+                    if (!p.HasTypeAnnotation()) {
+                        report_raw(pd->span, "Parámetro '" + p.name +
+                                   "' del método de protocolo '" + sig.name +
+                                   "' debe declarar tipo.");
+                    }
+                    check_type_annotation(pd->span, p.typeAnnotation);
+                }
+            }
         }
     }
 
@@ -233,7 +250,7 @@ bool SymbolResolver::is_known_type_name(const std::string& name) const {
     if (name.empty()) return true;
     // "auto" y "_" son anotaciones de inferencia de tipos válidas (type holes)
     if (name == "auto" || name == "_") return true;
-    return tables_.lookup_type(name) != nullptr;
+    return tables_.lookup_type(name) != nullptr || tables_.lookup_protocol(name) != nullptr;
 }
 
 void SymbolResolver::check_type_annotation(const hulk::common::Span& span,
@@ -272,6 +289,11 @@ const SemanticAttrInfo* SymbolResolver::find_attribute_in_ancestors(
 
 void SymbolResolver::visit(FunctionDecl& n) {
     // Validaciones movidas a Pase 1.5
+    if (tables_.lookup_builtin_func(n.GetName()) || tables_.lookup_protocol(n.GetName()) ||
+        tables_.lookup_type(n.GetName())) {
+        report_raw(n.span, "No se puede redeclarar el nombre reservado '" + n.GetName() + "'.");
+        return;
+    }
 
     SemanticFuncInfo info;
     info.name                   = n.GetName();
@@ -291,6 +313,17 @@ void SymbolResolver::visit(TypeDecl& n) {
             report_raw(n.span, "No se puede redeclarar el tipo builtin '" + n.GetName() + "'.");
         else
             report_raw(n.span, "Tipo '" + n.GetName() + "' ya fue declarado.");
+        return;
+    }
+    if (const auto* protocol = tables_.lookup_protocol(n.GetName())) {
+        if (protocol->is_builtin)
+            report_raw(n.span, "No se puede redeclarar el protocolo builtin '" + n.GetName() + "'.");
+        else
+            report_raw(n.span, "El nombre '" + n.GetName() + "' ya fue declarado como protocolo.");
+        return;
+    }
+    if (tables_.lookup_builtin_func(n.GetName())) {
+        report_raw(n.span, "No se puede redeclarar la función builtin '" + n.GetName() + "'.");
         return;
     }
 
@@ -357,12 +390,50 @@ void SymbolResolver::visit(TypeDecl& n) {
 
 void SymbolResolver::visit(TypeMemberAttribute& n) { (void)n; }
 void SymbolResolver::visit(TypeMemberMethod& n)    { (void)n; }
-void SymbolResolver::visit(ProtocolDecl& n)        { (void)n; }
+void SymbolResolver::visit(ProtocolDecl& n) {
+    if (tables_.lookup_type(n.GetName())) {
+        report_raw(n.span, "El nombre '" + n.GetName() + "' ya fue declarado como tipo.");
+        return;
+    }
+    if (tables_.lookup_builtin_func(n.GetName())) {
+        report_raw(n.span, "No se puede redeclarar la función builtin '" + n.GetName() + "'.");
+        return;
+    }
+    if (tables_.lookup_func(n.GetName())) {
+        report_raw(n.span, "El nombre '" + n.GetName() + "' ya fue declarado como función.");
+        return;
+    }
+
+    SemanticProtocolInfo info;
+    info.name = n.GetName();
+    info.parent_name = n.HasParent() ? n.GetParentName() : "";
+    info.decl = &n;
+
+    for (const auto& sig : n.GetMethodSigs()) {
+        if (info.methods.count(sig.name)) {
+            report_raw(n.span, "Método '" + sig.name +
+                       "' duplicado en protocolo '" + n.GetName() + "'.");
+            continue;
+        }
+        check_duplicate_params(sig.params, n.span,
+                               "método de protocolo '" + sig.name + "'");
+        info.methods.emplace(sig.name,
+                             SemanticProtocolMethodInfo{
+                                 sig.name,
+                                 sig.params,
+                                 sig.returnType,
+                             });
+    }
+
+    if (!tables_.register_protocol(std::move(info)))
+        report_raw(n.span, "Protocolo '" + n.GetName() + "' ya fue declarado.");
+}
 
 // ─── Pase 3 — Chequeos globales ───────────────────────────────────────────
 
 void SymbolResolver::run_checks() {
     check_inheritance();
+    check_protocols();
     check_methods();
 }
 
@@ -378,7 +449,8 @@ void SymbolResolver::check_inheritance() {
             } else if (parent->is_builtin &&
                        (info.parent_name == "Number" ||
                         info.parent_name == "String"  ||
-                        info.parent_name == "Boolean")) {
+                        info.parent_name == "Boolean" ||
+                        info.parent_name == "Range")) {
                 // Caso 9: no heredar de Number/String/Boolean
                 hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
                 report_raw(sp, "No se puede heredar del tipo builtin '" +
@@ -389,6 +461,33 @@ void SymbolResolver::check_inheritance() {
         if (tables_.has_inheritance_cycle(name)) {
             hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
             report_raw(sp, "Ciclo de herencia detectado en el tipo '" + name + "'.");
+        }
+    }
+}
+
+void SymbolResolver::check_protocols() {
+    for (const auto& [name, info] : tables_.all_protocols()) {
+        if (info.is_builtin) continue;
+        hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
+
+        if (!info.parent_name.empty()) {
+            if (!tables_.lookup_protocol(info.parent_name)) {
+                report_raw(sp, "Protocolo padre '" + info.parent_name +
+                           "' no existe para protocolo '" + name + "'.");
+            }
+        }
+
+        if (tables_.has_protocol_cycle(name)) {
+            report_raw(sp, "Ciclo de herencia detectado en el protocolo '" + name + "'.");
+            continue;
+        }
+
+        if (!info.parent_name.empty() &&
+            tables_.lookup_protocol(info.parent_name) &&
+            !tables_.protocol_conforms_to_protocol(name, info.parent_name)) {
+            report_raw(sp, "Protocolo '" + name +
+                       "' redefine firmas heredadas incompatibles con '" +
+                       info.parent_name + "'.");
         }
     }
 }
@@ -626,6 +725,7 @@ void SymbolResolver::visit(For& n) {
     SyntheticSymbol* ptr = syn.get();
     synthetic_symbols_.push_back(std::move(syn));
     scope_->define_synthetic(n.GetVarName(), ptr);
+    resolution_map_[&n] = ResolutionResult::from_synthetic(ptr);
 
     resolve(n.GetBody());
     pop_scope();
@@ -698,6 +798,18 @@ void SymbolResolver::visit(Lambda& n) {
 // ─── OOP ───────────────────────────────────────────────────────────────────
 
 void SymbolResolver::visit(NewExpr& n) {
+    if (tables_.lookup_protocol(n.GetTypeName())) {
+        report_raw(n.span, "No se puede instanciar el protocolo '" + n.GetTypeName() + "'.");
+        resolution_map_[&n] = ResolutionResult{};
+        for (auto& arg : n.GetArgs()) resolve(arg.get());
+        return;
+    }
+    if (n.GetTypeName() == "Range") {
+        report_raw(n.span, "El tipo builtin 'Range' solo se construye mediante range(...).");
+        resolution_map_[&n] = ResolutionResult{};
+        for (auto& arg : n.GetArgs()) resolve(arg.get());
+        return;
+    }
     const SemanticTypeInfo* info = tables_.lookup_type(n.GetTypeName());
     if (!info) {
         report(n.span, "SEM_UNDECLARED_TYPE", n.GetTypeName());
@@ -816,11 +928,21 @@ void SymbolResolver::visit(BaseCall& n) {
 
 void SymbolResolver::visit(IsExpr& n) {
     resolve(n.GetExpr());
+    if (tables_.lookup_protocol(n.GetTypeName())) {
+        report_raw(n.span, "No se puede usar el protocolo '" + n.GetTypeName() +
+                   "' en una operación 'is'.");
+        return;
+    }
     check_type_annotation(n.span, n.GetTypeName());
 }
 
 void SymbolResolver::visit(AsExpr& n) {
     resolve(n.GetExpr());
+    if (tables_.lookup_protocol(n.GetTypeName())) {
+        report_raw(n.span, "No se puede usar el protocolo '" + n.GetTypeName() +
+                   "' en una operación 'as'.");
+        return;
+    }
     check_type_annotation(n.span, n.GetTypeName());
 }
 
