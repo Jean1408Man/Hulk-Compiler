@@ -1,0 +1,4 @@
+function consume(values: String*): Object =>
+    for (x in values) print(x);
+
+consume(range(0, 2));

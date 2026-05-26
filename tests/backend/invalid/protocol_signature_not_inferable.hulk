@@ -1,0 +1,9 @@
+protocol Identity {
+    id(x: Number): Number;
+}
+
+type UnknownIdentity {
+    id(x) => x;
+}
+
+let i: Identity = new UnknownIdentity() in i.id(1);

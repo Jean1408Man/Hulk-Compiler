@@ -36,6 +36,7 @@ enum class TokenKind {
     For,
     Function,
     Type,
+    Extends,
     Inherits,
     New,
     Is,

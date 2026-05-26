@@ -1,0 +1,3 @@
+function f(values: Missing*): Number => 0;
+
+f(range(0, 1));

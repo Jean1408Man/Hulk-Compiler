@@ -30,7 +30,7 @@ HULK fuente
 | 7. Errores runtime sin contexto | Resuelta | Los errores runtime incluyen funcion, pc, source span, instruccion y stack trace. |
 | 8. Tests sin invariantes internas de VM | Resuelta | Se ampliaron `vm-tests` con checks de `Word`, heap y BannerVM construido en C++. |
 | 9. Falta `restricted-inference` | Resuelta | Se agrego modo opt-in que bloquea inferencia implicita y permite solo tipos concretos, `_` o `auto`. |
-| 10. Features parciales en frontend/backend | Resuelta | `lambda`, `range()`/`Iterable` y `protocol` fallan temprano con diagnostico semantico estable; el caso bloqueado de `for` es `for` sobre `Iterable/range`. |
+| 10. Features parciales en frontend/backend | Resuelta y ampliada | `lambda` sigue bloqueada; `protocol`, `Iterable`, `Range`, `range()` y `for` quedaron soportados end-to-end con tests. |
 | 11. Literales numericos invalidos convertidos a `0` | Resuelta | Los numeros no representables reportan error sintactico y no se transforman en `Number(0)`. |
 | 12. Escapes de strings aceptados pero no interpretados | Resuelta | Los literales decodifican `\n`, `\r`, `\t`, `\"` y `\\`; escapes desconocidos bloquean el frontend. |
 | 13. `grammar.y` y parser generado desincronizados | Resuelta | `auto` y `_` quedan como pseudo-tipos via `IDENTIFIER`, el parser fue regenerado y se agrego `make parser-sync-check`. |
@@ -509,12 +509,12 @@ explicitas siguen funcionando con la bandera. Los invalidos demuestran que:
 - no se emite `--emit-banner-compiled`;
 - no quedan archivos de salida creados.
 
-## 10. Limpiar del flujo end-to-end `lambda`, `range`/`Iterable` y `protocol`
+## 10. Features parciales en frontend/backend
 
 ### Problema
 
 El frontend conservaba piezas para features que no forman parte del flujo
-soportado por el backend final:
+soportado por el backend final en ese momento:
 
 - `lambda`;
 - `for` sobre `Iterable/range`;
@@ -528,9 +528,9 @@ pipeline end-to-end no podia bajar a HulkIR/BannerIR.
 
 ### Solucion aplicada
 
-Se formalizo la politica conservadora: mantener nodos y parser donde ya aportan
-estructura, pero bloquear el feature en `SemanticAnalyzer` antes de resolver,
-inferir, type-checkear o generar IR.
+Primero se formalizo una politica conservadora: mantener nodos y parser donde
+ya aportaban estructura, pero bloquear los features no cerrados en
+`SemanticAnalyzer` antes de resolver, inferir, type-checkear o generar IR.
 
 El nuevo pase de politica semantica reporta:
 
@@ -538,73 +538,129 @@ El nuevo pase de politica semantica reporta:
 Feature no soportado en el flujo end-to-end: <feature>.
 ```
 
-Se bloquean explicitamente:
+Esa politica sigue vigente para `lambda`. Posteriormente, `protocol`,
+`Iterable`, `Range`, `range` y `for` dejaron de ser features parciales y fueron
+promovidos al flujo soportado.
 
-- `lambda`;
-- `for` sobre `Iterable/range`;
-- `range`;
-- `protocol`.
+### Ampliacion aplicada: protocolos, `Iterable`, `Range`, `range` y `for`
 
-Despues de revisar `hulk-docs.pdf`, el `for` queda tratado como una feature del
-lenguaje HULK. Lo que no se anuncia como soportado en este pipeline es el caso
-end-to-end que depende de `Iterable`/`range`, que todavia no tiene bajada segura
-hacia el backend.
+Se implemento la ruta oficial basada en protocolos estructurales:
 
-Tambien se retiro `range` de las funciones builtin registradas por
-`SemanticTables`, para que no quede anunciado como builtin soportado por
-semantica. La ruta de `FunctionCall("range")` se detecta por nombre antes de
-resolver simbolos, por lo que el usuario recibe el diagnostico estable de
-feature no soportado en vez de un error tardio de IR.
+- `SemanticTables` registra protocolos y permite consultar conformidad.
+- `protocol P { ... }` y `protocol P extends Q { ... }` quedan soportados.
+- Los protocolos se pueden usar en anotaciones de variables, parametros y
+  retornos.
+- La conformidad A.10 usa firmas explicitas o, cuando son determinables,
+  firmas inferidas de metodos concretos.
+- Los protocolos siguen siendo compile-time only: `ProtocolDecl` no emite
+  metadata runtime.
+- `new Iterable()`, `x is Iterable` y `x as Iterable` se rechazan porque un
+  protocolo no es un tipo runtime.
+- `Iterable` se registra como protocolo builtin con `next(): Boolean` y
+  `current(): Object`.
+- `Range` se registra como tipo builtin interno con `next(): Boolean` y
+  `current(): Number`.
+- `range(Number, Number)` retorna `Range`.
+- `Range` conforma a `Iterable` por el mecanismo general de conformidad, no por
+  una excepcion ad hoc.
+- `T*` se representa como protocolo sintetico interno `T* extends Iterable`
+  con `current(): T`, para preservar el tipo del elemento en funciones y
+  variables anotadas. La notacion es recursiva: `Number**` se registra como
+  iterable de `Number*`.
+- `for` exige que el iterable conforme a `Iterable`.
+- La variable sintetica del `for` toma el tipo concreto de `current()`: con
+  `Range` queda como `Number`, y con una anotacion `Iterable` queda como
+  `Object`.
+- IRGen baja `for` a llamadas virtuales `next/current`, labels y saltos.
+- IRGen baja `range(a, b)` a creacion de objeto `Range` y seteo de campos.
+- La metadata y los metodos builtin de `Range` se emiten solo si el programa usa
+  `range`, para no alterar IR de programas que no lo necesitan.
+- El evaluador legacy ejecuta `range`, `Range.next/current` y `for`.
 
-Para que el rechazo sea consistente:
+Para que el soporte sea consistente:
 
-- se agrego token `protocol`;
-- se agrego parser minimo para declaraciones `protocol`;
-- se agrego parser minimo para lambdas de la forma `(x: T): R => expr`;
+- se agrego token `extends`;
+- se completo el parser de declaraciones `protocol`;
+- se mantuvo el parser minimo para lambdas de la forma `(x: T): R => expr`,
+  pero `lambda` sigue bloqueada por politica end-to-end;
 - se enlazo `ProtocolDecl` en el build compartido;
-- `IRGen` conserva sus defensas `unsupported(...)`, pero ya no son la primera
-  barrera esperada.
+- se agregaron diagnosticos semanticos para firmas de protocolos invalidas,
+  ciclos, redeclaraciones reservadas y usos runtime de protocolos.
 
 ### Archivos relevantes
 
 - `src/semantic/analyzer.cpp`
 - `src/semantic/semantic_tables.cpp`
+- `src/semantic/semantic_protocol_info.h`
+- `src/binding/symbol_resolver.cpp`
+- `src/inference/hulk_type.cpp`
+- `src/inference/type_inferencer.cpp`
+- `src/typecheck/type_checker.cpp`
+- `src/backend/ir_gen.cpp`
+- `src/eval/evaluator.cpp`
 - `src/lexer/token_kind.hpp`
 - `src/lexer/keywords.hpp`
-- `src/lexer/lexer.cpp`
 - `src/lexer/main.cpp`
 - `src/parser/grammar.y`
 - `src/parser/parser.cpp`
 - `src/parser/parser.hpp`
 - `src/parser/parser_lexer_adapter.cpp`
 - `src/ast/protocols/protocolMethodSig.h`
-- `Makefile`
 - `tests/backend/run_backend_tests.sh`
-- `tests/backend/unsupported/*.hulk`
+- `tests/backend/regression/for_range.hulk`
+- `tests/backend/regression/for_custom_iterable.hulk`
+- `tests/backend/regression/protocol_a10_core.hulk`
+- `tests/backend/regression/protocol_named.hulk`
+- `tests/backend/regression/typed_iterable_sum.hulk`
+- `tests/backend/invalid/for_*.hulk`
+- `tests/backend/invalid/protocol_*.hulk`
+- `tests/backend/invalid/typed_iterable_*.hulk`
+- `tests/backend/invalid/redeclare_*.hulk`
+- `tests/parser/protocol_decl.hulk`
+- `tests/parser/protocol_extends.hulk`
+- `tests/parser/typed_iterable_annotation.hulk`
 
 ### Validacion
 
-Se agrego la seccion:
+La seccion:
 
 ```text
 BACKEND FEATURES NO SOPORTADOS
 ```
 
-Los tests cubren:
+queda reducida a `lambda`.
 
-- lambda;
-- `for (x in range(...))`;
-- llamada directa `range(...)`;
-- declaracion `protocol`.
+Se agregaron regresiones backend validas para:
 
-Cada caso verifica que:
+- `for (x in range(0, 3)) print(x);`
+- `for` sobre un iterable definido por el usuario;
+- funcion que recibe un protocolo de usuario.
+- protocolo A.10 completo con firmas inferidas, varianza, `extends`,
+  conformidad protocolo-protocolo y LCA protocolar.
+- `Number*` con `range`, iterable custom, `current()` inferido y `Object*` por
+  covarianza.
+- `Number**` con iterables anidados y `current()` inferido.
 
-- el backend falla en modo default;
-- el mensaje contiene `Feature no soportado en el flujo end-to-end`;
-- no se emite `--emit-ir`;
-- no se emite `--emit-banner`;
-- no se emite `--emit-banner-compiled`;
-- no quedan archivos de salida creados.
+Se agregaron invalidos para:
+
+- `for` sobre valor no iterable;
+- falta de `next`;
+- falta de `current`;
+- `next` con retorno no booleano;
+- `current` con aridad incorrecta;
+- parametros o retornos ausentes en protocolos;
+- ciclos de protocolos;
+- override incompatible en `extends`;
+- firmas concretas no inferibles para conformar a protocolo;
+- redeclarar `Iterable`, `Range` o `range`;
+- `new Range(...)`;
+- `is`/`as` contra protocolos.
+- anotacion `Missing*`;
+- pasar `Range` a `String*`;
+- pasar un iterable con `current(): String` a `Number*`;
+- pasar `Range` o un iterable con `current(): Number` a `Number**`;
+- usar `Iterable` donde se necesita conservar tipo numerico del elemento;
+- `as Number*` y `as Number**`.
 
 ## 11. Literales numericos invalidos no se convierten silenciosamente en `0`
 
@@ -1047,8 +1103,15 @@ git diff --check
 ./hulk_semantic tests/extension/restricted_valid_let.hulk --restricted-inference
 ./hulk_backend tests/extension/restricted_invalid_implicit_let.hulk
 ./hulk_backend tests/backend/unsupported/unsupported_lambda.hulk
-./hulk_backend tests/backend/unsupported/unsupported_protocol.hulk --emit-ir -o /tmp/unsupported_protocol.hir
-./hulk_backend tests/backend/unsupported/unsupported_range_call.hulk --emit-banner-compiled -o /tmp/unsupported_range.compiled.banner
+./hulk_backend tests/backend/regression/for_range.hulk
+./hulk_backend tests/backend/regression/for_custom_iterable.hulk
+./hulk_backend tests/backend/regression/protocol_a10_core.hulk
+./hulk_backend tests/backend/regression/protocol_named.hulk
+./hulk_backend tests/backend/regression/typed_iterable_sum.hulk
+./hulk_backend tests/backend/invalid/for_non_iterable.hulk
+./hulk_backend tests/backend/invalid/protocol_cycle.hulk
+./hulk_backend tests/backend/invalid/typed_iterable_range_string_mismatch.hulk
+./hulk_backend tests/backend/invalid/new_range.hulk
 ./hulk_backend tests/backend/frontend_invalid/out_of_range_number.hulk
 ./hulk_backend tests/backend/regression/string_escapes.hulk
 ./hulk_backend tests/backend/frontend_invalid/invalid_string_escape.hulk
@@ -1068,8 +1131,8 @@ Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 116
-  Passed : 116
+  Total  : 149
+  Passed : 149
   Failed : 0
 ```
 
@@ -1090,10 +1153,10 @@ alcanzable, limita recursos de VM, permite inspeccionar la forma baja de
 BannerIR, reporta errores runtime con contexto suficiente para depurar desde
 el programa fuente, cuenta con pruebas unitarias para invariantes internas de
 la VM y ofrece un modo opt-in de inferencia restringida para exigir tipos
-concretos o type holes explicitos. Ademas, los features fuera de alcance
-end-to-end quedan bloqueados temprano con diagnosticos probados y no llegan a
-la generacion de IR ni a BannerVM, y los literales numericos no representables
-ya no pueden convertirse silenciosamente en `0`. Los strings tambien llegan al
+concretos o type holes explicitos. Ademas, los features que todavia quedan
+fuera de alcance, como `lambda`, se bloquean temprano con diagnosticos probados
+y no llegan a la generacion de IR ni a BannerVM, y los literales numericos no
+representables ya no pueden convertirse silenciosamente en `0`. Los strings tambien llegan al
 AST y al backend con sus escapes decodificados, y los escapes desconocidos
 fallan temprano. Finalmente, el parser generado queda protegido contra drift
 respecto a `grammar.y` mediante un chequeo reproducible. El soporte de multiples
@@ -1106,3 +1169,12 @@ resultados no finitos, evitando que `NaN` o `Infinity` se vuelvan valores
 observables del lenguaje. La firma oficial de `print` tambien queda alineada
 con su comportamiento real: imprimir no convierte el resultado a `String`, sino
 que conserva el valor retornado por la expresion impresa.
+
+Actualizacion posterior: `protocol`, `Iterable`, `Range`, `range` y `for`
+tambien quedaron incorporados al flujo end-to-end. Los protocolos son
+estructurales y no generan runtime propio; la conformidad A.10 acepta firmas
+inferidas cuando son determinables; `Range` conforma a `Iterable` por firma;
+`range` construye objetos `Range`; y `for` baja a llamadas virtuales
+`next/current`; y `T*` se modela como protocolo sintetico para conservar el tipo
+del elemento. `lambda`, `Enumerable`, vectores, comprehensions, functors y
+macros permanecen fuera de este corte.

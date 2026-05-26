@@ -682,9 +682,6 @@ done
 
 suite_header "BACKEND FEATURES NO SOPORTADOS"
 run_unsupported_feature_one "$ROOT/tests/backend/unsupported/unsupported_lambda.hulk" "lambda"
-run_unsupported_feature_one "$ROOT/tests/backend/unsupported/unsupported_for_range.hulk" "for sobre Iterable/range"
-run_unsupported_feature_one "$ROOT/tests/backend/unsupported/unsupported_range_call.hulk" "range"
-run_unsupported_feature_one "$ROOT/tests/backend/unsupported/unsupported_protocol.hulk" "protocol"
 
 suite_header "BACKEND FRONTEND INVALIDOS"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/out_of_range_number.hulk" "Literal numerico fuera de rango"

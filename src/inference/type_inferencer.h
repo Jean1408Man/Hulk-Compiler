@@ -95,6 +95,14 @@ namespace Hulk {
         void refine_type(Expr& node, const HulkType& type);
         void refine_param_type(const Param* param, const HulkType& type);
         HulkType get_lca(const HulkType& a, const HulkType& b);
+        bool type_conforms_with_inference(const HulkType& found, const HulkType& expected);
+        bool type_conforms_to_protocol_inferred(const std::string& type_name,
+                                                const std::string& protocol_name,
+                                                int depth = 0);
+        bool method_satisfies_protocol_inferred(const SemanticMethodInfo& actual,
+                                                const SemanticProtocolMethodInfo& required);
+        HulkType resolve_method_param_type(const SemanticMethodInfo& method, std::size_t index);
+        HulkType resolve_method_return_type(const SemanticMethodInfo& method);
 
         HulkType infer_expr(Expr& node);
 

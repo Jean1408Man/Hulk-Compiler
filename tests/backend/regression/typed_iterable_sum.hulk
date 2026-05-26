@@ -1,0 +1,74 @@
+type Counter(max: Number) {
+    i = 0;
+    limit = max;
+
+    next(): Boolean => {
+        self.i := self.i + 1;
+        self.i <= self.limit;
+    };
+
+    current(): Number => self.i;
+}
+
+type InferredCounter(max: Number) {
+    i = 0;
+    limit = max;
+
+    next(): Boolean => {
+        self.i := self.i + 1;
+        self.i <= self.limit;
+    };
+
+    current() => self.i;
+}
+
+type Batches(max: Number) {
+    i = 0;
+    limit = max;
+
+    next(): Boolean => {
+        self.i := self.i + 1;
+        self.i <= self.limit;
+    };
+
+    current(): Number* => range(0, self.i);
+}
+
+type InferredBatches(max: Number) {
+    i = 0;
+    limit = max;
+
+    next(): Boolean => {
+        self.i := self.i + 1;
+        self.i <= self.limit;
+    };
+
+    current() => range(0, self.i);
+}
+
+function sum(values: Number*): Number =>
+    let total = 0 in {
+        for (x in values) total := total + x;
+        total;
+    };
+
+function nested_sum(values: Number**): Number =>
+    let total = 0 in {
+        for (batch in values) {
+            for (x in batch) total := total + x;
+        };
+        total;
+    };
+
+function echo(values: Object*): Object =>
+    for (x in values) print(x);
+
+{
+    print(sum(range(1, 5)));
+    print(sum(new Counter(3)));
+    print(sum(new InferredCounter(4)));
+    let values: Number* = range(0, 3) in print(sum(values));
+    echo(range(0, 2));
+    print(nested_sum(new Batches(4)));
+    print(nested_sum(new InferredBatches(3)));
+}

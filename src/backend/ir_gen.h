@@ -62,9 +62,13 @@ private:
     std::size_t temp_counter_ = 0;
     std::size_t label_counter_ = 0;
     std::size_t data_counter_ = 0;
+    bool needs_range_builtin_ = false;
 
     void collect_declarations(Program& program);
+    void collect_builtin_declarations();
     void emit_type_metadata(Program& program);
+    void emit_builtin_range_metadata();
+    void emit_builtin_range_functions();
     void emit_global_function(FunctionDecl& fn);
     void emit_type_functions(TypeDecl& type);
     void emit_type_initializer(TypeDecl& type);
@@ -74,6 +78,7 @@ private:
     std::string lower_expr(Expr* expr);
     std::vector<std::string> lower_args(const std::vector<std::unique_ptr<Expr>>& args);
     std::string emit_base_call(const std::vector<std::unique_ptr<Expr>>& args);
+    std::string emit_range_call(const std::vector<std::unique_ptr<Expr>>& args);
     std::string lookup_symbol(Expr& node, const std::string& fallback_name);
 
     IR::IRFunction start_function(std::string name,

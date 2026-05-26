@@ -1,0 +1,2 @@
+let x: Iterable = range(0, 1) in
+    x is Iterable;

@@ -167,13 +167,11 @@ private:
     }
 
     void visit(For& node) override {
-        report_unsupported(node.span, "for sobre Iterable/range");
         visit_expr(node.GetIterable());
         visit_expr(node.GetBody());
     }
 
     void visit(FunctionCall& node) override {
-        if (node.GetName() == "range") report_unsupported(node.span, "range");
         visit_args(node.GetArgs());
     }
 
@@ -186,7 +184,6 @@ private:
 
     void visit(Print& node) override { visit_expr(node.GetExpr()); }
     void visit(BuiltinCall& node) override {
-        if (node.GetFunc() == BuiltinFunc::Range) report_unsupported(node.span, "range");
         visit_args(node.GetArgs());
     }
 
@@ -235,7 +232,7 @@ private:
     }
 
     void visit(ProtocolDecl& node) override {
-        report_unsupported(node.span, "protocol");
+        (void)node;
     }
 };
 

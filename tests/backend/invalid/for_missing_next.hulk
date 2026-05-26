@@ -1,0 +1,6 @@
+type OnlyCurrent {
+    current(): Number => 1;
+}
+
+let x = new OnlyCurrent() in
+    for (item in x) print(item);

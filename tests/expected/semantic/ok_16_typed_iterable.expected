@@ -1,0 +1,8 @@
+
+=== Análisis semántico OK ===
+Funciones registradas e inferidas:
+  function sum(1 params) : Number
+Tipos registrados:
+  type Counter inherits Object { 2 attrs, 2 methods }
+Tipo de expresión global: Number
+Referencias resueltas: 18

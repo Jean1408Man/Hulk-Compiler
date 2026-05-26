@@ -108,7 +108,7 @@ void Evaluator::validate_type_hierarchy() {
 }
 
 const MethodDef* Evaluator::find_method(const std::string& type_name,
-                                         const std::string& method_name) const {
+                                        const std::string& method_name) const {
     auto it = types_.find(type_name);
     if (it == types_.end()) return nullptr;
     const TypeDef& def = it->second;
@@ -117,6 +117,71 @@ const MethodDef* Evaluator::find_method(const std::string& type_name,
     if (!def.parent_name.empty())
         return find_method(def.parent_name, method_name);
     return nullptr;
+}
+
+HulkValue Evaluator::call_method_value(const hulk::common::Span& span,
+                                       const HulkValue& obj_val,
+                                       const std::string& method_name,
+                                       const std::vector<HulkValue>& arg_vals) {
+    if (!obj_val.is_object())
+        report_error(span, "TYPE_NOT_OBJECT", obj_val.to_string());
+
+    auto obj_ptr = obj_val.as_object();
+    const std::string& type_name = obj_ptr->type_name;
+
+    if (type_name == "Range") {
+        if (!arg_vals.empty())
+            report_error(span, "TYPE_ARITY_METHOD", method_name, 0, arg_vals.size());
+
+        if (method_name == "next") {
+            auto current_it = obj_ptr->fields.find("current");
+            auto max_it = obj_ptr->fields.find("max");
+            if (current_it == obj_ptr->fields.end() || max_it == obj_ptr->fields.end() ||
+                !current_it->second.is_number() || !max_it->second.is_number()) {
+                report_error_raw(span, "Range interno invalido.");
+            }
+            const double advanced = current_it->second.as_number() + 1.0;
+            current_it->second = HulkValue(advanced);
+            return HulkValue(advanced < max_it->second.as_number());
+        }
+
+        if (method_name == "current") {
+            auto current_it = obj_ptr->fields.find("current");
+            if (current_it == obj_ptr->fields.end())
+                report_error_raw(span, "Range interno invalido.");
+            return current_it->second;
+        }
+    }
+
+    const MethodDef* method = find_method(type_name, method_name);
+    if (!method)
+        report_error(span, "BIND_UNDECLARED_MEMBER", method_name, type_name);
+
+    if (method->params.size() != arg_vals.size())
+        report_error(span, "TYPE_ARITY_METHOD",
+                     method_name, method->params.size(), arg_vals.size());
+
+    auto method_env = std::make_shared<Environment>(global_env_);
+    for (size_t i = 0; i < method->params.size(); ++i)
+        method_env->define(method->params[i].name, arg_vals[i]);
+    method_env->define("self", obj_val);
+
+    HulkValue prev_self = self_;
+    self_ = obj_val;
+    auto prev_env = env_;
+    env_ = method_env;
+    std::string prev_type   = current_type_name_;
+    std::string prev_method = current_method_name_;
+    current_type_name_   = type_name;
+    current_method_name_ = method_name;
+
+    HulkValue value = eval(method->body);
+
+    env_ = prev_env;
+    self_ = prev_self;
+    current_type_name_ = prev_type;
+    current_method_name_ = prev_method;
+    return value;
 }
 
 void Evaluator::init_object(HulkObject& obj, const TypeDef& def,
@@ -407,7 +472,19 @@ void Evaluator::visit(WhileStmt& n) {
 }
 
 void Evaluator::visit(For& n) {
-    report_error(n.span, "SEM_UNSUPPORTED", "for");
+    HulkValue iterable = eval(n.GetIterable());
+    result_ = HulkValue{};
+
+    while (call_method_value(n.span, iterable, "next", {}).is_truthy()) {
+        HulkValue current = call_method_value(n.span, iterable, "current", {});
+        auto loop_env = make_child_env();
+        loop_env->define(n.GetVarName(), current);
+
+        auto prev_env = env_;
+        env_ = loop_env;
+        result_ = eval(n.GetBody());
+        env_ = prev_env;
+    }
 }
 
 // ============================================================================
@@ -451,6 +528,23 @@ void Evaluator::visit(FunctionDecl& n) {
 }
 
 void Evaluator::visit(FunctionCall& n) {
+    if (n.GetName() == "range") {
+        const auto& args = n.GetArgs();
+        if (args.size() != 2)
+            report_error(n.span, "TYPE_ARITY_FUNC", n.GetName(), 2, args.size());
+
+        HulkValue start = eval(args[0].get());
+        HulkValue end = eval(args[1].get());
+        if (!start.is_number() || !end.is_number())
+            report_error_raw(n.span, "range espera argumentos Number.");
+
+        auto obj = std::make_shared<HulkObject>("Range");
+        obj->fields["current"] = HulkValue(start.as_number() - 1.0);
+        obj->fields["max"] = end;
+        result_ = HulkValue(obj);
+        return;
+    }
+
     // Buscar en tabla global
     auto it = funcs_.find(n.GetName());
     if (it == funcs_.end())
@@ -573,49 +667,13 @@ void Evaluator::visit(MemberAccess& n) {
 
 void Evaluator::visit(MethodCall& n) {
     HulkValue obj_val = eval(n.GetObject());
-    if (!obj_val.is_object())
-        report_error(n.span, "TYPE_NOT_OBJECT", obj_val.to_string());
-
-    auto obj_ptr = obj_val.as_object();
-    const std::string& type_name = obj_ptr->type_name;
-
-    const MethodDef* method = find_method(type_name, n.GetMethodName());
-    if (!method)
-        report_error(n.span, "BIND_UNDECLARED_MEMBER",
-                     n.GetMethodName(), type_name);
-
     const auto& args = n.GetArgs();
-    if (method->params.size() != args.size())
-        report_error(n.span, "TYPE_ARITY_METHOD",
-                     n.GetMethodName(), method->params.size(), args.size());
-
-    // Evaluar argumentos
     std::vector<HulkValue> arg_vals;
     arg_vals.reserve(args.size());
     for (auto& arg : args)
         arg_vals.push_back(eval(arg.get()));
 
-    // Scope del método sobre el global — no captura variables del caller
-    auto method_env = std::make_shared<Environment>(global_env_);
-    for (size_t i = 0; i < method->params.size(); ++i)
-        method_env->define(method->params[i].name, arg_vals[i]);
-    method_env->define("self", obj_val);
-
-    HulkValue prev_self = self_;
-    self_ = obj_val;
-    auto prev_env = env_;
-    env_ = method_env;
-    std::string prev_type   = current_type_name_;
-    std::string prev_method = current_method_name_;
-    current_type_name_   = type_name;
-    current_method_name_ = n.GetMethodName();
-
-    result_ = eval(method->body);
-
-    env_              = prev_env;
-    self_             = prev_self;
-    current_type_name_   = prev_type;
-    current_method_name_ = prev_method;
+    result_ = call_method_value(n.span, obj_val, n.GetMethodName(), arg_vals);
 }
 
 void Evaluator::visit(SelfRef&) {

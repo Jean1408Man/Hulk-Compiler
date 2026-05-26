@@ -1,0 +1,9 @@
+type Base {
+    id(): Number => 1;
+}
+
+protocol Bad extends Base {
+    id(): Number;
+}
+
+0;

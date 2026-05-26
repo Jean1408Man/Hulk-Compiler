@@ -1,0 +1,6 @@
+type OnlyNext {
+    next(): Boolean => false;
+}
+
+let x = new OnlyNext() in
+    for (item in x) print(item);

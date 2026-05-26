@@ -1,0 +1,9 @@
+protocol Hashable {
+    hash(): Number;
+}
+
+protocol NamedHashable extends Hashable {
+    name(): String;
+}
+
+0;

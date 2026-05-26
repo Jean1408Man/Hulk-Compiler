@@ -1,0 +1,4 @@
+function sum(values: Number*): Number => 0;
+function nested(values: Number**): Number => 0;
+
+sum(range(0, 1));

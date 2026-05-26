@@ -3,6 +3,7 @@
 
 #include "semantic_type_info.h"
 #include "semantic_func_info.h"
+#include "semantic_protocol_info.h"
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -50,6 +51,9 @@ namespace Hulk {
         // Devuelve false si ya existía una función con ese nombre (duplicado).
         bool register_func(SemanticFuncInfo info);
 
+        bool register_protocol(SemanticProtocolInfo info);
+        bool ensure_typed_iterable_protocol(const std::string& element_type_name);
+
         // Consulta
 
         // nullptr si no existe.
@@ -58,6 +62,10 @@ namespace Hulk {
 
         // nullptr si no existe.
         const SemanticFuncInfo* lookup_func(const std::string& name) const;
+        const SemanticProtocolInfo* lookup_protocol(const std::string& name) const;
+        SemanticProtocolInfo*       lookup_protocol(const std::string& name);
+
+        bool is_protocol(const std::string& name) const;
 
         // Builtins
         const BuiltinFuncInfo*   lookup_builtin_func(const std::string& name) const;
@@ -85,19 +93,31 @@ namespace Hulk {
         const SemanticMethodInfo* find_method(const std::string& type_name,
                                               const std::string& method_name) const;
 
+        const SemanticProtocolMethodInfo* find_protocol_method(
+            const std::string& protocol_name,
+            const std::string& method_name) const;
+
         // ¿Existe el atributo 'attr_name' en 'type_name' o en algún ancestro?
         const SemanticAttrInfo* find_attribute(const std::string& type_name,
                                                const std::string& attr_name) const;
 
         std::vector<Param> get_effective_constructor(const std::string& type_name) const;
 
+        bool type_conforms_to_protocol(const std::string& type_name,
+                                       const std::string& protocol_name) const;
+        bool protocol_conforms_to_protocol(const std::string& child,
+                                           const std::string& parent) const;
+        bool has_protocol_cycle(const std::string& protocol_name) const;
+
         // Iteración (para chequeos globales)
         const std::unordered_map<std::string, SemanticTypeInfo>& all_types() const;
         const std::unordered_map<std::string, SemanticFuncInfo>& all_funcs() const;
+        const std::unordered_map<std::string, SemanticProtocolInfo>& all_protocols() const;
 
     private:
         std::unordered_map<std::string, SemanticTypeInfo>  types_;
         std::unordered_map<std::string, SemanticFuncInfo>  funcs_;
+        std::unordered_map<std::string, SemanticProtocolInfo> protocols_;
         std::unordered_map<std::string, BuiltinFuncInfo>   builtin_funcs_;
         std::unordered_map<std::string, BuiltinConstInfo>  builtin_consts_;
 
@@ -105,6 +125,15 @@ namespace Hulk {
         bool has_cycle_impl(const std::string& name,
                             std::unordered_set<std::string>& visited,
                             std::unordered_set<std::string>& in_stack) const;
+        bool has_protocol_cycle_impl(const std::string& name,
+                                     std::unordered_set<std::string>& visited,
+                                     std::unordered_set<std::string>& in_stack) const;
+        bool type_name_conforms(const std::string& actual,
+                                const std::string& expected) const;
+        bool method_satisfies_protocol(const SemanticMethodInfo& actual,
+                                       const SemanticProtocolMethodInfo& required) const;
+        bool protocol_method_satisfies_protocol(const SemanticProtocolMethodInfo& actual,
+                                                const SemanticProtocolMethodInfo& required) const;
     };
 
 }

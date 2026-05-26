@@ -129,6 +129,7 @@ Parser::symbol_type yylex(ParserDriver& driver) {
         case TK::For: return Parser::make_FOR(loc);
         case TK::Function: return Parser::make_FUNCTION(loc);
         case TK::Type: return Parser::make_TYPE(loc);
+        case TK::Extends: return Parser::make_EXTENDS(loc);
         case TK::Inherits: return Parser::make_INHERITS(loc);
         case TK::New: return Parser::make_NEW(loc);
         case TK::Is: return Parser::make_IS(loc);

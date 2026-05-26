@@ -1,0 +1,78 @@
+protocol Hashable {
+    hash(): Number;
+}
+
+protocol Incrementer {
+    inc(x: Number): Number;
+}
+
+protocol A {
+    a(): Number;
+}
+
+protocol AB {
+    a(): Number;
+    b(): Number;
+}
+
+type Animal {
+    name(): String => "animal";
+}
+
+type Dog inherits Animal {
+    name(): String => "dog";
+}
+
+protocol Handler {
+    handle(x: Dog): Animal;
+}
+
+protocol DogHandler extends Handler {
+    handle(x: Animal): Dog;
+}
+
+type Person {
+    hash(): Number => 7;
+}
+
+type InferredHash {
+    hash() => 11;
+}
+
+type InferredInc {
+    inc(x) => x + 1;
+}
+
+type Holder(value: Hashable) {
+    item: Hashable = value;
+
+    get(): Hashable => self.item;
+}
+
+type Both {
+    a(): Number => 1;
+    b(): Number => 2;
+}
+
+type Shelter {
+    handle(x: Animal): Dog => new Dog();
+}
+
+function use_hash(x: Hashable): Number => x.hash();
+
+function use_inc(x: Incrementer): Number => x.inc(4);
+
+function only_a(x: A): Number => x.a();
+
+function use_handler(h: Handler): String => h.handle(new Dog()).name();
+
+{
+    print(use_hash(new Person()));
+    print(use_hash(new InferredHash()));
+    print(use_inc(new InferredInc()));
+    let h: Hashable = new InferredHash() in print(h.hash());
+    print(new Holder(new Person()).get().hash());
+    let ab: AB = new Both() in print(only_a(ab));
+    let dh: DogHandler = new Shelter() in print(use_handler(dh));
+    let h: Hashable = new InferredHash(), c = true in print((if (c) h else new InferredHash()).hash());
+}

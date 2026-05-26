@@ -222,6 +222,7 @@ namespace Hulk {
         void run_checks();
         void check_inheritance();   // padre declarado + sin ciclos
         void check_methods();       // duplicados + override válido con firma
+        void check_protocols();
         void check_arities();       // aridades de FunctionCall y NewExpr (via tablas)
 
         // Helpers de validación

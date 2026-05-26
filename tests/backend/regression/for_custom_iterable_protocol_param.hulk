@@ -1,0 +1,15 @@
+type Counter(max: Number) {
+    i = 0;
+    limit = max;
+
+    next(): Boolean => {
+        self.i := self.i + 1;
+        self.i <= self.limit;
+    };
+
+    current(): Number => self.i;
+}
+
+function consume(it: Iterable): Object => for (x in it) print(x);
+
+consume(new Counter(3));

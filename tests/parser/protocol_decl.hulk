@@ -1,0 +1,12 @@
+protocol Named {
+    name(): String;
+}
+
+type Person(name: String) {
+    value = name;
+    name(): String => self.value;
+}
+
+function show(x: Named): String => x.name();
+
+show(new Person("Ada"));

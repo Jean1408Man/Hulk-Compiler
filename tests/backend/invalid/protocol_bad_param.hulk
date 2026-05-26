@@ -1,0 +1,17 @@
+type Animal {
+    name(): String => "animal";
+}
+
+type Dog inherits Animal {
+    bark(): String => "woof";
+}
+
+protocol Handler {
+    handle(x: Animal): Number;
+}
+
+type DogOnly {
+    handle(x: Dog): Number => 1;
+}
+
+let h: Handler = new DogOnly() in h.handle(new Animal());
