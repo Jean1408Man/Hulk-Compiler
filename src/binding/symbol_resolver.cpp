@@ -44,6 +44,24 @@
 
 namespace Hulk {
 
+namespace {
+
+bool is_typed_iterable_annotation(const std::string& name) {
+    return !name.empty() && name.back() == '*';
+}
+
+std::string typed_iterable_element(const std::string& name) {
+    if (!is_typed_iterable_annotation(name)) return "";
+    return name.substr(0, name.size() - 1);
+}
+
+bool is_valid_typed_iterable_element_name(const std::string& name) {
+    return !name.empty() && name != "auto" && name != "_" &&
+           name != "Void";
+}
+
+}
+
 SymbolResolver::SymbolResolver(SemanticTables& tables,
                                hulk::common::DiagnosticEngine& engine)
     : tables_(tables),
@@ -248,6 +266,11 @@ void SymbolResolver::report_raw(const hulk::common::Span& span, const std::strin
 
 bool SymbolResolver::is_known_type_name(const std::string& name) const {
     if (name.empty()) return true;
+    if (is_typed_iterable_annotation(name)) {
+        const std::string element = typed_iterable_element(name);
+        return is_valid_typed_iterable_element_name(element) &&
+               is_known_type_name(element);
+    }
     // "auto" y "_" son anotaciones de inferencia de tipos válidas (type holes)
     if (name == "auto" || name == "_") return true;
     return tables_.lookup_type(name) != nullptr || tables_.lookup_protocol(name) != nullptr;
@@ -255,7 +278,21 @@ bool SymbolResolver::is_known_type_name(const std::string& name) const {
 
 void SymbolResolver::check_type_annotation(const hulk::common::Span& span,
                                            const std::string& type_name) {
-    if (!type_name.empty() && !is_known_type_name(type_name))
+    if (type_name.empty()) return;
+
+    if (is_typed_iterable_annotation(type_name)) {
+        const std::string element = typed_iterable_element(type_name);
+        if (!is_known_type_name(type_name)) {
+            report(span, "SEM_UNDECLARED_TYPE", type_name);
+            return;
+        }
+        if (!tables_.ensure_typed_iterable_protocol(element)) {
+            report(span, "SEM_UNDECLARED_TYPE", type_name);
+        }
+        return;
+    }
+
+    if (!is_known_type_name(type_name))
         report(span, "SEM_UNDECLARED_TYPE", type_name);
 }
 
@@ -928,22 +965,22 @@ void SymbolResolver::visit(BaseCall& n) {
 
 void SymbolResolver::visit(IsExpr& n) {
     resolve(n.GetExpr());
+    check_type_annotation(n.span, n.GetTypeName());
     if (tables_.lookup_protocol(n.GetTypeName())) {
         report_raw(n.span, "No se puede usar el protocolo '" + n.GetTypeName() +
                    "' en una operación 'is'.");
         return;
     }
-    check_type_annotation(n.span, n.GetTypeName());
 }
 
 void SymbolResolver::visit(AsExpr& n) {
     resolve(n.GetExpr());
+    check_type_annotation(n.span, n.GetTypeName());
     if (tables_.lookup_protocol(n.GetTypeName())) {
         report_raw(n.span, "No se puede usar el protocolo '" + n.GetTypeName() +
                    "' en una operación 'as'.");
         return;
     }
-    check_type_annotation(n.span, n.GetTypeName());
 }
 
 

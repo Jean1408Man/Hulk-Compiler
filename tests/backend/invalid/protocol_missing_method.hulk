@@ -1,0 +1,9 @@
+protocol Named {
+    name(): String;
+}
+
+type Nameless {
+    id(): Number => 1;
+}
+
+let x: Named = new Nameless() in x.name();

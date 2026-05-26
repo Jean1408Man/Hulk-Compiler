@@ -1,0 +1,14 @@
+type BadBatches {
+    next(): Boolean => false;
+    current(): Number => 1;
+}
+
+function nested_sum(values: Number**): Number =>
+    let total = 0 in {
+        for (batch in values) {
+            for (x in batch) total := total + x;
+        };
+        total;
+    };
+
+nested_sum(new BadBatches());

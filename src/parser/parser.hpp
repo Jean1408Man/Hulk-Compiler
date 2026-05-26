@@ -2458,7 +2458,7 @@ switch (yykind)
 
 
     /// Stored state numbers (used for stacks).
-    typedef unsigned char state_type;
+    typedef short state_type;
 
     /// The arguments of the error message.
     int yy_syntax_error_arguments_ (const context& yyctx,
@@ -2753,7 +2753,7 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 408,     ///< Last index in yytable_.
+      yylast_ = 356,     ///< Last index in yytable_.
       yynnts_ = 53,  ///< Number of nonterminal symbols.
       yyfinal_ = 84 ///< Termination state number.
     };

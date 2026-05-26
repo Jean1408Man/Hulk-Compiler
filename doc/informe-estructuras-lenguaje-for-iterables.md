@@ -4,6 +4,8 @@ Fecha: 2026-05-25
 
 Actualizacion: 2026-05-26
 
+Actualizacion A.10: 2026-05-26
+
 Este informe explica las partes estructurales del lenguaje HULK que se tocan, o
 podrian tocarse, al implementar `for` e iterables en el compilador. El objetivo
 es separar tres cosas:
@@ -25,8 +27,10 @@ nucleo end-to-end de esa ruta:
 - declaracion de protocolos de usuario;
 - herencia de protocolos con `extends`;
 - conformidad estructural implicita por metodos;
+- conformidad A.10 con firmas concretas inferidas cuando son determinables;
 - anotaciones con nombres de protocolos;
 - protocolo builtin `Iterable`;
+- iterables tipados `T*` como protocolos sinteticos internos;
 - tipo builtin interno `Range`;
 - funcion builtin `range(Number, Number): Range`;
 - `for` sobre `range` y sobre iterables creados por el usuario;
@@ -34,8 +38,8 @@ nucleo end-to-end de esa ruta:
 
 Por tanto, las secciones que hablan de `for`, `range`, `Iterable` y `protocol`
 como "bloqueados" deben leerse como contexto historico. Lo que sigue sin
-implementarse en este corte son vectores, comprehensions, `Enumerable`, `T*` y
-lambda.
+implementarse en este corte son vectores, comprehensions, `Enumerable`,
+functors, lambdas y macros.
 
 ## Resumen general
 
@@ -98,7 +102,7 @@ ejecutable:
 | Protocolo | Contrato estructural | `protocol P { ... }` | Soportado | Base oficial de `Iterable`. |
 | `Iterable` | Protocolo con `next/current` | builtin conceptual | Soportado | Contrato oficial para `for`. |
 | `range`/`Range` | Iterable builtin numerico | `range(a,b)` | Soportado | Ejemplo base del PDF. |
-| `T*` | Iterable tipado de `T` | `type_expr "*"` | No soportado | Da tipo preciso a `x`. |
+| `T*` | Iterable tipado de `T` | `type_expr "*"` | Soportado | Da tipo preciso a `x`. |
 | `Enumerable` | Coleccion que crea iteradores | `protocol Enumerable` | No soportado | Permite iterar colecciones reutilizables. |
 | Vector | Coleccion homogenea | `[a,b,c]`, `T[]` | No soportado | Caso posterior de iterable. |
 | Comprehension | Vector generado por iteracion | `[expr | x in iterable]` | No soportado | Depende de `for`/iterables. |
@@ -326,15 +330,16 @@ let c = new Counter(3) in
     while (c.next()) print(c.current());
 ```
 
-Pero no se puede usar con `for`, porque el compilador no reconoce todavia el
-contrato iterable.
+Tras la implementacion de protocolos, un objeto de usuario si puede usarse con
+`for` siempre que conforme estructuralmente al protocolo `Iterable`, es decir,
+si expone `next(): Boolean` y `current()` con retorno compatible.
 
-Implicacion:
+Implicacion actual:
 
-- la implementacion puede empezar sin protocolos si valida estructuralmente que
-  el tipo tiene `next/current`;
-- esto aprovecha objetos y metodos ya implementados;
-- mas adelante podria migrarse a protocolos reales.
+- la validacion ya no es una regla temporal ad hoc;
+- `for` se apoya en conformidad protocolar real;
+- los tipos definidos por el usuario pueden actuar como iterables sin declarar
+  `implements`.
 
 ## Llamadas a metodos y acceso a miembros
 
@@ -366,7 +371,7 @@ Estado actual:
 
 - llamadas a metodos y despacho existen;
 - `for` puede aprovechar esa infraestructura;
-- falta que IRGen genere esas llamadas desde un nodo `For`.
+- IRGen baja `For` a llamadas `next/current` y flujo de control explicito.
 
 ## Protocolos
 
@@ -406,22 +411,24 @@ Por que importa para `for`:
 
 Estado actual:
 
-- hay token/parser/AST minimo para `protocol`;
-- semantica lo bloquea como feature no soportado;
-- no hay tabla real de protocolos;
-- no hay conformidad estructural implementada;
-- no hay typecheck de protocolos.
+- hay token/parser/AST para `protocol` y `extends`;
+- `SemanticTables` registra protocolos y sus metodos;
+- hay conformidad estructural implicita;
+- la conformidad A.10 usa firmas explicitas o inferidas cuando son
+  determinables;
+- hay typecheck de protocolos en anotaciones, llamadas y asignaciones;
+- los protocolos siguen siendo compile-time only y no generan runtime.
 
-Impacto si se implementa:
+Impacto de la implementacion:
 
-- habria que extender `SemanticTables` para protocolos;
-- resolver nombres de protocolos;
-- verificar miembros requeridos;
-- modelar conformidad estructural;
-- adaptar inferencia y typecheck.
+- `SemanticTables` contiene protocolos builtin y de usuario;
+- el resolver bloquea redeclaraciones y usos runtime invalidos;
+- inferencia y typecheck consultan metodos de protocolos cuando el receptor esta
+  tipado como protocolo;
+- backend ignora `ProtocolDecl` porque la seguridad queda cerrada antes de IR.
 
-Por eso protocolos completos son una fase grande. No son imprescindibles para
-un MVP de `for`.
+Quedan fuera de este corte otras capas que el PDF construye encima de
+protocolos: `Enumerable`, vectores, comprehensions, functors, lambdas y macros.
 
 ## `Iterable`
 
@@ -447,16 +454,19 @@ iterables tipados (`T*`).
 
 Estado actual del repo:
 
-- `Iterable` no esta registrado como builtin;
-- no hay tipo/protocolo usable llamado `Iterable`;
-- `for` se bloquea antes de poder usar esta idea.
+- `Iterable` esta registrado como protocolo builtin;
+- `Range` conforma a `Iterable` por el mismo mecanismo general de protocolos;
+- los tipos de usuario tambien pueden conformar a `Iterable`;
+- `for` exige conformidad con `Iterable` y usa el retorno concreto de
+  `current()` para tipar la variable del ciclo cuando es posible.
 
-Implementacion posible:
+Implementacion aplicada:
 
-- fase minima: no registrar `Iterable`, solo validar `next/current`
-  estructuralmente;
-- fase completa: registrar `Iterable` como protocolo builtin y validar
-  conformidad protocolar.
+- registrar `Iterable` como protocolo builtin;
+- registrar `Range` como tipo builtin interno;
+- registrar `range(Number, Number): Range`;
+- validar `for` contra `Iterable`;
+- bajar `for` a llamadas `next/current`.
 
 ## `range` y `Range`
 
@@ -502,10 +512,11 @@ Que implica implementar `range`:
 
 Estado actual:
 
-- `range` esta bloqueado;
-- `Range` no existe como tipo builtin;
-- `BuiltinFunc::Range` existe en algunas rutas historicas, pero el feature no
-  esta soportado end-to-end.
+- `range(Number, Number)` esta registrado como builtin;
+- `Range` existe como tipo builtin interno;
+- `Range.next()` y `Range.current()` se inyectan en backend;
+- `Range` conforma a `Iterable`;
+- `for (x in range(a, b)) ...` funciona end-to-end y tipa `x` como `Number`.
 
 ## Iterables tipados: `T*`
 
@@ -553,14 +564,20 @@ protocol Iterable_T extends Iterable {
 
 Estado actual:
 
-- no soportado;
-- `type_expr` actual es estrecho;
-- no hay protocolos especializados.
+- soportado;
+- `type_expr` acepta `type_expr "*"` para anotaciones como `Number*` y
+  `Number**`;
+- el resolver crea protocolos sinteticos internos `T* extends Iterable`;
+- el protocolo sintetico redefine `current(): T`;
+- `T*` es compile-time only y se rechaza en `is`/`as`;
+- `for` sobre un valor anotado como `Number*` tipa la variable del ciclo como
+  `Number`.
 
-Recomendacion:
+Limitacion actual:
 
-- no implementar `T*` en el primer MVP de `for`;
-- primero soportar `current(): T` desde metodos concretos.
+- se soportan estrellas anidadas como `Number**`, pero no tipos compuestos como
+  `T[]` o functors;
+- `Enumerable` todavia no esta implementado.
 
 ## `Enumerable`
 
@@ -736,10 +753,10 @@ Para el problema actual, los relevantes son:
 - `T*`;
 - `T[]`.
 
-Recomendacion:
+Estado actual:
 
-- no ampliar toda la gramatica de tipos al mismo tiempo;
-- agregar solo lo necesario cuando se implemente cada feature.
+- `T*` ya esta incorporado, incluyendo estrellas anidadas como `Number**`;
+- `T[]` y tipos de funcion siguen pendientes.
 
 ## Variable sintetica del `for`
 
@@ -889,6 +906,8 @@ Permitir:
 ```hulk
 function sum(numbers: Number*): Number => ...
 ```
+
+Estado actual: implementado mediante protocolos sinteticos.
 
 ### Paso 5: vectores `T[]` y literales `[ ... ]`
 

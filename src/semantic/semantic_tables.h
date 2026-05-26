@@ -52,6 +52,7 @@ namespace Hulk {
         bool register_func(SemanticFuncInfo info);
 
         bool register_protocol(SemanticProtocolInfo info);
+        bool ensure_typed_iterable_protocol(const std::string& element_type_name);
 
         // Consulta
 

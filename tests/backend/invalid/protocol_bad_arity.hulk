@@ -1,0 +1,9 @@
+protocol Named {
+    name(): String;
+}
+
+type BadName {
+    name(x: Number): String => "bad";
+}
+
+let x: Named = new BadName() in x.name();

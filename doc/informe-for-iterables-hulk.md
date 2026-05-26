@@ -4,6 +4,8 @@ Fecha: 2026-05-25
 
 Actualizacion: 2026-05-26
 
+Actualizacion A.10: 2026-05-26
+
 Este informe resume la situacion actual de `for` en el repositorio, contrasta
 ese estado con `doc/hulk-docs.pdf` y propone rutas de implementacion para
 atacar el problema mas adelante.
@@ -24,6 +26,10 @@ corte:
 - `range(Number, Number)` retorna `Range`;
 - `Range` conforma a `Iterable` por firma, usando el mismo mecanismo general
   que los tipos de usuario;
+- la conformidad protocolar tambien usa firmas inferidas de metodos concretos
+  cuando son determinables;
+- `T*` existe como iterable tipado, con estrellas anidadas como `Number**`, y
+  se representa mediante protocolos sinteticos internos;
 - `for` exige que el iterable conforme a `Iterable`;
 - la variable del `for` toma el retorno de `current()`;
 - `for` baja a llamadas virtuales `next/current` y saltos en IR;
@@ -34,8 +40,9 @@ Siguen fuera de este corte:
 - vectores;
 - comprehensions;
 - `Enumerable`;
-- iterables tipados `T*`;
-- `lambda`, que permanece bloqueada end-to-end.
+- functors;
+- `lambda`, que permanece bloqueada end-to-end;
+- macros.
 
 ## Resumen ejecutivo
 
@@ -381,31 +388,36 @@ Ese programa funciona porque solo usa:
 
 ### Como iterable reconocido por `for`
 
-No. Si se escribe:
+Si. Desde la actualizacion de protocolos, un tipo definido por el usuario puede
+usarse en `for` si conforma estructuralmente a `Iterable`. Por ejemplo:
 
 ```hulk
 let c = new Counter(3) in
     for (x in c) print(x);
 ```
 
-el compilador actual falla en semantica:
+El compilador valida que `Counter` tenga `next(): Boolean` y `current()` con
+retorno compatible. No hace falta una sintaxis `implements`.
 
-```text
-Feature no soportado en el flujo end-to-end: for sobre Iterable/range.
-```
-
-No hay reconocimiento estructural de `next/current`, no hay protocolo
-`Iterable` habilitado, y `IRGen` tampoco sabe bajar `For`.
+La bajada de backend genera llamadas normales a `next/current`, de modo que no
+existe opcode especial para protocolos ni para `for`.
 
 ### Como `range`
 
-No. `range` esta bloqueado explicitamente.
+Si. `range(Number, Number)` esta registrado como builtin y devuelve `Range`,
+que conforma a `Iterable`.
 
 ```hulk
-print(range(0, 3));
+for (x in range(0, 3)) print(x);
 ```
 
-produce un diagnostico de feature no soportado.
+Produce:
+
+```text
+0
+1
+2
+```
 
 ### Como vector
 
@@ -582,15 +594,21 @@ sin abrir todo el sistema de protocolos.
 
 ### Opcion D: MVP recomendado: `Range` builtin + `for` estructural
 
-Esta es la ruta mas equilibrada.
+Esta era una ruta intermedia razonable antes de implementar protocolos. El
+estado actual adopta una version mas completa: `Range` builtin + `Iterable`
+builtin + conformidad protocolar estructural.
 
 Incluye:
 
 - `range(Number, Number) -> Range`;
 - tipo interno `Range` con `next(): Boolean` y `current(): Number`;
-- `for` valido sobre cualquier tipo que tenga `next/current`;
+- `for` valido sobre cualquier tipo que conforme a `Iterable`;
 - lowering de `for` a `while` en IRGen;
-- protocolos y vectores siguen bloqueados.
+- protocolos A.10 core soportados;
+- `T*` soportado mediante protocolos sinteticos, incluyendo formas recursivas
+  como `Number**`;
+- vectores, `Enumerable`, comprehensions, functors, lambdas y macros siguen
+  fuera de alcance.
 
 Con esto se soporta:
 
@@ -607,8 +625,6 @@ let c = new Counter(3) in
 
 sin comprometerse todavia con:
 
-- `protocol Iterable`;
-- `Number*`;
 - vectores `Number[]`;
 - comprehensions `[x^2 | x in range(...)]`;
 - `Enumerable`.
@@ -973,6 +989,9 @@ Opciones:
 - implementar `T*`;
 - implementar `Enumerable`.
 
+Estado actual: `protocol Iterable` y `T*` ya estan implementados. El pendiente
+de esta lista es `Enumerable`.
+
 ### Fase 4: vectores
 
 Objetivo: habilitar:
@@ -986,18 +1005,19 @@ Esto requiere parser, AST, semantica, heap/runtime y backend para vectores.
 ## Conclusion
 
 `for` esta en la documentacion HULK y el ejemplo base usa `range`. En el repo,
-sin embargo, `for`, `range`, `Iterable`, `protocol` y vectores estan bloqueados
-o ausentes en el flujo end-to-end.
+`for`, `range`, `Iterable` y `protocol` ya estan incorporados al flujo
+end-to-end, y `T*` tambien quedo incorporado como iterable tipado.
 
-La forma mas razonable de avanzar no es implementar vectores primero. El camino
-mas corto para tener un `for` defendible es:
+La ruta implementada fue:
 
 ```text
-1. for estructural sobre next/current
+1. protocolos estructurales A.10
 2. range + Range builtin
-3. protocolos/vectores mas adelante
+3. Iterable builtin
+4. for sobre valores que conforman a Iterable
+5. T* como protocolo sintetico especializado, con estrellas anidadas
 ```
 
-Con eso se cubre el ejemplo principal del PDF y se aprovechan capacidades que ya
-existen en el compilador: objetos, metodos, `while`, llamadas virtuales, labels y
-saltos en la VM.
+Con eso se cubre el ejemplo principal del PDF y se habilitan iterables creados
+por el usuario. Siguen pendientes las capas posteriores del lenguaje: vectores,
+`Enumerable`, comprehensions, functors, lambdas y macros.

@@ -476,6 +476,10 @@ type_expr
       {
           $$ = std::move($1);
       }
+    | type_expr STAR
+      {
+          $$ = std::move($1) + "*";
+      }
     ;
 
 expr

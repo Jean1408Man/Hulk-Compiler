@@ -1,0 +1,9 @@
+protocol Hashable {
+    hash(): Number;
+}
+
+type BadHash {
+    hash(): String => "bad";
+}
+
+let h: Hashable = new BadHash() in h.hash();

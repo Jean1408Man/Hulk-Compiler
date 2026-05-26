@@ -1,0 +1,12 @@
+type Words {
+    next(): Boolean => false;
+    current(): String => "word";
+}
+
+function sum(values: Number*): Number =>
+    let total = 0 in {
+        for (x in values) total := total + x;
+        total;
+    };
+
+sum(new Words());

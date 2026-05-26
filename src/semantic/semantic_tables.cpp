@@ -1,6 +1,27 @@
 #include "semantic_tables.h"
 #include <stdexcept>
 
+namespace {
+
+std::string canonical_type_name(const std::string& name) {
+    if (name.empty() || name == "auto" || name == "_") return "";
+    return name;
+}
+
+bool is_typed_iterable_name(const std::string& name) {
+    return !name.empty() && name.back() == '*';
+}
+
+std::string typed_iterable_element_name(const std::string& name) {
+    return is_typed_iterable_name(name) ? name.substr(0, name.size() - 1) : "";
+}
+
+bool is_valid_typed_iterable_element_name(const std::string& name) {
+    return !name.empty() && name != "auto" && name != "_" && name != "Void";
+}
+
+}
+
 namespace Hulk {
 
 // Constructor — registra tipos builtin y funciones/constantes de dominio
@@ -115,6 +136,30 @@ bool SemanticTables::register_protocol(SemanticProtocolInfo info) {
     if (protocols_.count(info.name) || types_.count(info.name)) return false;
     auto [_, inserted] = protocols_.emplace(info.name, std::move(info));
     return inserted;
+}
+
+bool SemanticTables::ensure_typed_iterable_protocol(const std::string& element_type_name) {
+    if (!is_valid_typed_iterable_element_name(element_type_name)) return false;
+
+    if (is_typed_iterable_name(element_type_name)) {
+        const std::string nested_element = typed_iterable_element_name(element_type_name);
+        if (!ensure_typed_iterable_protocol(nested_element)) return false;
+    }
+
+    const std::string protocol_name = element_type_name + "*";
+    if (protocols_.count(protocol_name)) return true;
+    if (types_.count(protocol_name)) return false;
+    if (!lookup_type(element_type_name) && !lookup_protocol(element_type_name)) return false;
+
+    SemanticProtocolInfo info;
+    info.name = protocol_name;
+    info.parent_name = "Iterable";
+    info.is_builtin = true;
+    info.methods.emplace(
+        "current",
+        SemanticProtocolMethodInfo{"current", {}, element_type_name});
+    protocols_.emplace(info.name, std::move(info));
+    return true;
 }
 
 // Consulta
@@ -306,15 +351,6 @@ const std::unordered_map<std::string, SemanticFuncInfo>& SemanticTables::all_fun
 
 const std::unordered_map<std::string, SemanticProtocolInfo>& SemanticTables::all_protocols() const {
     return protocols_;
-}
-
-namespace {
-
-std::string canonical_type_name(const std::string& name) {
-    if (name.empty() || name == "auto" || name == "_") return "";
-    return name;
-}
-
 }
 
 bool SemanticTables::method_satisfies_protocol(

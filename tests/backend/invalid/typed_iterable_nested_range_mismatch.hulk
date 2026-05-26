@@ -1,0 +1,9 @@
+function nested_sum(values: Number**): Number =>
+    let total = 0 in {
+        for (batch in values) {
+            for (x in batch) total := total + x;
+        };
+        total;
+    };
+
+nested_sum(range(0, 3));

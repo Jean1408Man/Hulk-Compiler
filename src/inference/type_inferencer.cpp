@@ -34,6 +34,20 @@
 #include "../ast/types/typeMemberAttribute.h"
 #include "../ast/types/typeMemberMethod.h"
 
+namespace {
+
+std::string nominal_type_name(const Hulk::HulkType& type) {
+    switch (type.kind()) {
+        case Hulk::HulkType::Kind::Number: return "Number";
+        case Hulk::HulkType::Kind::String: return "String";
+        case Hulk::HulkType::Kind::Boolean: return "Boolean";
+        case Hulk::HulkType::Kind::Object: return type.name();
+        default: return "";
+    }
+}
+
+}
+
 namespace Hulk {
 
     TypeInferencer::TypeInferencer(const SemanticTables& tables,
@@ -208,11 +222,107 @@ namespace Hulk {
         if (a == b) return a;
         
         if (a.kind() == HulkType::Kind::Object && b.kind() == HulkType::Kind::Object) {
+            const bool a_is_protocol = tables_.lookup_protocol(a.name()) != nullptr;
+            const bool b_is_protocol = tables_.lookup_protocol(b.name()) != nullptr;
+            if (a_is_protocol || b_is_protocol) {
+                if (type_conforms_with_inference(a, b)) return b;
+                if (type_conforms_with_inference(b, a)) return a;
+                return HulkType::make_object("Object");
+            }
+
             std::string lca_name = tables_.find_lca(a.name(), b.name());
             return HulkType::make_object(lca_name);
         }
         
         return HulkType::make_object("Object");
+    }
+
+    bool TypeInferencer::type_conforms_with_inference(const HulkType& found,
+                                                      const HulkType& expected) {
+        if (found.is_error() || expected.is_error()) return true;
+        if (found == expected) return true;
+        if (expected.kind() == HulkType::Kind::Object && expected.name() == "Object") return true;
+
+        const std::string found_name = nominal_type_name(found);
+        const std::string expected_name = nominal_type_name(expected);
+
+        if (!expected_name.empty() && tables_.lookup_protocol(expected_name)) {
+            if (!found_name.empty() && tables_.lookup_protocol(found_name)) {
+                return tables_.protocol_conforms_to_protocol(found_name, expected_name);
+            }
+            if (!found_name.empty()) {
+                return type_conforms_to_protocol_inferred(found_name, expected_name);
+            }
+        }
+
+        return found.conforms_to(expected, tables_);
+    }
+
+    bool TypeInferencer::type_conforms_to_protocol_inferred(
+            const std::string& type_name,
+            const std::string& protocol_name,
+            int depth) {
+        if (depth > 256) return false;
+
+        const SemanticTypeInfo* type = tables_.lookup_type(type_name);
+        const SemanticProtocolInfo* protocol = tables_.lookup_protocol(protocol_name);
+        if (!type || !protocol) return false;
+
+        if (!protocol->parent_name.empty() &&
+            !type_conforms_to_protocol_inferred(type_name, protocol->parent_name, depth + 1)) {
+            return false;
+        }
+
+        for (const auto& [method_name, required] : protocol->methods) {
+            const SemanticMethodInfo* actual = tables_.find_method(type_name, method_name);
+            if (!actual || !method_satisfies_protocol_inferred(*actual, required)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool TypeInferencer::method_satisfies_protocol_inferred(
+            const SemanticMethodInfo& actual,
+            const SemanticProtocolMethodInfo& required) {
+        if (actual.params.size() != required.params.size()) return false;
+
+        for (std::size_t i = 0; i < actual.params.size(); ++i) {
+            const HulkType actual_param = resolve_method_param_type(actual, i);
+            const HulkType required_param = from_string_type(required.params[i].typeAnnotation);
+            if (actual_param.is_unknown() || required_param.is_unknown()) return false;
+            if (!type_conforms_with_inference(required_param, actual_param)) return false;
+        }
+
+        const HulkType actual_return = resolve_method_return_type(actual);
+        const HulkType required_return = from_string_type(required.return_type_annotation);
+        if (actual_return.is_unknown() || required_return.is_unknown()) return false;
+        return type_conforms_with_inference(actual_return, required_return);
+    }
+
+    HulkType TypeInferencer::resolve_method_param_type(const SemanticMethodInfo& method,
+                                                       std::size_t index) {
+        if (index >= method.params.size()) return HulkType::make_unknown();
+
+        HulkType type = from_string_type(method.params[index].typeAnnotation);
+        if (!type.is_unknown()) return type;
+
+        if (index < method.ast_params.size()) {
+            auto it = param_types_.find(method.ast_params[index]);
+            if (it != param_types_.end()) return it->second;
+        }
+        return HulkType::make_unknown();
+    }
+
+    HulkType TypeInferencer::resolve_method_return_type(const SemanticMethodInfo& method) {
+        HulkType type = from_string_type(method.return_type_annotation);
+        if (!type.is_unknown()) return type;
+
+        if (method.body) {
+            auto it = type_map_.find(method.body);
+            if (it != type_map_.end()) return it->second;
+        }
+        return HulkType::make_unknown();
     }
 
     void TypeInferencer::visit(Number& node) {
@@ -399,9 +509,8 @@ namespace Hulk {
                     item_type = from_string_type(current->return_type_annotation);
                 }
             } else if (const auto* current = tables_.find_method(iterable_type.name(), "current")) {
-                if (!current->return_type_annotation.empty()) {
-                    item_type = from_string_type(current->return_type_annotation);
-                }
+                HulkType current_type = resolve_method_return_type(*current);
+                if (!current_type.is_unknown()) item_type = current_type;
             }
         }
 

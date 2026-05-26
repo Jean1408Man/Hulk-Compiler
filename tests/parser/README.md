@@ -43,12 +43,13 @@ Por ahora el parser implementa y prueba:
 - tipos;
 - protocolos;
 - `extends` en protocolos;
+- anotaciones de iterables tipados `T*`, incluyendo estrellas anidadas;
 - acceso a miembros, llamadas a métodos, `new`, `is`, `as`;
 - una única expresión global final, con bloques explícitos para secuencias.
 
 ## Sintaxis documentada pero aún no soportada por este parser
 
-- tipos extendidos como `T*`, `T[]` o tipos de functor;
+- tipos extendidos como `T[]` o tipos de functor;
 - vectores explícitos e implícitos;
 - lambdas;
 - macros y pattern matching.

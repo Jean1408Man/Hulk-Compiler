@@ -550,6 +550,8 @@ Se implemento la ruta oficial basada en protocolos estructurales:
 - `protocol P { ... }` y `protocol P extends Q { ... }` quedan soportados.
 - Los protocolos se pueden usar en anotaciones de variables, parametros y
   retornos.
+- La conformidad A.10 usa firmas explicitas o, cuando son determinables,
+  firmas inferidas de metodos concretos.
 - Los protocolos siguen siendo compile-time only: `ProtocolDecl` no emite
   metadata runtime.
 - `new Iterable()`, `x is Iterable` y `x as Iterable` se rechazan porque un
@@ -561,6 +563,10 @@ Se implemento la ruta oficial basada en protocolos estructurales:
 - `range(Number, Number)` retorna `Range`.
 - `Range` conforma a `Iterable` por el mecanismo general de conformidad, no por
   una excepcion ad hoc.
+- `T*` se representa como protocolo sintetico interno `T* extends Iterable`
+  con `current(): T`, para preservar el tipo del elemento en funciones y
+  variables anotadas. La notacion es recursiva: `Number**` se registra como
+  iterable de `Number*`.
 - `for` exige que el iterable conforme a `Iterable`.
 - La variable sintetica del `for` toma el tipo concreto de `current()`: con
   `Range` queda como `Number`, y con una anotacion `Iterable` queda como
@@ -603,12 +609,16 @@ Para que el soporte sea consistente:
 - `tests/backend/run_backend_tests.sh`
 - `tests/backend/regression/for_range.hulk`
 - `tests/backend/regression/for_custom_iterable.hulk`
+- `tests/backend/regression/protocol_a10_core.hulk`
 - `tests/backend/regression/protocol_named.hulk`
+- `tests/backend/regression/typed_iterable_sum.hulk`
 - `tests/backend/invalid/for_*.hulk`
 - `tests/backend/invalid/protocol_*.hulk`
+- `tests/backend/invalid/typed_iterable_*.hulk`
 - `tests/backend/invalid/redeclare_*.hulk`
 - `tests/parser/protocol_decl.hulk`
 - `tests/parser/protocol_extends.hulk`
+- `tests/parser/typed_iterable_annotation.hulk`
 
 ### Validacion
 
@@ -625,6 +635,11 @@ Se agregaron regresiones backend validas para:
 - `for (x in range(0, 3)) print(x);`
 - `for` sobre un iterable definido por el usuario;
 - funcion que recibe un protocolo de usuario.
+- protocolo A.10 completo con firmas inferidas, varianza, `extends`,
+  conformidad protocolo-protocolo y LCA protocolar.
+- `Number*` con `range`, iterable custom, `current()` inferido y `Object*` por
+  covarianza.
+- `Number**` con iterables anidados y `current()` inferido.
 
 Se agregaron invalidos para:
 
@@ -636,9 +651,16 @@ Se agregaron invalidos para:
 - parametros o retornos ausentes en protocolos;
 - ciclos de protocolos;
 - override incompatible en `extends`;
+- firmas concretas no inferibles para conformar a protocolo;
 - redeclarar `Iterable`, `Range` o `range`;
 - `new Range(...)`;
 - `is`/`as` contra protocolos.
+- anotacion `Missing*`;
+- pasar `Range` a `String*`;
+- pasar un iterable con `current(): String` a `Number*`;
+- pasar `Range` o un iterable con `current(): Number` a `Number**`;
+- usar `Iterable` donde se necesita conservar tipo numerico del elemento;
+- `as Number*` y `as Number**`.
 
 ## 11. Literales numericos invalidos no se convierten silenciosamente en `0`
 
@@ -1083,9 +1105,12 @@ git diff --check
 ./hulk_backend tests/backend/unsupported/unsupported_lambda.hulk
 ./hulk_backend tests/backend/regression/for_range.hulk
 ./hulk_backend tests/backend/regression/for_custom_iterable.hulk
+./hulk_backend tests/backend/regression/protocol_a10_core.hulk
 ./hulk_backend tests/backend/regression/protocol_named.hulk
+./hulk_backend tests/backend/regression/typed_iterable_sum.hulk
 ./hulk_backend tests/backend/invalid/for_non_iterable.hulk
 ./hulk_backend tests/backend/invalid/protocol_cycle.hulk
+./hulk_backend tests/backend/invalid/typed_iterable_range_string_mismatch.hulk
 ./hulk_backend tests/backend/invalid/new_range.hulk
 ./hulk_backend tests/backend/frontend_invalid/out_of_range_number.hulk
 ./hulk_backend tests/backend/regression/string_escapes.hulk
@@ -1106,8 +1131,8 @@ Resultado final relevante:
 
 ```text
 BACKEND RESUMEN
-  Total  : 132
-  Passed : 132
+  Total  : 149
+  Passed : 149
   Failed : 0
 ```
 
@@ -1147,6 +1172,9 @@ que conserva el valor retornado por la expresion impresa.
 
 Actualizacion posterior: `protocol`, `Iterable`, `Range`, `range` y `for`
 tambien quedaron incorporados al flujo end-to-end. Los protocolos son
-estructurales y no generan runtime propio; `Range` conforma a `Iterable` por
-firma; `range` construye objetos `Range`; y `for` baja a llamadas virtuales
-`next/current`. `lambda` permanece como feature no soportada en este corte.
+estructurales y no generan runtime propio; la conformidad A.10 acepta firmas
+inferidas cuando son determinables; `Range` conforma a `Iterable` por firma;
+`range` construye objetos `Range`; y `for` baja a llamadas virtuales
+`next/current`; y `T*` se modela como protocolo sintetico para conservar el tipo
+del elemento. `lambda`, `Enumerable`, vectores, comprehensions, functors y
+macros permanecen fuera de este corte.

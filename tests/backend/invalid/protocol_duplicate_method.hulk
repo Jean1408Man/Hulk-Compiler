@@ -1,0 +1,6 @@
+protocol Bad {
+    id(): Number;
+    id(): Number;
+}
+
+0;
