@@ -18,7 +18,6 @@
 #include "../ast/loops/for.h"
 #include "../ast/functions/functionCall.h"
 #include "../ast/functions/functionDecl.h"
-#include "../ast/functions/lambda.h"
 #include "../ast/domainFunctions/print.h"
 #include "../ast/domainFunctions/builtinCall.h"
 #include "../ast/others/exprBlock.h"
@@ -611,13 +610,6 @@ namespace Hulk {
         set_type(node, HulkType::make_unknown());
     }
 
-
-    void TypeInferencer::visit(Lambda& node) {
-        // Lambdas are out of scope for core inference
-        // but we visit the body just in case
-        infer_expr(*node.GetBody());
-        set_type(node, HulkType::make_unknown());
-    }
 
     void TypeInferencer::visit(Print& node) {
         HulkType arg_type = infer_expr(*node.GetExpr());

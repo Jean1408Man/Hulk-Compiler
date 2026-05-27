@@ -29,7 +29,6 @@ LEXER_AST_SRCS := \
 	src/ast/domainFunctions/builtinCall.cpp \
 	src/ast/functions/functionCall.cpp \
 	src/ast/functions/functionDecl.cpp \
-	src/ast/functions/lambda.cpp \
 	src/ast/loops/for.cpp \
 	src/ast/loops/while.cpp \
 	src/ast/others/baseCall.cpp \
