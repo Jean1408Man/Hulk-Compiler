@@ -38,6 +38,9 @@ inline const std::unordered_map<std::string_view, TokenKind> kKeywords = {
     {"new", TokenKind::New},
     {"is", TokenKind::Is},
     {"as", TokenKind::As},
+
+    // anotación de inferencia explícita
+    {"auto", TokenKind::Auto},
 };
 
 }

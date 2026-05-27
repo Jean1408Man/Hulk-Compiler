@@ -15,6 +15,7 @@ namespace Hulk {
         std::string name;
         std::vector<Param> params;
         std::string returnTypeAnnotation;
+        bool returnIsTypeHole = false;
         std::unique_ptr<Expr> body;
 
     public:
@@ -31,6 +32,7 @@ namespace Hulk {
         const std::vector<Param>& GetParams() const;
         const std::string& GetReturnTypeAnnotation() const;
         bool HasReturnTypeAnnotation() const;
+        bool IsReturnTypeHole() const;
         Expr* GetBody() const;
 
         std::string ToString() const override;

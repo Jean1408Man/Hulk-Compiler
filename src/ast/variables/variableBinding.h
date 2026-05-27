@@ -11,6 +11,7 @@ namespace Hulk {
     private:
         std::string name;
         std::string typeAnnotation;
+        bool isTypeHole = false;
         std::unique_ptr<Expr> initializer;
 
     public:
@@ -24,6 +25,7 @@ namespace Hulk {
         const std::string& GetName() const;
         const std::string& GetTypeAnnotation() const;
         bool HasTypeAnnotation() const;
+        bool IsTypeHole() const;
         Expr* GetInitializer() const;
 
         std::string ToString() const override;

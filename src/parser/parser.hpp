@@ -651,7 +651,9 @@ namespace hulk { namespace parser {
     SEMICOLON = 313,               // SEMICOLON
     COLON = 314,                   // COLON
     DOT = 315,                     // DOT
-    UMINUS = 316                   // UMINUS
+    UNDERSCORE = 316,              // UNDERSCORE
+    AUTO = 317,                    // AUTO
+    UMINUS = 318                   // UMINUS
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -668,7 +670,7 @@ namespace hulk { namespace parser {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 62, ///< Number of tokens.
+        YYNTOKENS = 64, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // END
         S_YYerror = 1,                           // error
@@ -731,60 +733,62 @@ namespace hulk { namespace parser {
         S_SEMICOLON = 58,                        // SEMICOLON
         S_COLON = 59,                            // COLON
         S_DOT = 60,                              // DOT
-        S_UMINUS = 61,                           // UMINUS
-        S_YYACCEPT = 62,                         // $accept
-        S_program = 63,                          // program
-        S_top_level_items = 64,                  // top_level_items
-        S_top_level_item = 65,                   // top_level_item
-        S_opt_semi = 66,                         // opt_semi
-        S_decl = 67,                             // decl
-        S_function_decl = 68,                    // function_decl
-        S_type_decl = 69,                        // type_decl
-        S_protocol_decl = 70,                    // protocol_decl
-        S_protocol_extends_opt = 71,             // protocol_extends_opt
-        S_protocol_member_list = 72,             // protocol_member_list
-        S_protocol_member = 73,                  // protocol_member
-        S_ctor_params_opt = 74,                  // ctor_params_opt
-        S_inherits_opt = 75,                     // inherits_opt
-        S_parent_args_opt = 76,                  // parent_args_opt
-        S_type_member_list = 77,                 // type_member_list
-        S_type_member = 78,                      // type_member
-        S_params_opt = 79,                       // params_opt
-        S_param_list = 80,                       // param_list
-        S_param = 81,                            // param
-        S_return_ann_opt = 82,                   // return_ann_opt
-        S_type_ann_opt = 83,                     // type_ann_opt
-        S_type_expr = 84,                        // type_expr
-        S_expr = 85,                             // expr
-        S_lambda_expr = 86,                      // lambda_expr
-        S_lambda_param_list = 87,                // lambda_param_list
-        S_lambda_param = 88,                     // lambda_param
-        S_let_expr = 89,                         // let_expr
-        S_binding_list = 90,                     // binding_list
-        S_binding = 91,                          // binding
-        S_if_expr = 92,                          // if_expr
-        S_elif_clauses = 93,                     // elif_clauses
-        S_while_expr = 94,                       // while_expr
-        S_for_expr = 95,                         // for_expr
-        S_assign_expr = 96,                      // assign_expr
-        S_lvalue = 97,                           // lvalue
-        S_logic_or = 98,                         // logic_or
-        S_logic_and = 99,                        // logic_and
-        S_equality = 100,                        // equality
-        S_relation = 101,                        // relation
-        S_type_test_expr = 102,                  // type_test_expr
-        S_concat = 103,                          // concat
-        S_additive = 104,                        // additive
-        S_multiplicative = 105,                  // multiplicative
-        S_power = 106,                           // power
-        S_unary = 107,                           // unary
-        S_postfix = 108,                         // postfix
-        S_primary = 109,                         // primary
-        S_args_opt = 110,                        // args_opt
-        S_arg_list = 111,                        // arg_list
-        S_block = 112,                           // block
-        S_block_body_opt = 113,                  // block_body_opt
-        S_expr_list = 114                        // expr_list
+        S_UNDERSCORE = 61,                       // UNDERSCORE
+        S_AUTO = 62,                             // AUTO
+        S_UMINUS = 63,                           // UMINUS
+        S_YYACCEPT = 64,                         // $accept
+        S_program = 65,                          // program
+        S_top_level_items = 66,                  // top_level_items
+        S_top_level_item = 67,                   // top_level_item
+        S_opt_semi = 68,                         // opt_semi
+        S_decl = 69,                             // decl
+        S_function_decl = 70,                    // function_decl
+        S_type_decl = 71,                        // type_decl
+        S_protocol_decl = 72,                    // protocol_decl
+        S_protocol_extends_opt = 73,             // protocol_extends_opt
+        S_protocol_member_list = 74,             // protocol_member_list
+        S_protocol_member = 75,                  // protocol_member
+        S_ctor_params_opt = 76,                  // ctor_params_opt
+        S_inherits_opt = 77,                     // inherits_opt
+        S_parent_args_opt = 78,                  // parent_args_opt
+        S_type_member_list = 79,                 // type_member_list
+        S_type_member = 80,                      // type_member
+        S_params_opt = 81,                       // params_opt
+        S_param_list = 82,                       // param_list
+        S_param = 83,                            // param
+        S_return_ann_opt = 84,                   // return_ann_opt
+        S_type_ann_opt = 85,                     // type_ann_opt
+        S_type_expr = 86,                        // type_expr
+        S_expr = 87,                             // expr
+        S_lambda_expr = 88,                      // lambda_expr
+        S_lambda_param_list = 89,                // lambda_param_list
+        S_lambda_param = 90,                     // lambda_param
+        S_let_expr = 91,                         // let_expr
+        S_binding_list = 92,                     // binding_list
+        S_binding = 93,                          // binding
+        S_if_expr = 94,                          // if_expr
+        S_elif_clauses = 95,                     // elif_clauses
+        S_while_expr = 96,                       // while_expr
+        S_for_expr = 97,                         // for_expr
+        S_assign_expr = 98,                      // assign_expr
+        S_lvalue = 99,                           // lvalue
+        S_logic_or = 100,                        // logic_or
+        S_logic_and = 101,                       // logic_and
+        S_equality = 102,                        // equality
+        S_relation = 103,                        // relation
+        S_type_test_expr = 104,                  // type_test_expr
+        S_concat = 105,                          // concat
+        S_additive = 106,                        // additive
+        S_multiplicative = 107,                  // multiplicative
+        S_power = 108,                           // power
+        S_unary = 109,                           // unary
+        S_postfix = 110,                         // postfix
+        S_primary = 111,                         // primary
+        S_args_opt = 112,                        // args_opt
+        S_arg_list = 113,                        // arg_list
+        S_block = 114,                           // block
+        S_block_body_opt = 115,                  // block_body_opt
+        S_expr_list = 116                        // expr_list
       };
     };
 
@@ -2416,6 +2420,36 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
+      make_UNDERSCORE (location_type l)
+      {
+        return symbol_type (token::UNDERSCORE, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_UNDERSCORE (const location_type& l)
+      {
+        return symbol_type (token::UNDERSCORE, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_AUTO (location_type l)
+      {
+        return symbol_type (token::AUTO, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_AUTO (const location_type& l)
+      {
+        return symbol_type (token::AUTO, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
       make_UMINUS (location_type l)
       {
         return symbol_type (token::UMINUS, std::move (l));
@@ -2753,7 +2787,7 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 356,     ///< Last index in yytable_.
+      yylast_ = 358,     ///< Last index in yytable_.
       yynnts_ = 53,  ///< Number of nonterminal symbols.
       yyfinal_ = 84 ///< Termination state number.
     };
@@ -2805,10 +2839,10 @@ switch (yykind)
       25,    26,    27,    28,    29,    30,    31,    32,    33,    34,
       35,    36,    37,    38,    39,    40,    41,    42,    43,    44,
       45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
-      55,    56,    57,    58,    59,    60,    61
+      55,    56,    57,    58,    59,    60,    61,    62,    63
     };
     // Last valid token kind.
-    const int code_max = 316;
+    const int code_max = 318;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -3143,7 +3177,7 @@ switch (yykind)
 
 #line 4 "src/parser/grammar.y"
 } } // hulk::parser
-#line 3147 "src/parser/parser.hpp"
+#line 3181 "src/parser/parser.hpp"
 
 
 // "%code provides" blocks.
@@ -3153,7 +3187,7 @@ switch (yykind)
         Parser::symbol_type yylex(ParserDriver& driver);
     }
 
-#line 3157 "src/parser/parser.hpp"
+#line 3191 "src/parser/parser.hpp"
 
 
 #endif // !YY_YY_SRC_PARSER_PARSER_HPP_INCLUDED

@@ -5,20 +5,24 @@ namespace Hulk {
     FunctionDecl::FunctionDecl(const std::string& name,
                                std::vector<Param> params,
                                std::unique_ptr<Expr> body)
-        : name(name), params(std::move(params)), returnTypeAnnotation(""), body(std::move(body)) {}
+        : name(name), params(std::move(params)), returnTypeAnnotation(""),
+          returnIsTypeHole(false), body(std::move(body)) {}
 
     FunctionDecl::FunctionDecl(const std::string& name,
                                std::vector<Param> params,
                                const std::string& returnTypeAnnotation,
                                std::unique_ptr<Expr> body)
-        : name(name), params(std::move(params)), returnTypeAnnotation(returnTypeAnnotation), body(std::move(body)) {}
+        : name(name), params(std::move(params)), returnTypeAnnotation(returnTypeAnnotation),
+          returnIsTypeHole(returnTypeAnnotation == "_" || returnTypeAnnotation == "auto"),
+          body(std::move(body)) {}
 
     const std::string& FunctionDecl::GetName() const { return name; }
     const std::vector<Param>& FunctionDecl::GetParams() const { return params; }
     const std::string& FunctionDecl::GetReturnTypeAnnotation() const { return returnTypeAnnotation; }
-    bool FunctionDecl::HasReturnTypeAnnotation() const { 
-        return !returnTypeAnnotation.empty() && returnTypeAnnotation != "auto" && returnTypeAnnotation != "_"; 
+    bool FunctionDecl::HasReturnTypeAnnotation() const {
+        return !returnTypeAnnotation.empty() && !returnIsTypeHole;
     }
+    bool FunctionDecl::IsReturnTypeHole() const { return returnIsTypeHole; }
     Expr* FunctionDecl::GetBody() const { return body.get(); }
 
     std::string FunctionDecl::ToString() const {

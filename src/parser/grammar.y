@@ -125,6 +125,7 @@
 %token FATARROW
 
 %token LPAREN RPAREN LBRACE RBRACE COMMA SEMICOLON COLON DOT
+%token UNDERSCORE AUTO
 %token END 0
 
 %left OR
@@ -479,6 +480,14 @@ type_expr
     | type_expr STAR
       {
           $$ = std::move($1) + "*";
+      }
+    | UNDERSCORE
+      {
+          $$ = "_";
+      }
+    | AUTO
+      {
+          $$ = "auto";
       }
     ;
 

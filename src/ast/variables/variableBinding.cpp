@@ -4,18 +4,19 @@ namespace Hulk {
 
     VariableBinding::VariableBinding(const std::string& name,
                                      std::unique_ptr<Expr> initializer)
-        : name(name), typeAnnotation(""), initializer(std::move(initializer)) {}
+        : name(name), typeAnnotation(""), isTypeHole(false), initializer(std::move(initializer)) {}
 
     VariableBinding::VariableBinding(const std::string& name,
                                      const std::string& typeAnnotation,
                                      std::unique_ptr<Expr> initializer)
-        : name(name), typeAnnotation(typeAnnotation), initializer(std::move(initializer)) {}
+        : name(name), typeAnnotation(typeAnnotation),
+          isTypeHole(typeAnnotation == "_" || typeAnnotation == "auto"),
+          initializer(std::move(initializer)) {}
 
     const std::string& VariableBinding::GetName() const { return name; }
     const std::string& VariableBinding::GetTypeAnnotation() const { return typeAnnotation; }
-    bool VariableBinding::HasTypeAnnotation() const { 
-        return !typeAnnotation.empty() && typeAnnotation != "auto" && typeAnnotation != "_"; 
-    }
+    bool VariableBinding::HasTypeAnnotation() const { return !typeAnnotation.empty() && !isTypeHole; }
+    bool VariableBinding::IsTypeHole() const { return isTypeHole; }
     Expr* VariableBinding::GetInitializer() const { return initializer.get(); }
 
     std::string VariableBinding::ToString() const {

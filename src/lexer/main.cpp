@@ -82,6 +82,9 @@ const char* to_string(TokenKind kind) {
         case TokenKind::Semicolon: return "Semicolon";
         case TokenKind::Colon: return "Colon";
         case TokenKind::Dot: return "Dot";
+
+        case TokenKind::Underscore: return "Underscore";
+        case TokenKind::Auto: return "Auto";
     }
 
     return "UnknownTokenKind";

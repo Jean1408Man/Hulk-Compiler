@@ -1088,7 +1088,7 @@ namespace hulk { namespace parser {
           switch (yyn)
             {
   case 2: // program: top_level_items
-#line 166 "src/parser/grammar.y"
+#line 167 "src/parser/grammar.y"
       {
           if (!yystack_[0].value.as < hulk::parser::TopLevelItems > ().hasGlobalExpr) {
               driver.report_syntax_error("el programa debe contener una expresion global final");
@@ -1108,7 +1108,7 @@ namespace hulk { namespace parser {
     break;
 
   case 3: // top_level_items: top_level_item opt_semi
-#line 185 "src/parser/grammar.y"
+#line 186 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::TopLevelItems > () = std::move(yystack_[1].value.as < hulk::parser::TopLevelItems > ());
       }
@@ -1116,7 +1116,7 @@ namespace hulk { namespace parser {
     break;
 
   case 4: // top_level_items: top_level_items top_level_item opt_semi
-#line 189 "src/parser/grammar.y"
+#line 190 "src/parser/grammar.y"
       {
           if (yystack_[2].value.as < hulk::parser::TopLevelItems > ().hasGlobalExpr) {
               driver.report_syntax_error("Solo se permite una expresion global final", to_span(yystack_[1].location));
@@ -1134,7 +1134,7 @@ namespace hulk { namespace parser {
     break;
 
   case 5: // top_level_item: decl
-#line 206 "src/parser/grammar.y"
+#line 207 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::TopLevelItems > () = hulk::parser::TopLevelItems {};
           yylhs.value.as < hulk::parser::TopLevelItems > ().decls.push_back(std::move(yystack_[0].value.as < DeclPtr > ()));
@@ -1143,7 +1143,7 @@ namespace hulk { namespace parser {
     break;
 
   case 6: // top_level_item: expr
-#line 211 "src/parser/grammar.y"
+#line 212 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::TopLevelItems > () = hulk::parser::TopLevelItems {};
           yylhs.value.as < hulk::parser::TopLevelItems > ().globalExpr = std::move(yystack_[0].value.as < ExprPtr > ());
@@ -1153,7 +1153,7 @@ namespace hulk { namespace parser {
     break;
 
   case 9: // decl: function_decl
-#line 225 "src/parser/grammar.y"
+#line 226 "src/parser/grammar.y"
       {
           yylhs.value.as < DeclPtr > () = std::move(yystack_[0].value.as < DeclPtr > ());
       }
@@ -1161,7 +1161,7 @@ namespace hulk { namespace parser {
     break;
 
   case 10: // decl: type_decl
-#line 229 "src/parser/grammar.y"
+#line 230 "src/parser/grammar.y"
       {
           yylhs.value.as < DeclPtr > () = std::move(yystack_[0].value.as < DeclPtr > ());
       }
@@ -1169,7 +1169,7 @@ namespace hulk { namespace parser {
     break;
 
   case 11: // decl: protocol_decl
-#line 233 "src/parser/grammar.y"
+#line 234 "src/parser/grammar.y"
       {
           yylhs.value.as < DeclPtr > () = std::move(yystack_[0].value.as < DeclPtr > ());
       }
@@ -1177,7 +1177,7 @@ namespace hulk { namespace parser {
     break;
 
   case 12: // function_decl: FUNCTION IDENTIFIER LPAREN params_opt RPAREN return_ann_opt FATARROW expr SEMICOLON
-#line 240 "src/parser/grammar.y"
+#line 241 "src/parser/grammar.y"
       {
           if (yystack_[3].value.as < std::string > ().empty()) {
               yylhs.value.as < DeclPtr > () = std::make_unique<Hulk::FunctionDecl>(yystack_[7].value.as < std::string > (), std::move(yystack_[5].value.as < ParamList > ()), std::move(yystack_[1].value.as < ExprPtr > ()));
@@ -1190,7 +1190,7 @@ namespace hulk { namespace parser {
     break;
 
   case 13: // function_decl: FUNCTION IDENTIFIER LPAREN params_opt RPAREN return_ann_opt block
-#line 249 "src/parser/grammar.y"
+#line 250 "src/parser/grammar.y"
       {
           if (yystack_[1].value.as < std::string > ().empty()) {
               yylhs.value.as < DeclPtr > () = std::make_unique<Hulk::FunctionDecl>(yystack_[5].value.as < std::string > (), std::move(yystack_[3].value.as < ParamList > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
@@ -1203,7 +1203,7 @@ namespace hulk { namespace parser {
     break;
 
   case 14: // type_decl: TYPE IDENTIFIER ctor_params_opt inherits_opt LBRACE type_member_list RBRACE
-#line 261 "src/parser/grammar.y"
+#line 262 "src/parser/grammar.y"
       {
           if (yystack_[4].value.as < ParamList > ().empty() && !yystack_[3].value.as < hulk::parser::InheritsInfo > ().hasParent) {
               yylhs.value.as < DeclPtr > () = std::make_unique<Hulk::TypeDecl>(yystack_[5].value.as < std::string > (), std::move(yystack_[1].value.as < TypeMemberList > ()));
@@ -1226,7 +1226,7 @@ namespace hulk { namespace parser {
     break;
 
   case 15: // protocol_decl: PROTOCOL IDENTIFIER protocol_extends_opt LBRACE protocol_member_list RBRACE
-#line 283 "src/parser/grammar.y"
+#line 284 "src/parser/grammar.y"
       {
           if (yystack_[3].value.as < hulk::parser::InheritsInfo > ().hasParent) {
               yylhs.value.as < DeclPtr > () = std::make_unique<Hulk::ProtocolDecl>(yystack_[4].value.as < std::string > (), yystack_[3].value.as < hulk::parser::InheritsInfo > ().parentName, std::move(yystack_[1].value.as < ProtocolMethodList > ()));
@@ -1239,7 +1239,7 @@ namespace hulk { namespace parser {
     break;
 
   case 16: // protocol_extends_opt: EXTENDS IDENTIFIER
-#line 295 "src/parser/grammar.y"
+#line 296 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::InheritsInfo > () = hulk::parser::InheritsInfo { yystack_[0].value.as < std::string > (), ExprList {}, true };
       }
@@ -1247,7 +1247,7 @@ namespace hulk { namespace parser {
     break;
 
   case 17: // protocol_extends_opt: %empty
-#line 299 "src/parser/grammar.y"
+#line 300 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::InheritsInfo > () = hulk::parser::InheritsInfo {};
       }
@@ -1255,7 +1255,7 @@ namespace hulk { namespace parser {
     break;
 
   case 18: // protocol_member_list: %empty
-#line 306 "src/parser/grammar.y"
+#line 307 "src/parser/grammar.y"
       {
           yylhs.value.as < ProtocolMethodList > () = hulk::parser::ProtocolMethodList {};
       }
@@ -1263,7 +1263,7 @@ namespace hulk { namespace parser {
     break;
 
   case 19: // protocol_member_list: protocol_member_list protocol_member
-#line 310 "src/parser/grammar.y"
+#line 311 "src/parser/grammar.y"
       {
           yystack_[1].value.as < ProtocolMethodList > ().push_back(std::move(yystack_[0].value.as < Hulk::ProtocolMethodSig > ()));
           yylhs.value.as < ProtocolMethodList > () = std::move(yystack_[1].value.as < ProtocolMethodList > ());
@@ -1272,7 +1272,7 @@ namespace hulk { namespace parser {
     break;
 
   case 20: // protocol_member: IDENTIFIER LPAREN params_opt RPAREN return_ann_opt SEMICOLON
-#line 318 "src/parser/grammar.y"
+#line 319 "src/parser/grammar.y"
       {
           yylhs.value.as < Hulk::ProtocolMethodSig > () = Hulk::ProtocolMethodSig(yystack_[5].value.as < std::string > (), std::move(yystack_[3].value.as < ParamList > ()), yystack_[1].value.as < std::string > ());
       }
@@ -1280,7 +1280,7 @@ namespace hulk { namespace parser {
     break;
 
   case 21: // ctor_params_opt: LPAREN params_opt RPAREN
-#line 325 "src/parser/grammar.y"
+#line 326 "src/parser/grammar.y"
       {
           yylhs.value.as < ParamList > () = std::move(yystack_[1].value.as < ParamList > ());
       }
@@ -1288,7 +1288,7 @@ namespace hulk { namespace parser {
     break;
 
   case 22: // ctor_params_opt: %empty
-#line 329 "src/parser/grammar.y"
+#line 330 "src/parser/grammar.y"
       {
           yylhs.value.as < ParamList > () = ParamList {};
       }
@@ -1296,7 +1296,7 @@ namespace hulk { namespace parser {
     break;
 
   case 23: // inherits_opt: INHERITS IDENTIFIER parent_args_opt
-#line 336 "src/parser/grammar.y"
+#line 337 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::InheritsInfo > () = hulk::parser::InheritsInfo { yystack_[1].value.as < std::string > (), std::move(yystack_[0].value.as < ExprList > ()), true };
       }
@@ -1304,7 +1304,7 @@ namespace hulk { namespace parser {
     break;
 
   case 24: // inherits_opt: %empty
-#line 340 "src/parser/grammar.y"
+#line 341 "src/parser/grammar.y"
       {
           yylhs.value.as < hulk::parser::InheritsInfo > () = hulk::parser::InheritsInfo {};
       }
@@ -1312,7 +1312,7 @@ namespace hulk { namespace parser {
     break;
 
   case 25: // parent_args_opt: LPAREN args_opt RPAREN
-#line 347 "src/parser/grammar.y"
+#line 348 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprList > () = std::move(yystack_[1].value.as < ExprList > ());
       }
@@ -1320,7 +1320,7 @@ namespace hulk { namespace parser {
     break;
 
   case 26: // parent_args_opt: %empty
-#line 351 "src/parser/grammar.y"
+#line 352 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprList > () = ExprList {};
       }
@@ -1328,7 +1328,7 @@ namespace hulk { namespace parser {
     break;
 
   case 27: // type_member_list: %empty
-#line 358 "src/parser/grammar.y"
+#line 359 "src/parser/grammar.y"
       {
           yylhs.value.as < TypeMemberList > () = TypeMemberList {};
       }
@@ -1336,7 +1336,7 @@ namespace hulk { namespace parser {
     break;
 
   case 28: // type_member_list: type_member_list type_member
-#line 362 "src/parser/grammar.y"
+#line 363 "src/parser/grammar.y"
       {
           yystack_[1].value.as < TypeMemberList > ().push_back(std::move(yystack_[0].value.as < Hulk::TypeMember > ()));
           yylhs.value.as < TypeMemberList > () = std::move(yystack_[1].value.as < TypeMemberList > ());
@@ -1345,7 +1345,7 @@ namespace hulk { namespace parser {
     break;
 
   case 29: // type_member: IDENTIFIER type_ann_opt ASSIGN expr SEMICOLON
-#line 370 "src/parser/grammar.y"
+#line 371 "src/parser/grammar.y"
       {
           if (yystack_[3].value.as < std::string > ().empty()) {
               yylhs.value.as < Hulk::TypeMember > () = Hulk::TypeMember(
@@ -1364,7 +1364,7 @@ namespace hulk { namespace parser {
     break;
 
   case 30: // type_member: IDENTIFIER LPAREN params_opt RPAREN return_ann_opt FATARROW expr SEMICOLON
-#line 385 "src/parser/grammar.y"
+#line 386 "src/parser/grammar.y"
       {
           if (yystack_[3].value.as < std::string > ().empty()) {
               yylhs.value.as < Hulk::TypeMember > () = Hulk::TypeMember(
@@ -1383,7 +1383,7 @@ namespace hulk { namespace parser {
     break;
 
   case 31: // type_member: IDENTIFIER LPAREN params_opt RPAREN return_ann_opt block
-#line 400 "src/parser/grammar.y"
+#line 401 "src/parser/grammar.y"
       {
           if (yystack_[1].value.as < std::string > ().empty()) {
               yylhs.value.as < Hulk::TypeMember > () = Hulk::TypeMember(
@@ -1402,7 +1402,7 @@ namespace hulk { namespace parser {
     break;
 
   case 32: // params_opt: param_list
-#line 418 "src/parser/grammar.y"
+#line 419 "src/parser/grammar.y"
       {
           yylhs.value.as < ParamList > () = std::move(yystack_[0].value.as < ParamList > ());
       }
@@ -1410,7 +1410,7 @@ namespace hulk { namespace parser {
     break;
 
   case 33: // params_opt: %empty
-#line 422 "src/parser/grammar.y"
+#line 423 "src/parser/grammar.y"
       {
           yylhs.value.as < ParamList > () = ParamList {};
       }
@@ -1418,7 +1418,7 @@ namespace hulk { namespace parser {
     break;
 
   case 34: // param_list: param
-#line 429 "src/parser/grammar.y"
+#line 430 "src/parser/grammar.y"
       {
           ParamList params;
           params.push_back(std::move(yystack_[0].value.as < Hulk::Param > ()));
@@ -1428,7 +1428,7 @@ namespace hulk { namespace parser {
     break;
 
   case 35: // param_list: param_list COMMA param
-#line 435 "src/parser/grammar.y"
+#line 436 "src/parser/grammar.y"
       {
           yystack_[2].value.as < ParamList > ().push_back(std::move(yystack_[0].value.as < Hulk::Param > ()));
           yylhs.value.as < ParamList > () = std::move(yystack_[2].value.as < ParamList > ());
@@ -1437,7 +1437,7 @@ namespace hulk { namespace parser {
     break;
 
   case 36: // param: IDENTIFIER type_ann_opt
-#line 443 "src/parser/grammar.y"
+#line 444 "src/parser/grammar.y"
       {
           if (yystack_[0].value.as < std::string > ().empty()) {
               yylhs.value.as < Hulk::Param > () = Hulk::Param(yystack_[1].value.as < std::string > ());
@@ -1449,7 +1449,7 @@ namespace hulk { namespace parser {
     break;
 
   case 37: // return_ann_opt: COLON type_expr
-#line 454 "src/parser/grammar.y"
+#line 455 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = std::move(yystack_[0].value.as < std::string > ());
       }
@@ -1457,7 +1457,7 @@ namespace hulk { namespace parser {
     break;
 
   case 38: // return_ann_opt: %empty
-#line 458 "src/parser/grammar.y"
+#line 459 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = "";
       }
@@ -1465,7 +1465,7 @@ namespace hulk { namespace parser {
     break;
 
   case 39: // type_ann_opt: COLON type_expr
-#line 465 "src/parser/grammar.y"
+#line 466 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = std::move(yystack_[0].value.as < std::string > ());
       }
@@ -1473,7 +1473,7 @@ namespace hulk { namespace parser {
     break;
 
   case 40: // type_ann_opt: %empty
-#line 469 "src/parser/grammar.y"
+#line 470 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = "";
       }
@@ -1481,7 +1481,7 @@ namespace hulk { namespace parser {
     break;
 
   case 41: // type_expr: IDENTIFIER
-#line 476 "src/parser/grammar.y"
+#line 477 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = std::move(yystack_[0].value.as < std::string > ());
       }
@@ -1489,63 +1489,79 @@ namespace hulk { namespace parser {
     break;
 
   case 42: // type_expr: type_expr STAR
-#line 480 "src/parser/grammar.y"
+#line 481 "src/parser/grammar.y"
       {
           yylhs.value.as < std::string > () = std::move(yystack_[1].value.as < std::string > ()) + "*";
       }
 #line 1497 "src/parser/parser.cpp"
     break;
 
-  case 43: // expr: lambda_expr
-#line 487 "src/parser/grammar.y"
+  case 43: // type_expr: UNDERSCORE
+#line 485 "src/parser/grammar.y"
       {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+          yylhs.value.as < std::string > () = "_";
       }
 #line 1505 "src/parser/parser.cpp"
     break;
 
-  case 44: // expr: let_expr
-#line 491 "src/parser/grammar.y"
+  case 44: // type_expr: AUTO
+#line 489 "src/parser/grammar.y"
       {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+          yylhs.value.as < std::string > () = "auto";
       }
 #line 1513 "src/parser/parser.cpp"
     break;
 
-  case 45: // expr: if_expr
-#line 495 "src/parser/grammar.y"
+  case 45: // expr: lambda_expr
+#line 496 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
 #line 1521 "src/parser/parser.cpp"
     break;
 
-  case 46: // expr: while_expr
-#line 499 "src/parser/grammar.y"
+  case 46: // expr: let_expr
+#line 500 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
 #line 1529 "src/parser/parser.cpp"
     break;
 
-  case 47: // expr: for_expr
-#line 503 "src/parser/grammar.y"
+  case 47: // expr: if_expr
+#line 504 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
 #line 1537 "src/parser/parser.cpp"
     break;
 
-  case 48: // expr: assign_expr
-#line 507 "src/parser/grammar.y"
+  case 48: // expr: while_expr
+#line 508 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
 #line 1545 "src/parser/parser.cpp"
     break;
 
-  case 49: // lambda_expr: LPAREN lambda_param_list RPAREN return_ann_opt FATARROW expr
-#line 514 "src/parser/grammar.y"
+  case 49: // expr: for_expr
+#line 512 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+      }
+#line 1553 "src/parser/parser.cpp"
+    break;
+
+  case 50: // expr: assign_expr
+#line 516 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+      }
+#line 1561 "src/parser/parser.cpp"
+    break;
+
+  case 51: // lambda_expr: LPAREN lambda_param_list RPAREN return_ann_opt FATARROW expr
+#line 523 "src/parser/grammar.y"
       {
           if (yystack_[2].value.as < std::string > ().empty()) {
               yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Lambda>(std::move(yystack_[4].value.as < ParamList > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
@@ -1554,66 +1570,66 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1558 "src/parser/parser.cpp"
+#line 1574 "src/parser/parser.cpp"
     break;
 
-  case 50: // lambda_param_list: lambda_param
-#line 526 "src/parser/grammar.y"
+  case 52: // lambda_param_list: lambda_param
+#line 535 "src/parser/grammar.y"
       {
           ParamList params;
           params.push_back(std::move(yystack_[0].value.as < Hulk::Param > ()));
           yylhs.value.as < ParamList > () = std::move(params);
       }
-#line 1568 "src/parser/parser.cpp"
+#line 1584 "src/parser/parser.cpp"
     break;
 
-  case 51: // lambda_param_list: lambda_param_list COMMA lambda_param
-#line 532 "src/parser/grammar.y"
+  case 53: // lambda_param_list: lambda_param_list COMMA lambda_param
+#line 541 "src/parser/grammar.y"
       {
           yystack_[2].value.as < ParamList > ().push_back(std::move(yystack_[0].value.as < Hulk::Param > ()));
           yylhs.value.as < ParamList > () = std::move(yystack_[2].value.as < ParamList > ());
       }
-#line 1577 "src/parser/parser.cpp"
+#line 1593 "src/parser/parser.cpp"
     break;
 
-  case 52: // lambda_param: IDENTIFIER COLON type_expr
-#line 540 "src/parser/grammar.y"
+  case 54: // lambda_param: IDENTIFIER COLON type_expr
+#line 549 "src/parser/grammar.y"
       {
           yylhs.value.as < Hulk::Param > () = Hulk::Param(yystack_[2].value.as < std::string > (), yystack_[0].value.as < std::string > ());
       }
-#line 1585 "src/parser/parser.cpp"
+#line 1601 "src/parser/parser.cpp"
     break;
 
-  case 53: // let_expr: LET binding_list IN expr
-#line 547 "src/parser/grammar.y"
+  case 55: // let_expr: LET binding_list IN expr
+#line 556 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LetIn>(std::move(yystack_[2].value.as < BindingList > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1594 "src/parser/parser.cpp"
+#line 1610 "src/parser/parser.cpp"
     break;
 
-  case 54: // binding_list: binding
-#line 555 "src/parser/grammar.y"
+  case 56: // binding_list: binding
+#line 564 "src/parser/grammar.y"
       {
           BindingList bindings;
           bindings.push_back(std::move(yystack_[0].value.as < BindingPtr > ()));
           yylhs.value.as < BindingList > () = std::move(bindings);
       }
-#line 1604 "src/parser/parser.cpp"
+#line 1620 "src/parser/parser.cpp"
     break;
 
-  case 55: // binding_list: binding_list COMMA binding
-#line 561 "src/parser/grammar.y"
+  case 57: // binding_list: binding_list COMMA binding
+#line 570 "src/parser/grammar.y"
       {
           yystack_[2].value.as < BindingList > ().push_back(std::move(yystack_[0].value.as < BindingPtr > ()));
           yylhs.value.as < BindingList > () = std::move(yystack_[2].value.as < BindingList > ());
       }
-#line 1613 "src/parser/parser.cpp"
+#line 1629 "src/parser/parser.cpp"
     break;
 
-  case 56: // binding: IDENTIFIER type_ann_opt ASSIGN expr
-#line 569 "src/parser/grammar.y"
+  case 58: // binding: IDENTIFIER type_ann_opt ASSIGN expr
+#line 578 "src/parser/grammar.y"
       {
           if (yystack_[2].value.as < std::string > ().empty()) {
               yylhs.value.as < BindingPtr > () = std::make_unique<Hulk::VariableBinding>(yystack_[3].value.as < std::string > (), std::move(yystack_[0].value.as < ExprPtr > ()));
@@ -1622,55 +1638,55 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < BindingPtr > ()->span = to_span(yylhs.location);
       }
-#line 1626 "src/parser/parser.cpp"
+#line 1642 "src/parser/parser.cpp"
     break;
 
-  case 57: // if_expr: IF LPAREN expr RPAREN expr elif_clauses ELSE expr
-#line 581 "src/parser/grammar.y"
+  case 59: // if_expr: IF LPAREN expr RPAREN expr elif_clauses ELSE expr
+#line 590 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::IfStmt>(std::move(yystack_[5].value.as < ExprPtr > ()), std::move(yystack_[3].value.as < ExprPtr > ()), std::move(yystack_[2].value.as < ElifList > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1635 "src/parser/parser.cpp"
+#line 1651 "src/parser/parser.cpp"
     break;
 
-  case 58: // elif_clauses: %empty
-#line 589 "src/parser/grammar.y"
+  case 60: // elif_clauses: %empty
+#line 598 "src/parser/grammar.y"
       {
           yylhs.value.as < ElifList > () = ElifList {};
       }
-#line 1643 "src/parser/parser.cpp"
+#line 1659 "src/parser/parser.cpp"
     break;
 
-  case 59: // elif_clauses: elif_clauses ELIF LPAREN expr RPAREN expr
-#line 593 "src/parser/grammar.y"
+  case 61: // elif_clauses: elif_clauses ELIF LPAREN expr RPAREN expr
+#line 602 "src/parser/grammar.y"
       {
           yystack_[5].value.as < ElifList > ().emplace_back(std::move(yystack_[2].value.as < ExprPtr > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ElifList > () = std::move(yystack_[5].value.as < ElifList > ());
       }
-#line 1652 "src/parser/parser.cpp"
+#line 1668 "src/parser/parser.cpp"
     break;
 
-  case 60: // while_expr: WHILE LPAREN expr RPAREN expr
-#line 601 "src/parser/grammar.y"
+  case 62: // while_expr: WHILE LPAREN expr RPAREN expr
+#line 610 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::WhileStmt>(std::move(yystack_[2].value.as < ExprPtr > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1661 "src/parser/parser.cpp"
+#line 1677 "src/parser/parser.cpp"
     break;
 
-  case 61: // for_expr: FOR LPAREN IDENTIFIER IN expr RPAREN expr
-#line 609 "src/parser/grammar.y"
+  case 63: // for_expr: FOR LPAREN IDENTIFIER IN expr RPAREN expr
+#line 618 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::For>(yystack_[4].value.as < std::string > (), std::move(yystack_[2].value.as < ExprPtr > ()), std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1670 "src/parser/parser.cpp"
+#line 1686 "src/parser/parser.cpp"
     break;
 
-  case 62: // assign_expr: lvalue DESTRUCTIVE_ASSIGN expr
-#line 617 "src/parser/grammar.y"
+  case 64: // assign_expr: lvalue DESTRUCTIVE_ASSIGN expr
+#line 626 "src/parser/grammar.y"
       {
           if (yystack_[2].value.as < hulk::parser::LValueTarget > ().isMember) {
               yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::DestructiveAssignMember>(std::move(yystack_[2].value.as < hulk::parser::LValueTarget > ().object), yystack_[2].value.as < hulk::parser::LValueTarget > ().name, std::move(yystack_[0].value.as < ExprPtr > ()));
@@ -1679,337 +1695,337 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1683 "src/parser/parser.cpp"
-    break;
-
-  case 63: // assign_expr: logic_or
-#line 626 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
-      }
-#line 1691 "src/parser/parser.cpp"
-    break;
-
-  case 64: // lvalue: IDENTIFIER
-#line 633 "src/parser/grammar.y"
-      {
-          yylhs.value.as < hulk::parser::LValueTarget > () = hulk::parser::LValueTarget { nullptr, yystack_[0].value.as < std::string > (), false };
-      }
 #line 1699 "src/parser/parser.cpp"
     break;
 
-  case 65: // lvalue: postfix DOT IDENTIFIER
-#line 637 "src/parser/grammar.y"
+  case 65: // assign_expr: logic_or
+#line 635 "src/parser/grammar.y"
       {
-          yylhs.value.as < hulk::parser::LValueTarget > () = hulk::parser::LValueTarget { std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > (), true };
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
 #line 1707 "src/parser/parser.cpp"
     break;
 
-  case 66: // logic_or: logic_or OR logic_and
-#line 644 "src/parser/grammar.y"
+  case 66: // lvalue: IDENTIFIER
+#line 642 "src/parser/grammar.y"
+      {
+          yylhs.value.as < hulk::parser::LValueTarget > () = hulk::parser::LValueTarget { nullptr, yystack_[0].value.as < std::string > (), false };
+      }
+#line 1715 "src/parser/parser.cpp"
+    break;
+
+  case 67: // lvalue: postfix DOT IDENTIFIER
+#line 646 "src/parser/grammar.y"
+      {
+          yylhs.value.as < hulk::parser::LValueTarget > () = hulk::parser::LValueTarget { std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > (), true };
+      }
+#line 1723 "src/parser/parser.cpp"
+    break;
+
+  case 68: // logic_or: logic_or OR logic_and
+#line 653 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::Or, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1718 "src/parser/parser.cpp"
+#line 1734 "src/parser/parser.cpp"
     break;
 
-  case 67: // logic_or: logic_and
-#line 651 "src/parser/grammar.y"
+  case 69: // logic_or: logic_and
+#line 660 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1726 "src/parser/parser.cpp"
+#line 1742 "src/parser/parser.cpp"
     break;
 
-  case 68: // logic_and: logic_and AND equality
-#line 658 "src/parser/grammar.y"
+  case 70: // logic_and: logic_and AND equality
+#line 667 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::And, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1737 "src/parser/parser.cpp"
+#line 1753 "src/parser/parser.cpp"
     break;
 
-  case 69: // logic_and: equality
-#line 665 "src/parser/grammar.y"
+  case 71: // logic_and: equality
+#line 674 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1745 "src/parser/parser.cpp"
+#line 1761 "src/parser/parser.cpp"
     break;
 
-  case 70: // equality: equality EQUAL_EQUAL relation
-#line 672 "src/parser/grammar.y"
+  case 72: // equality: equality EQUAL_EQUAL relation
+#line 681 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::Equal, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1756 "src/parser/parser.cpp"
+#line 1772 "src/parser/parser.cpp"
     break;
 
-  case 71: // equality: equality NOT_EQUAL relation
-#line 679 "src/parser/grammar.y"
+  case 73: // equality: equality NOT_EQUAL relation
+#line 688 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::NotEqual, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1767 "src/parser/parser.cpp"
+#line 1783 "src/parser/parser.cpp"
     break;
 
-  case 72: // equality: relation
-#line 686 "src/parser/grammar.y"
+  case 74: // equality: relation
+#line 695 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1775 "src/parser/parser.cpp"
+#line 1791 "src/parser/parser.cpp"
     break;
 
-  case 73: // relation: relation LESS type_test_expr
-#line 693 "src/parser/grammar.y"
+  case 75: // relation: relation LESS type_test_expr
+#line 702 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::Less, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1786 "src/parser/parser.cpp"
+#line 1802 "src/parser/parser.cpp"
     break;
 
-  case 74: // relation: relation LESS_EQUAL type_test_expr
-#line 700 "src/parser/grammar.y"
+  case 76: // relation: relation LESS_EQUAL type_test_expr
+#line 709 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::LessEqual, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1797 "src/parser/parser.cpp"
+#line 1813 "src/parser/parser.cpp"
     break;
 
-  case 75: // relation: relation GREATER type_test_expr
-#line 707 "src/parser/grammar.y"
+  case 77: // relation: relation GREATER type_test_expr
+#line 716 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::Greater, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1808 "src/parser/parser.cpp"
+#line 1824 "src/parser/parser.cpp"
     break;
 
-  case 76: // relation: relation GREATER_EQUAL type_test_expr
-#line 714 "src/parser/grammar.y"
+  case 78: // relation: relation GREATER_EQUAL type_test_expr
+#line 723 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::LogicOp::GreaterEqual, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1819 "src/parser/parser.cpp"
-    break;
-
-  case 77: // relation: type_test_expr
-#line 721 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
-      }
-#line 1827 "src/parser/parser.cpp"
-    break;
-
-  case 78: // type_test_expr: concat
-#line 728 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
-      }
 #line 1835 "src/parser/parser.cpp"
     break;
 
-  case 79: // type_test_expr: concat IS type_expr
-#line 732 "src/parser/grammar.y"
+  case 79: // relation: type_test_expr
+#line 730 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+      }
+#line 1843 "src/parser/parser.cpp"
+    break;
+
+  case 80: // type_test_expr: concat
+#line 737 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+      }
+#line 1851 "src/parser/parser.cpp"
+    break;
+
+  case 81: // type_test_expr: concat IS type_expr
+#line 741 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::IsExpr>(std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1844 "src/parser/parser.cpp"
+#line 1860 "src/parser/parser.cpp"
     break;
 
-  case 80: // type_test_expr: concat AS type_expr
-#line 737 "src/parser/grammar.y"
+  case 82: // type_test_expr: concat AS type_expr
+#line 746 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::AsExpr>(std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1853 "src/parser/parser.cpp"
+#line 1869 "src/parser/parser.cpp"
     break;
 
-  case 81: // concat: concat CONCAT additive
-#line 745 "src/parser/grammar.y"
+  case 83: // concat: concat CONCAT additive
+#line 754 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::StringBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::StringOp::Concat, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1864 "src/parser/parser.cpp"
+#line 1880 "src/parser/parser.cpp"
     break;
 
-  case 82: // concat: concat DOUBLECONCAT additive
-#line 752 "src/parser/grammar.y"
+  case 84: // concat: concat DOUBLECONCAT additive
+#line 761 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::StringBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::StringOp::SpaceConcat, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1875 "src/parser/parser.cpp"
+#line 1891 "src/parser/parser.cpp"
     break;
 
-  case 83: // concat: additive
-#line 759 "src/parser/grammar.y"
+  case 85: // concat: additive
+#line 768 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1883 "src/parser/parser.cpp"
+#line 1899 "src/parser/parser.cpp"
     break;
 
-  case 84: // additive: additive PLUS multiplicative
-#line 766 "src/parser/grammar.y"
+  case 86: // additive: additive PLUS multiplicative
+#line 775 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Plus, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1894 "src/parser/parser.cpp"
+#line 1910 "src/parser/parser.cpp"
     break;
 
-  case 85: // additive: additive MINUS multiplicative
-#line 773 "src/parser/grammar.y"
+  case 87: // additive: additive MINUS multiplicative
+#line 782 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Minus, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1905 "src/parser/parser.cpp"
+#line 1921 "src/parser/parser.cpp"
     break;
 
-  case 86: // additive: multiplicative
-#line 780 "src/parser/grammar.y"
+  case 88: // additive: multiplicative
+#line 789 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1913 "src/parser/parser.cpp"
+#line 1929 "src/parser/parser.cpp"
     break;
 
-  case 87: // multiplicative: multiplicative STAR power
-#line 787 "src/parser/grammar.y"
+  case 89: // multiplicative: multiplicative STAR power
+#line 796 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Mult, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1924 "src/parser/parser.cpp"
+#line 1940 "src/parser/parser.cpp"
     break;
 
-  case 88: // multiplicative: multiplicative SLASH power
-#line 794 "src/parser/grammar.y"
+  case 90: // multiplicative: multiplicative SLASH power
+#line 803 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Div, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1935 "src/parser/parser.cpp"
+#line 1951 "src/parser/parser.cpp"
     break;
 
-  case 89: // multiplicative: multiplicative PERCENT power
-#line 801 "src/parser/grammar.y"
+  case 91: // multiplicative: multiplicative PERCENT power
+#line 810 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Mod, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1946 "src/parser/parser.cpp"
+#line 1962 "src/parser/parser.cpp"
     break;
 
-  case 90: // multiplicative: power
-#line 808 "src/parser/grammar.y"
+  case 92: // multiplicative: power
+#line 817 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1954 "src/parser/parser.cpp"
+#line 1970 "src/parser/parser.cpp"
     break;
 
-  case 91: // power: unary CARET power
-#line 815 "src/parser/grammar.y"
+  case 93: // power: unary CARET power
+#line 824 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticBinOp>(
               std::move(yystack_[2].value.as < ExprPtr > ()), Hulk::ArithmeticOp::Pow, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1965 "src/parser/parser.cpp"
+#line 1981 "src/parser/parser.cpp"
     break;
 
-  case 92: // power: unary
-#line 822 "src/parser/grammar.y"
+  case 94: // power: unary
+#line 831 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
       }
-#line 1973 "src/parser/parser.cpp"
+#line 1989 "src/parser/parser.cpp"
     break;
 
-  case 93: // unary: MINUS unary
-#line 829 "src/parser/grammar.y"
+  case 95: // unary: MINUS unary
+#line 838 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ArithmeticUnaryOp>(
               Hulk::ArithUnaryType::Minus, std::move(yystack_[0].value.as < ExprPtr > ())
           );
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1984 "src/parser/parser.cpp"
+#line 2000 "src/parser/parser.cpp"
     break;
 
-  case 94: // unary: NOT unary
-#line 836 "src/parser/grammar.y"
+  case 96: // unary: NOT unary
+#line 845 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::LogicUnaryOp>(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 1993 "src/parser/parser.cpp"
-    break;
-
-  case 95: // unary: postfix
-#line 841 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
-      }
-#line 2001 "src/parser/parser.cpp"
-    break;
-
-  case 96: // postfix: primary
-#line 848 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
-      }
 #line 2009 "src/parser/parser.cpp"
     break;
 
-  case 97: // postfix: postfix LPAREN args_opt RPAREN
-#line 852 "src/parser/grammar.y"
+  case 97: // unary: postfix
+#line 850 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+      }
+#line 2017 "src/parser/parser.cpp"
+    break;
+
+  case 98: // postfix: primary
+#line 857 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+      }
+#line 2025 "src/parser/parser.cpp"
+    break;
+
+  case 99: // postfix: postfix LPAREN args_opt RPAREN
+#line 861 "src/parser/grammar.y"
       {
           if (const auto* callee = dynamic_cast<const Hulk::VariableReference*>(yystack_[3].value.as < ExprPtr > ().get())) {
               yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::FunctionCall>(callee->GetName(), std::move(yystack_[1].value.as < ExprList > ()));
@@ -2023,153 +2039,153 @@ namespace hulk { namespace parser {
           }
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2027 "src/parser/parser.cpp"
+#line 2043 "src/parser/parser.cpp"
     break;
 
-  case 98: // postfix: postfix DOT IDENTIFIER
-#line 866 "src/parser/grammar.y"
+  case 100: // postfix: postfix DOT IDENTIFIER
+#line 875 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::MemberAccess>(std::move(yystack_[2].value.as < ExprPtr > ()), yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2036 "src/parser/parser.cpp"
+#line 2052 "src/parser/parser.cpp"
     break;
 
-  case 99: // primary: NUMBER_LITERAL
-#line 874 "src/parser/grammar.y"
+  case 101: // primary: NUMBER_LITERAL
+#line 883 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Number>(yystack_[0].value.as < double > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2045 "src/parser/parser.cpp"
+#line 2061 "src/parser/parser.cpp"
     break;
 
-  case 100: // primary: STRING_LITERAL
-#line 879 "src/parser/grammar.y"
+  case 102: // primary: STRING_LITERAL
+#line 888 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::String>(yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2054 "src/parser/parser.cpp"
+#line 2070 "src/parser/parser.cpp"
     break;
 
-  case 101: // primary: TRUE
-#line 884 "src/parser/grammar.y"
+  case 103: // primary: TRUE
+#line 893 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Boolean>(true);
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2063 "src/parser/parser.cpp"
+#line 2079 "src/parser/parser.cpp"
     break;
 
-  case 102: // primary: FALSE
-#line 889 "src/parser/grammar.y"
+  case 104: // primary: FALSE
+#line 898 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Boolean>(false);
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2072 "src/parser/parser.cpp"
+#line 2088 "src/parser/parser.cpp"
     break;
 
-  case 103: // primary: IDENTIFIER
-#line 894 "src/parser/grammar.y"
+  case 105: // primary: IDENTIFIER
+#line 903 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::VariableReference>(yystack_[0].value.as < std::string > ());
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2081 "src/parser/parser.cpp"
+#line 2097 "src/parser/parser.cpp"
     break;
 
-  case 104: // primary: NEW IDENTIFIER LPAREN args_opt RPAREN
-#line 899 "src/parser/grammar.y"
+  case 106: // primary: NEW IDENTIFIER LPAREN args_opt RPAREN
+#line 908 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::NewExpr>(yystack_[3].value.as < std::string > (), std::move(yystack_[1].value.as < ExprList > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2090 "src/parser/parser.cpp"
-    break;
-
-  case 105: // primary: LPAREN expr RPAREN
-#line 904 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[1].value.as < ExprPtr > ());
-      }
-#line 2098 "src/parser/parser.cpp"
-    break;
-
-  case 106: // primary: block
-#line 908 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
-      }
 #line 2106 "src/parser/parser.cpp"
     break;
 
-  case 107: // primary: PRINT LPAREN expr RPAREN
-#line 912 "src/parser/grammar.y"
+  case 107: // primary: LPAREN expr RPAREN
+#line 913 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[1].value.as < ExprPtr > ());
+      }
+#line 2114 "src/parser/parser.cpp"
+    break;
+
+  case 108: // primary: block
+#line 917 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprPtr > () = std::move(yystack_[0].value.as < ExprPtr > ());
+      }
+#line 2122 "src/parser/parser.cpp"
+    break;
+
+  case 109: // primary: PRINT LPAREN expr RPAREN
+#line 921 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Print>(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2115 "src/parser/parser.cpp"
+#line 2131 "src/parser/parser.cpp"
     break;
 
-  case 108: // primary: SQRT LPAREN expr RPAREN
-#line 917 "src/parser/grammar.y"
+  case 110: // primary: SQRT LPAREN expr RPAREN
+#line 926 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Sqrt, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2126 "src/parser/parser.cpp"
+#line 2142 "src/parser/parser.cpp"
     break;
 
-  case 109: // primary: SIN LPAREN expr RPAREN
-#line 924 "src/parser/grammar.y"
+  case 111: // primary: SIN LPAREN expr RPAREN
+#line 933 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Sin, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2137 "src/parser/parser.cpp"
+#line 2153 "src/parser/parser.cpp"
     break;
 
-  case 110: // primary: COS LPAREN expr RPAREN
-#line 931 "src/parser/grammar.y"
+  case 112: // primary: COS LPAREN expr RPAREN
+#line 940 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Cos, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2148 "src/parser/parser.cpp"
+#line 2164 "src/parser/parser.cpp"
     break;
 
-  case 111: // primary: RAND LPAREN RPAREN
-#line 938 "src/parser/grammar.y"
+  case 113: // primary: RAND LPAREN RPAREN
+#line 947 "src/parser/grammar.y"
       {
           ExprList args;
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Rand, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2158 "src/parser/parser.cpp"
+#line 2174 "src/parser/parser.cpp"
     break;
 
-  case 112: // primary: EXP LPAREN expr RPAREN
-#line 944 "src/parser/grammar.y"
+  case 114: // primary: EXP LPAREN expr RPAREN
+#line 953 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[1].value.as < ExprPtr > ()));
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Exp, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2169 "src/parser/parser.cpp"
+#line 2185 "src/parser/parser.cpp"
     break;
 
-  case 113: // primary: LOG LPAREN expr COMMA expr RPAREN
-#line 951 "src/parser/grammar.y"
+  case 115: // primary: LOG LPAREN expr COMMA expr RPAREN
+#line 960 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[3].value.as < ExprPtr > ()));
@@ -2177,108 +2193,108 @@ namespace hulk { namespace parser {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::BuiltinCall>(Hulk::BuiltinFunc::Log, std::move(args));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2181 "src/parser/parser.cpp"
+#line 2197 "src/parser/parser.cpp"
     break;
 
-  case 114: // primary: PI_CONST
-#line 959 "src/parser/grammar.y"
+  case 116: // primary: PI_CONST
+#line 968 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Number>(3.14159265358979323846);
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2190 "src/parser/parser.cpp"
+#line 2206 "src/parser/parser.cpp"
     break;
 
-  case 115: // primary: E_CONST
-#line 964 "src/parser/grammar.y"
+  case 117: // primary: E_CONST
+#line 973 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::Number>(2.71828182845904523536);
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2199 "src/parser/parser.cpp"
-    break;
-
-  case 116: // args_opt: arg_list
-#line 972 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprList > () = std::move(yystack_[0].value.as < ExprList > ());
-      }
-#line 2207 "src/parser/parser.cpp"
-    break;
-
-  case 117: // args_opt: %empty
-#line 976 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprList > () = ExprList {};
-      }
 #line 2215 "src/parser/parser.cpp"
     break;
 
-  case 118: // arg_list: expr
-#line 983 "src/parser/grammar.y"
+  case 118: // args_opt: arg_list
+#line 981 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprList > () = std::move(yystack_[0].value.as < ExprList > ());
+      }
+#line 2223 "src/parser/parser.cpp"
+    break;
+
+  case 119: // args_opt: %empty
+#line 985 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprList > () = ExprList {};
+      }
+#line 2231 "src/parser/parser.cpp"
+    break;
+
+  case 120: // arg_list: expr
+#line 992 "src/parser/grammar.y"
       {
           ExprList args;
           args.push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprList > () = std::move(args);
       }
-#line 2225 "src/parser/parser.cpp"
+#line 2241 "src/parser/parser.cpp"
     break;
 
-  case 119: // arg_list: arg_list COMMA expr
-#line 989 "src/parser/grammar.y"
+  case 121: // arg_list: arg_list COMMA expr
+#line 998 "src/parser/grammar.y"
       {
           yystack_[2].value.as < ExprList > ().push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprList > () = std::move(yystack_[2].value.as < ExprList > ());
       }
-#line 2234 "src/parser/parser.cpp"
+#line 2250 "src/parser/parser.cpp"
     break;
 
-  case 120: // block: LBRACE block_body_opt RBRACE
-#line 997 "src/parser/grammar.y"
+  case 122: // block: LBRACE block_body_opt RBRACE
+#line 1006 "src/parser/grammar.y"
       {
           yylhs.value.as < ExprPtr > () = std::make_unique<Hulk::ExprBlock>(std::move(yystack_[1].value.as < ExprList > ()));
           yylhs.value.as < ExprPtr > ()->span = to_span(yylhs.location);
       }
-#line 2243 "src/parser/parser.cpp"
-    break;
-
-  case 121: // block_body_opt: %empty
-#line 1005 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprList > () = ExprList {};
-      }
-#line 2251 "src/parser/parser.cpp"
-    break;
-
-  case 122: // block_body_opt: expr_list opt_semi
-#line 1009 "src/parser/grammar.y"
-      {
-          yylhs.value.as < ExprList > () = std::move(yystack_[1].value.as < ExprList > ());
-      }
 #line 2259 "src/parser/parser.cpp"
     break;
 
-  case 123: // expr_list: expr
-#line 1016 "src/parser/grammar.y"
+  case 123: // block_body_opt: %empty
+#line 1014 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprList > () = ExprList {};
+      }
+#line 2267 "src/parser/parser.cpp"
+    break;
+
+  case 124: // block_body_opt: expr_list opt_semi
+#line 1018 "src/parser/grammar.y"
+      {
+          yylhs.value.as < ExprList > () = std::move(yystack_[1].value.as < ExprList > ());
+      }
+#line 2275 "src/parser/parser.cpp"
+    break;
+
+  case 125: // expr_list: expr
+#line 1025 "src/parser/grammar.y"
       {
           ExprList nodes;
           nodes.push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprList > () = std::move(nodes);
       }
-#line 2269 "src/parser/parser.cpp"
+#line 2285 "src/parser/parser.cpp"
     break;
 
-  case 124: // expr_list: expr_list SEMICOLON expr
-#line 1022 "src/parser/grammar.y"
+  case 126: // expr_list: expr_list SEMICOLON expr
+#line 1031 "src/parser/grammar.y"
       {
           yystack_[2].value.as < ExprList > ().push_back(std::move(yystack_[0].value.as < ExprPtr > ()));
           yylhs.value.as < ExprList > () = std::move(yystack_[2].value.as < ExprList > ());
       }
-#line 2278 "src/parser/parser.cpp"
+#line 2294 "src/parser/parser.cpp"
     break;
 
 
-#line 2282 "src/parser/parser.cpp"
+#line 2298 "src/parser/parser.cpp"
 
             default:
               break;
@@ -2470,18 +2486,18 @@ namespace hulk { namespace parser {
   "EQUAL_EQUAL", "NOT_EQUAL", "LESS", "LESS_EQUAL", "GREATER",
   "GREATER_EQUAL", "AND", "OR", "NOT", "CONCAT", "DOUBLECONCAT",
   "FATARROW", "LPAREN", "RPAREN", "LBRACE", "RBRACE", "COMMA", "SEMICOLON",
-  "COLON", "DOT", "UMINUS", "$accept", "program", "top_level_items",
-  "top_level_item", "opt_semi", "decl", "function_decl", "type_decl",
-  "protocol_decl", "protocol_extends_opt", "protocol_member_list",
-  "protocol_member", "ctor_params_opt", "inherits_opt", "parent_args_opt",
-  "type_member_list", "type_member", "params_opt", "param_list", "param",
-  "return_ann_opt", "type_ann_opt", "type_expr", "expr", "lambda_expr",
-  "lambda_param_list", "lambda_param", "let_expr", "binding_list",
-  "binding", "if_expr", "elif_clauses", "while_expr", "for_expr",
-  "assign_expr", "lvalue", "logic_or", "logic_and", "equality", "relation",
-  "type_test_expr", "concat", "additive", "multiplicative", "power",
-  "unary", "postfix", "primary", "args_opt", "arg_list", "block",
-  "block_body_opt", "expr_list", YY_NULLPTR
+  "COLON", "DOT", "UNDERSCORE", "AUTO", "UMINUS", "$accept", "program",
+  "top_level_items", "top_level_item", "opt_semi", "decl", "function_decl",
+  "type_decl", "protocol_decl", "protocol_extends_opt",
+  "protocol_member_list", "protocol_member", "ctor_params_opt",
+  "inherits_opt", "parent_args_opt", "type_member_list", "type_member",
+  "params_opt", "param_list", "param", "return_ann_opt", "type_ann_opt",
+  "type_expr", "expr", "lambda_expr", "lambda_param_list", "lambda_param",
+  "let_expr", "binding_list", "binding", "if_expr", "elif_clauses",
+  "while_expr", "for_expr", "assign_expr", "lvalue", "logic_or",
+  "logic_and", "equality", "relation", "type_test_expr", "concat",
+  "additive", "multiplicative", "power", "unary", "postfix", "primary",
+  "args_opt", "arg_list", "block", "block_body_opt", "expr_list", YY_NULLPTR
     };
     return yy_sname[yysymbol];
   }
@@ -2614,174 +2630,174 @@ namespace hulk { namespace parser {
   }
 
 
-  const short Parser::yypact_ninf_ = -209;
+  const short Parser::yypact_ninf_ = -210;
 
-  const signed char Parser::yytable_ninf_ = -66;
+  const signed char Parser::yytable_ninf_ = -68;
 
   const short
   Parser::yypact_[] =
   {
-     172,   -33,  -209,  -209,  -209,  -209,    -6,    44,    46,    54,
-      55,    57,    58,  -209,  -209,    26,    59,    60,    62,    42,
-     113,   116,   117,    68,    68,   248,   301,   122,   172,    66,
-    -209,  -209,  -209,  -209,  -209,  -209,  -209,  -209,  -209,  -209,
-    -209,    85,    78,    89,    -2,    -8,  -209,   -19,    20,    33,
-    -209,   107,   -43,  -209,  -209,   301,   301,   301,   301,   301,
-     301,    92,    88,   -14,  -209,   301,   301,   145,    96,    97,
-     123,    99,  -209,   301,  -209,   -38,  -209,   -32,   100,   -24,
-    -209,  -209,   101,    95,  -209,    66,  -209,  -209,   301,    68,
-      68,    68,    68,    68,    68,    68,    68,   152,   152,    68,
-      68,    68,    68,    68,    68,    68,    68,   301,   153,   104,
-     105,   106,   108,   109,   111,  -209,   152,   125,   301,    26,
-     112,   137,   142,   162,   162,   141,   168,   138,   301,   174,
-     152,  -209,   144,   197,  -209,   301,  -209,  -209,  -209,    89,
-      -2,    -8,    -8,  -209,  -209,  -209,  -209,  -209,   166,   166,
-      20,    20,    33,    33,  -209,  -209,  -209,  -209,  -209,   150,
-     148,   167,  -209,  -209,  -209,  -209,  -209,   301,   166,   301,
-    -209,  -209,   301,   301,   301,    88,   154,   155,  -209,   156,
-     208,   159,  -209,  -209,   161,  -209,   166,   152,   164,   158,
-    -209,  -209,  -209,  -209,   301,   165,  -209,  -209,  -209,   169,
-    -209,   144,   162,  -209,   175,  -209,     8,  -209,   166,   301,
-    -209,  -209,    65,   301,   -36,  -209,   301,  -209,    11,   176,
-    -209,  -209,  -209,   177,   301,  -209,   301,  -209,   178,   -35,
-    -209,  -209,   162,   301,  -209,   160,  -209,   162,   181,   180,
-     182,  -209,   183,   301,   144,   301,   144,   173,   184,  -209,
-     -11,  -209,  -209,   301,  -209,   186,  -209
+     174,   -31,  -210,  -210,  -210,  -210,   -35,    -6,     1,    17,
+      48,    61,    62,  -210,  -210,    42,    67,    69,    71,    46,
+      88,   116,   122,    68,    68,   250,   303,   126,   174,    78,
+    -210,  -210,  -210,  -210,  -210,  -210,  -210,  -210,  -210,  -210,
+    -210,   105,    98,   100,    55,    -8,  -210,   -21,    66,    -4,
+    -210,   110,   -41,  -210,  -210,   303,   303,   303,   303,   303,
+     303,    95,    91,   -13,  -210,   303,   303,   148,    99,   101,
+     125,   102,  -210,   303,  -210,   -39,  -210,   -32,   103,    32,
+    -210,  -210,   104,   106,  -210,    78,  -210,  -210,   303,    68,
+      68,    68,    68,    68,    68,    68,    68,     2,     2,    68,
+      68,    68,    68,    68,    68,    68,    68,   303,   153,   107,
+     108,   109,   111,   112,   113,  -210,     2,   119,   303,    42,
+     114,   118,   140,   164,   164,   144,   176,   138,   303,   192,
+       2,  -210,   143,   200,  -210,   303,  -210,  -210,  -210,   100,
+      55,    -8,    -8,  -210,  -210,  -210,  -210,  -210,  -210,  -210,
+     170,   170,    66,    66,    -4,    -4,  -210,  -210,  -210,  -210,
+    -210,   152,   150,   169,  -210,  -210,  -210,  -210,  -210,   303,
+     170,   303,  -210,  -210,   303,   303,   303,    91,   156,   155,
+    -210,   159,   211,   161,  -210,  -210,   163,  -210,   170,     2,
+     166,   160,  -210,  -210,  -210,  -210,   303,   167,  -210,  -210,
+    -210,   168,  -210,   143,   164,  -210,   171,  -210,    12,  -210,
+     170,   303,  -210,  -210,    82,   303,    35,  -210,   303,  -210,
+      13,   172,  -210,  -210,  -210,   177,   303,  -210,   303,  -210,
+     178,   -36,  -210,  -210,   164,   303,  -210,   162,  -210,   164,
+     194,   180,   182,  -210,   183,   303,   143,   303,   143,   173,
+     181,  -210,    40,  -210,  -210,   303,  -210,   184,  -210
   };
 
   const signed char
   Parser::yydefact_[] =
   {
-       0,   103,   100,    99,   101,   102,     0,     0,     0,     0,
-       0,     0,     0,   114,   115,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,   121,     0,     2,     8,
-       5,     9,    10,    11,     6,    43,    44,    45,    46,    47,
-      48,     0,    63,    67,    69,    72,    77,    78,    83,    86,
-      90,    92,    95,    96,   106,     0,     0,     0,     0,     0,
-       0,     0,    40,     0,    54,     0,     0,     0,     0,    22,
-      17,     0,   103,     0,    93,    95,    94,   103,     0,     0,
-      50,   123,     0,     8,     1,     8,     7,     3,     0,     0,
+       0,   105,   102,   101,   103,   104,     0,     0,     0,     0,
+       0,     0,     0,   116,   117,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,   123,     0,     2,     8,
+       5,     9,    10,    11,     6,    45,    46,    47,    48,    49,
+      50,     0,    65,    69,    71,    74,    79,    80,    85,    88,
+      92,    94,    97,    98,   108,     0,     0,     0,     0,     0,
+       0,     0,    40,     0,    56,     0,     0,     0,     0,    22,
+      17,     0,   105,     0,    95,    97,    96,   105,     0,     0,
+      52,   125,     0,     8,     1,     8,     7,     3,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,   117,     0,     0,
-       0,     0,     0,     0,     0,   111,     0,     0,     0,     0,
-       0,     0,     0,    33,    33,    24,     0,     0,   117,     0,
-       0,   105,    38,     0,   120,     7,   122,     4,    62,    66,
-      68,    70,    71,    73,    74,    75,    76,    41,    79,    80,
-      81,    82,    84,    85,    87,    88,    89,    91,   118,     0,
-     116,    98,   107,   108,   109,   110,   112,     0,    39,     0,
-      53,    55,     0,     0,     0,    40,     0,    32,    34,     0,
-       0,     0,    16,    18,     0,    98,    52,     0,     0,     0,
-      51,   124,    42,    97,     0,     0,    56,    58,    60,     0,
-      36,    38,     0,    21,    26,    27,     0,   104,    37,     0,
-     119,   113,     0,     0,     0,    35,   117,    23,     0,     0,
-      15,    19,    49,     0,     0,    61,     0,    13,     0,    40,
-      14,    28,    33,     0,    57,     0,    25,    33,     0,     0,
-       0,    12,     0,     0,    38,     0,    38,     0,     0,    59,
-       0,    29,    20,     0,    31,     0,    30
+       0,     0,     0,     0,     0,     0,     0,   119,     0,     0,
+       0,     0,     0,     0,     0,   113,     0,     0,     0,     0,
+       0,     0,     0,    33,    33,    24,     0,     0,   119,     0,
+       0,   107,    38,     0,   122,     7,   124,     4,    64,    68,
+      70,    72,    73,    75,    76,    77,    78,    41,    43,    44,
+      81,    82,    83,    84,    86,    87,    89,    90,    91,    93,
+     120,     0,   118,   100,   109,   110,   111,   112,   114,     0,
+      39,     0,    55,    57,     0,     0,     0,    40,     0,    32,
+      34,     0,     0,     0,    16,    18,     0,   100,    54,     0,
+       0,     0,    53,   126,    42,    99,     0,     0,    58,    60,
+      62,     0,    36,    38,     0,    21,    26,    27,     0,   106,
+      37,     0,   121,   115,     0,     0,     0,    35,   119,    23,
+       0,     0,    15,    19,    51,     0,     0,    63,     0,    13,
+       0,    40,    14,    28,    33,     0,    59,     0,    25,    33,
+       0,     0,     0,    12,     0,     0,    38,     0,    38,     0,
+       0,    61,     0,    29,    20,     0,    31,     0,    30
   };
 
   const short
   Parser::yypgoto_[] =
   {
-    -209,  -209,  -209,   194,   -62,  -209,  -209,  -209,  -209,  -209,
-    -209,  -209,  -209,  -209,  -209,  -209,  -209,  -123,  -209,    36,
-    -198,  -166,   -96,     0,  -209,  -209,   102,  -209,  -209,   120,
-    -209,  -209,  -209,  -209,  -209,  -209,  -209,   151,   157,     9,
-     -44,  -209,     4,   -12,   -10,    82,    38,  -209,  -124,  -209,
-    -208,  -209,  -209
+    -210,  -210,  -210,   210,   -61,  -210,  -210,  -210,  -210,  -210,
+    -210,  -210,  -210,  -210,  -210,  -210,  -210,  -123,  -210,    36,
+    -200,  -164,   -96,     0,  -210,  -210,   115,  -210,  -210,   124,
+    -210,  -210,  -210,  -210,  -210,  -210,  -210,   157,   151,    14,
+     -54,  -210,     8,    11,   -53,    86,    38,  -210,  -124,  -210,
+    -209,  -210,  -210
   };
 
   const unsigned char
   Parser::yydefgoto_[] =
   {
        0,    27,    28,    29,    87,    30,    31,    32,    33,   127,
-     206,   221,   125,   181,   217,   218,   231,   176,   177,   178,
-     188,   117,   148,   158,    35,    79,    80,    36,    63,    64,
-      37,   212,    38,    39,    40,    41,    42,    43,    44,    45,
-      46,    47,    48,    49,    50,    51,    52,    53,   159,   160,
+     208,   223,   125,   183,   219,   220,   233,   178,   179,   180,
+     190,   117,   150,   160,    35,    79,    80,    36,    63,    64,
+      37,   214,    38,    39,    40,    41,    42,    43,    44,    45,
+      46,    47,    48,    49,    50,    51,    52,    53,   161,   162,
       54,    82,    83
   };
 
   const short
   Parser::yytable_[] =
   {
-      34,   179,   149,   214,   184,   118,   227,   -64,   -64,   200,
-     107,   219,    97,    98,   229,   107,   226,   108,   237,    26,
-     168,   136,   129,   137,   116,    78,    81,   130,    34,    62,
-     132,    99,   100,   133,   186,    93,    94,    95,    96,    91,
-      92,   253,   254,   119,    26,    68,   248,    55,   250,   143,
-     144,   145,   146,   101,   102,   109,   110,   111,   112,   113,
-     114,    75,    75,   238,   220,   120,   121,   230,   103,   104,
-     105,    72,     2,    78,     3,     4,     5,     6,     7,     8,
-       9,    10,    11,    12,    13,    14,   223,   224,   138,   152,
-     153,   208,   228,   154,   155,   156,   157,    56,    22,    57,
-     141,   142,    23,   150,   151,    74,    76,    58,    59,   239,
-      60,    61,    65,    66,   242,    67,    69,    24,   170,    70,
-      71,    73,    84,    26,    86,    88,    89,    75,    75,    75,
-      75,    75,    75,    75,    75,   191,    90,    75,    75,    75,
-      75,    75,    75,    75,    75,   106,   115,   116,   122,   123,
-     124,   126,   128,   135,   131,   147,   161,   134,   162,   163,
-     164,   174,   165,   166,   169,   175,   172,   195,   167,   196,
-     180,   182,   197,   198,   199,     1,     2,   185,     3,     4,
-       5,     6,     7,     8,     9,    10,    11,    12,    13,    14,
-      15,   173,    16,   183,   210,    17,    18,    19,    20,    21,
-     189,   192,    22,   187,   193,   194,    23,   -65,   201,   222,
-     203,   204,   202,   225,   205,   207,   209,   130,   241,   211,
-     243,    24,    85,   213,   234,    25,   235,    26,   216,   232,
-     233,   251,   236,   240,   244,   190,   245,   246,   215,   171,
-     139,     0,   252,   247,   256,   249,     0,   140,     0,     0,
-       0,    77,     2,   255,     3,     4,     5,     6,     7,     8,
-       9,    10,    11,    12,    13,    14,    15,     0,    16,     0,
-       0,    17,    18,     0,     0,     0,     0,     0,    22,     0,
-       0,     0,    23,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,    24,     0,     0,
-       0,    25,     0,    26,     1,     2,     0,     3,     4,     5,
-       6,     7,     8,     9,    10,    11,    12,    13,    14,    15,
-       0,    16,     0,     0,    17,    18,     0,     0,     0,     0,
-       0,    22,     0,     0,     0,    23,     0,     0,     0,     0,
+      34,   181,   151,   216,   186,   147,   118,   229,   -66,   -66,
+      97,    98,   107,   202,   107,   221,   231,   239,    55,   108,
+     170,   129,   136,   116,   137,    78,    81,   130,    34,    99,
+     100,   103,   104,   105,   188,    93,    94,    95,    96,   143,
+     144,   145,   146,   256,   119,    62,   250,    56,   252,    68,
+     156,   157,   158,   159,    57,   109,   110,   111,   112,   113,
+     114,    75,    75,   148,   149,   120,   121,   240,   222,   232,
+      58,    72,     2,    78,     3,     4,     5,     6,     7,     8,
+       9,    10,    11,    12,    13,    14,   132,   228,   138,   133,
+      26,    69,   255,   210,   230,    26,    91,    92,    22,   101,
+     102,    59,    23,   225,   226,   141,   142,   152,   153,    74,
+      76,   241,   154,   155,    60,    61,   244,    24,   172,    70,
+      65,    73,    66,    26,    67,    71,    84,    75,    75,    75,
+      75,    75,    75,    75,    75,   193,    86,    75,    75,    75,
+      75,    75,    75,    75,    75,    88,    89,    90,   106,   115,
+     116,   122,   123,   126,   124,   128,   163,   131,   171,   176,
+     134,   164,   165,   166,   135,   167,   168,   177,   174,   197,
+     169,   198,   175,   182,   199,   200,   201,     1,     2,   184,
+       3,     4,     5,     6,     7,     8,     9,    10,    11,    12,
+      13,    14,    15,   185,    16,   187,   212,    17,    18,    19,
+      20,    21,   189,   191,    22,   194,   195,   196,    23,   -67,
+     203,   224,   204,   205,   206,   227,   207,   209,   211,   130,
+     243,   213,   215,    24,   218,   234,   236,    25,   237,    26,
+     235,   253,   238,   245,   246,   242,   247,   248,    85,   254,
+     217,   140,   258,   173,     0,   249,   139,   251,   192,     0,
+       0,     0,     0,    77,     2,   257,     3,     4,     5,     6,
+       7,     8,     9,    10,    11,    12,    13,    14,    15,     0,
+      16,     0,     0,    17,    18,     0,     0,     0,     0,     0,
+      22,     0,     0,     0,    23,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,    24,
+       0,     0,     0,    25,     0,    26,     1,     2,     0,     3,
+       4,     5,     6,     7,     8,     9,    10,    11,    12,    13,
+      14,    15,     0,    16,     0,     0,    17,    18,     0,     0,
+       0,     0,     0,    22,     0,     0,     0,    23,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-      24,     0,     0,     0,    25,     0,    26
+       0,     0,    24,     0,     0,     0,    25,     0,    26
   };
 
   const short
   Parser::yycheck_[] =
   {
-       0,   124,    98,   201,   128,    19,   214,    40,    40,   175,
-      53,     3,    31,    32,     3,    53,    52,    60,    53,    55,
-     116,    83,    60,    85,    59,    25,    26,    59,    28,     3,
-      54,    50,    51,    57,   130,    43,    44,    45,    46,    41,
-      42,    52,   250,    57,    55,     3,   244,    53,   246,    93,
-      94,    95,    96,    33,    34,    55,    56,    57,    58,    59,
-      60,    23,    24,   229,    56,    65,    66,    56,    35,    36,
-      37,     3,     4,    73,     6,     7,     8,     9,    10,    11,
-      12,    13,    14,    15,    16,    17,    21,    22,    88,   101,
-     102,   187,   216,   103,   104,   105,   106,    53,    30,    53,
-      91,    92,    34,    99,   100,    23,    24,    53,    53,   232,
-      53,    53,    53,    53,   237,    53,     3,    49,   118,     3,
-       3,    53,     0,    55,    58,    40,    48,    89,    90,    91,
-      92,    93,    94,    95,    96,   135,    47,    99,   100,   101,
-     102,   103,   104,   105,   106,    38,    54,    59,     3,    53,
-      53,    28,    53,    58,    54,     3,     3,    56,    54,    54,
-      54,    19,    54,    54,    39,     3,    54,   167,    57,   169,
-      29,     3,   172,   173,   174,     3,     4,     3,     6,     7,
-       8,     9,    10,    11,    12,    13,    14,    15,    16,    17,
-      18,    54,    20,    55,   194,    23,    24,    25,    26,    27,
-       3,    35,    30,    59,    54,    57,    34,    40,    54,   209,
-      54,     3,    57,   213,    55,    54,    52,    59,    58,    54,
-      39,    49,    28,    54,   224,    53,   226,    55,    53,    53,
-      53,    58,    54,   233,    54,   133,    54,    54,   202,   119,
-      89,    -1,    58,   243,    58,   245,    -1,    90,    -1,    -1,
-      -1,     3,     4,   253,     6,     7,     8,     9,    10,    11,
-      12,    13,    14,    15,    16,    17,    18,    -1,    20,    -1,
-      -1,    23,    24,    -1,    -1,    -1,    -1,    -1,    30,    -1,
-      -1,    -1,    34,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    49,    -1,    -1,
-      -1,    53,    -1,    55,     3,     4,    -1,     6,     7,     8,
-       9,    10,    11,    12,    13,    14,    15,    16,    17,    18,
-      -1,    20,    -1,    -1,    23,    24,    -1,    -1,    -1,    -1,
-      -1,    30,    -1,    -1,    -1,    34,    -1,    -1,    -1,    -1,
+       0,   124,    98,   203,   128,     3,    19,   216,    40,    40,
+      31,    32,    53,   177,    53,     3,     3,    53,    53,    60,
+     116,    60,    83,    59,    85,    25,    26,    59,    28,    50,
+      51,    35,    36,    37,   130,    43,    44,    45,    46,    93,
+      94,    95,    96,   252,    57,     3,   246,    53,   248,     3,
+     103,   104,   105,   106,    53,    55,    56,    57,    58,    59,
+      60,    23,    24,    61,    62,    65,    66,   231,    56,    56,
+      53,     3,     4,    73,     6,     7,     8,     9,    10,    11,
+      12,    13,    14,    15,    16,    17,    54,    52,    88,    57,
+      55,     3,    52,   189,   218,    55,    41,    42,    30,    33,
+      34,    53,    34,    21,    22,    91,    92,    99,   100,    23,
+      24,   234,   101,   102,    53,    53,   239,    49,   118,     3,
+      53,    53,    53,    55,    53,     3,     0,    89,    90,    91,
+      92,    93,    94,    95,    96,   135,    58,    99,   100,   101,
+     102,   103,   104,   105,   106,    40,    48,    47,    38,    54,
+      59,     3,    53,    28,    53,    53,     3,    54,    39,    19,
+      56,    54,    54,    54,    58,    54,    54,     3,    54,   169,
+      57,   171,    54,    29,   174,   175,   176,     3,     4,     3,
+       6,     7,     8,     9,    10,    11,    12,    13,    14,    15,
+      16,    17,    18,    55,    20,     3,   196,    23,    24,    25,
+      26,    27,    59,     3,    30,    35,    54,    57,    34,    40,
+      54,   211,    57,    54,     3,   215,    55,    54,    52,    59,
+      58,    54,    54,    49,    53,    53,   226,    53,   228,    55,
+      53,    58,    54,    39,    54,   235,    54,    54,    28,    58,
+     204,    90,    58,   119,    -1,   245,    89,   247,   133,    -1,
+      -1,    -1,    -1,     3,     4,   255,     6,     7,     8,     9,
+      10,    11,    12,    13,    14,    15,    16,    17,    18,    -1,
+      20,    -1,    -1,    23,    24,    -1,    -1,    -1,    -1,    -1,
+      30,    -1,    -1,    -1,    34,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    49,
+      -1,    -1,    -1,    53,    -1,    55,     3,     4,    -1,     6,
+       7,     8,     9,    10,    11,    12,    13,    14,    15,    16,
+      17,    18,    -1,    20,    -1,    -1,    23,    24,    -1,    -1,
+      -1,    -1,    -1,    30,    -1,    -1,    -1,    34,    -1,    -1,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      49,    -1,    -1,    -1,    53,    -1,    55
+      -1,    -1,    49,    -1,    -1,    -1,    53,    -1,    55
   };
 
   const signed char
@@ -2789,48 +2805,48 @@ namespace hulk { namespace parser {
   {
        0,     3,     4,     6,     7,     8,     9,    10,    11,    12,
       13,    14,    15,    16,    17,    18,    20,    23,    24,    25,
-      26,    27,    30,    34,    49,    53,    55,    63,    64,    65,
-      67,    68,    69,    70,    85,    86,    89,    92,    94,    95,
-      96,    97,    98,    99,   100,   101,   102,   103,   104,   105,
-     106,   107,   108,   109,   112,    53,    53,    53,    53,    53,
-      53,    53,     3,    90,    91,    53,    53,    53,     3,     3,
-       3,     3,     3,    53,   107,   108,   107,     3,    85,    87,
-      88,    85,   113,   114,     0,    65,    58,    66,    40,    48,
+      26,    27,    30,    34,    49,    53,    55,    65,    66,    67,
+      69,    70,    71,    72,    87,    88,    91,    94,    96,    97,
+      98,    99,   100,   101,   102,   103,   104,   105,   106,   107,
+     108,   109,   110,   111,   114,    53,    53,    53,    53,    53,
+      53,    53,     3,    92,    93,    53,    53,    53,     3,     3,
+       3,     3,     3,    53,   109,   110,   109,     3,    87,    89,
+      90,    87,   115,   116,     0,    67,    58,    68,    40,    48,
       47,    41,    42,    43,    44,    45,    46,    31,    32,    50,
-      51,    33,    34,    35,    36,    37,    38,    53,    60,    85,
-      85,    85,    85,    85,    85,    54,    59,    83,    19,    57,
-      85,    85,     3,    53,    53,    74,    28,    71,    53,    60,
-      59,    54,    54,    57,    56,    58,    66,    66,    85,    99,
-     100,   101,   101,   102,   102,   102,   102,     3,    84,    84,
-     104,   104,   105,   105,   106,   106,   106,   106,    85,   110,
-     111,     3,    54,    54,    54,    54,    54,    57,    84,    39,
-      85,    91,    54,    54,    19,     3,    79,    80,    81,    79,
-      29,    75,     3,    55,   110,     3,    84,    59,    82,     3,
-      88,    85,    35,    54,    57,    85,    85,    85,    85,    85,
-      83,    54,    57,    54,     3,    55,    72,    54,    84,    52,
-      85,    54,    93,    54,    82,    81,    53,    76,    77,     3,
-      56,    73,    85,    21,    22,    85,    52,   112,   110,     3,
-      56,    78,    53,    53,    85,    85,    54,    53,    83,    79,
-      85,    58,    79,    39,    54,    54,    54,    85,    82,    85,
-      82,    58,    58,    52,   112,    85,    58
+      51,    33,    34,    35,    36,    37,    38,    53,    60,    87,
+      87,    87,    87,    87,    87,    54,    59,    85,    19,    57,
+      87,    87,     3,    53,    53,    76,    28,    73,    53,    60,
+      59,    54,    54,    57,    56,    58,    68,    68,    87,   101,
+     102,   103,   103,   104,   104,   104,   104,     3,    61,    62,
+      86,    86,   106,   106,   107,   107,   108,   108,   108,   108,
+      87,   112,   113,     3,    54,    54,    54,    54,    54,    57,
+      86,    39,    87,    93,    54,    54,    19,     3,    81,    82,
+      83,    81,    29,    77,     3,    55,   112,     3,    86,    59,
+      84,     3,    90,    87,    35,    54,    57,    87,    87,    87,
+      87,    87,    85,    54,    57,    54,     3,    55,    74,    54,
+      86,    52,    87,    54,    95,    54,    84,    83,    53,    78,
+      79,     3,    56,    75,    87,    21,    22,    87,    52,   114,
+     112,     3,    56,    80,    53,    53,    87,    87,    54,    53,
+      85,    81,    87,    58,    81,    39,    54,    54,    54,    87,
+      84,    87,    84,    58,    58,    52,   114,    87,    58
   };
 
   const signed char
   Parser::yyr1_[] =
   {
-       0,    62,    63,    64,    64,    65,    65,    66,    66,    67,
-      67,    67,    68,    68,    69,    70,    71,    71,    72,    72,
-      73,    74,    74,    75,    75,    76,    76,    77,    77,    78,
-      78,    78,    79,    79,    80,    80,    81,    82,    82,    83,
-      83,    84,    84,    85,    85,    85,    85,    85,    85,    86,
-      87,    87,    88,    89,    90,    90,    91,    92,    93,    93,
-      94,    95,    96,    96,    97,    97,    98,    98,    99,    99,
-     100,   100,   100,   101,   101,   101,   101,   101,   102,   102,
-     102,   103,   103,   103,   104,   104,   104,   105,   105,   105,
-     105,   106,   106,   107,   107,   107,   108,   108,   108,   109,
-     109,   109,   109,   109,   109,   109,   109,   109,   109,   109,
-     109,   109,   109,   109,   109,   109,   110,   110,   111,   111,
-     112,   113,   113,   114,   114
+       0,    64,    65,    66,    66,    67,    67,    68,    68,    69,
+      69,    69,    70,    70,    71,    72,    73,    73,    74,    74,
+      75,    76,    76,    77,    77,    78,    78,    79,    79,    80,
+      80,    80,    81,    81,    82,    82,    83,    84,    84,    85,
+      85,    86,    86,    86,    86,    87,    87,    87,    87,    87,
+      87,    88,    89,    89,    90,    91,    92,    92,    93,    94,
+      95,    95,    96,    97,    98,    98,    99,    99,   100,   100,
+     101,   101,   102,   102,   102,   103,   103,   103,   103,   103,
+     104,   104,   104,   105,   105,   105,   106,   106,   106,   107,
+     107,   107,   107,   108,   108,   109,   109,   109,   110,   110,
+     110,   111,   111,   111,   111,   111,   111,   111,   111,   111,
+     111,   111,   111,   111,   111,   111,   111,   111,   112,   112,
+     113,   113,   114,   115,   115,   116,   116
   };
 
   const signed char
@@ -2840,15 +2856,15 @@ namespace hulk { namespace parser {
        1,     1,     9,     7,     7,     6,     2,     0,     0,     2,
        6,     3,     0,     3,     0,     3,     0,     0,     2,     5,
        8,     6,     1,     0,     1,     3,     2,     2,     0,     2,
-       0,     1,     2,     1,     1,     1,     1,     1,     1,     6,
-       1,     3,     3,     4,     1,     3,     4,     8,     0,     6,
-       5,     7,     3,     1,     1,     3,     3,     1,     3,     1,
-       3,     3,     1,     3,     3,     3,     3,     1,     1,     3,
-       3,     3,     3,     1,     3,     3,     1,     3,     3,     3,
-       1,     3,     1,     2,     2,     1,     1,     4,     3,     1,
-       1,     1,     1,     1,     5,     3,     1,     4,     4,     4,
-       4,     3,     4,     6,     1,     1,     1,     0,     1,     3,
-       3,     0,     2,     1,     3
+       0,     1,     2,     1,     1,     1,     1,     1,     1,     1,
+       1,     6,     1,     3,     3,     4,     1,     3,     4,     8,
+       0,     6,     5,     7,     3,     1,     1,     3,     3,     1,
+       3,     1,     3,     3,     1,     3,     3,     3,     3,     1,
+       1,     3,     3,     3,     3,     1,     3,     3,     1,     3,
+       3,     3,     1,     3,     1,     2,     2,     1,     1,     4,
+       3,     1,     1,     1,     1,     1,     5,     3,     1,     4,
+       4,     4,     4,     3,     4,     6,     1,     1,     1,     0,
+       1,     3,     3,     0,     2,     1,     3
   };
 
 
@@ -2858,19 +2874,19 @@ namespace hulk { namespace parser {
   const short
   Parser::yyrline_[] =
   {
-       0,   165,   165,   184,   188,   205,   210,   219,   220,   224,
-     228,   232,   239,   248,   260,   282,   294,   299,   306,   309,
-     317,   324,   329,   335,   340,   346,   351,   358,   361,   369,
-     384,   399,   417,   422,   428,   434,   442,   453,   458,   464,
-     469,   475,   479,   486,   490,   494,   498,   502,   506,   513,
-     525,   531,   539,   546,   554,   560,   568,   580,   589,   592,
-     600,   608,   616,   625,   632,   636,   643,   650,   657,   664,
-     671,   678,   685,   692,   699,   706,   713,   720,   727,   731,
-     736,   744,   751,   758,   765,   772,   779,   786,   793,   800,
-     807,   814,   821,   828,   835,   840,   847,   851,   865,   873,
-     878,   883,   888,   893,   898,   903,   907,   911,   916,   923,
-     930,   937,   943,   950,   958,   963,   971,   976,   982,   988,
-     996,  1005,  1008,  1015,  1021
+       0,   166,   166,   185,   189,   206,   211,   220,   221,   225,
+     229,   233,   240,   249,   261,   283,   295,   300,   307,   310,
+     318,   325,   330,   336,   341,   347,   352,   359,   362,   370,
+     385,   400,   418,   423,   429,   435,   443,   454,   459,   465,
+     470,   476,   480,   484,   488,   495,   499,   503,   507,   511,
+     515,   522,   534,   540,   548,   555,   563,   569,   577,   589,
+     598,   601,   609,   617,   625,   634,   641,   645,   652,   659,
+     666,   673,   680,   687,   694,   701,   708,   715,   722,   729,
+     736,   740,   745,   753,   760,   767,   774,   781,   788,   795,
+     802,   809,   816,   823,   830,   837,   844,   849,   856,   860,
+     874,   882,   887,   892,   897,   902,   907,   912,   916,   920,
+     925,   932,   939,   946,   952,   959,   967,   972,   980,   985,
+     991,   997,  1005,  1014,  1017,  1024,  1030
   };
 
   void
@@ -2903,9 +2919,9 @@ namespace hulk { namespace parser {
 
 #line 4 "src/parser/grammar.y"
 } } // hulk::parser
-#line 2907 "src/parser/parser.cpp"
+#line 2923 "src/parser/parser.cpp"
 
-#line 1028 "src/parser/grammar.y"
+#line 1037 "src/parser/grammar.y"
 
 
 void hulk::parser::Parser::error(const location_type& loc,
