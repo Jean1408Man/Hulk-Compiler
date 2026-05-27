@@ -78,7 +78,7 @@ El evaluador del corte 4 ya existe. Ahora se le agrega **entorno léxico** y **f
 - **Recursión** — si la función se registra antes de evaluarse, la recursión funciona naturalmente.
 - **Errores de nombres** — variable no declarada, función no definida, aridad incorrecta → reportar con `DiagnosticEngine`.
 
-**Clases AST que se usan:** `VariableReference`, `VariableBinding`, `LetIn`, `DestructiveAssign`, `FunctionDecl`, `FunctionCall`, `Lambda`, `Program`.
+**Clases AST que se usan:** `VariableReference`, `VariableBinding`, `LetIn`, `DestructiveAssign`, `FunctionDecl`, `FunctionCall`, `Program`.
 
 **Criterio de cierre:**
 ```

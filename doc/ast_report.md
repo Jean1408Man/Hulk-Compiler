@@ -782,50 +782,6 @@ std::string FunctionCall::ToString() const {
 }
 ```
 
-### `Lambda`
-
-Archivos:
-
-- [src/ast/functions/lambda.h](/home/jean/School/Compilacion/Hulk/src/ast/functions/lambda.h:1)
-- [src/ast/functions/lambda.cpp](/home/jean/School/Compilacion/Hulk/src/ast/functions/lambda.cpp:1)
-
-```cpp
-class Lambda : public ASTnode {
-private:
-    std::vector<Param> params;
-    std::string returnTypeAnnotation;
-    std::unique_ptr<ASTnode> body;
-
-public:
-    Lambda(std::vector<Param> params, std::unique_ptr<ASTnode> body);
-    Lambda(std::vector<Param> params, const std::string& returnTypeAnnotation,
-           std::unique_ptr<ASTnode> body);
-
-    const std::vector<Param>& GetParams() const;
-    const std::string& GetReturnTypeAnnotation() const;
-    bool HasReturnTypeAnnotation() const;
-    ASTnode* GetBody() const;
-    std::string ToString() const override;
-};
-```
-
-```cpp
-std::string Lambda::ToString() const {
-    std::string result = "(";
-    for (size_t i = 0; i < params.size(); ++i) {
-        if (i > 0) result += ", ";
-        result += params[i].name;
-        if (params[i].HasTypeAnnotation())
-            result += " : " + params[i].typeAnnotation;
-    }
-    result += ")";
-    if (!returnTypeAnnotation.empty())
-        result += " : " + returnTypeAnnotation;
-    result += " => " + body->ToString();
-    return result;
-}
-```
-
 ## Funciones del dominio / builtins
 
 ### `Print`
@@ -1559,7 +1515,6 @@ std::string VectorGenerator::ToString() const {
 - `For`
 - `FunctionDecl`
 - `FunctionCall`
-- `Lambda`
 - `Print`
 - `BuiltinCall`
 - `IsExpr`

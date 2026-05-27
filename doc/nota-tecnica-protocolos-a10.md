@@ -59,5 +59,5 @@ base:
 - vectores;
 - comprehensions;
 - functors;
-- lambdas;
+- lambdas, que no se parsean ni tienen AST en el subconjunto soportado;
 - macros.

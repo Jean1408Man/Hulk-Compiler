@@ -312,79 +312,6 @@ run_restricted_invalid_one() {
     PASSED=$((PASSED + 1))
 }
 
-run_unsupported_feature_one() {
-    local hulk_file="$1"
-    local feature="$2"
-    local name
-    name="$(basename "$hulk_file" .hulk)"
-    local ir_file="$TMP_DIR/$name.unsupported.hir"
-    local banner_file="$TMP_DIR/$name.unsupported.banner"
-    local compiled_banner_file="$TMP_DIR/$name.unsupported.compiled.banner"
-    local actual_file="$TMP_DIR/$name.unsupported"
-
-    TOTAL=$((TOTAL + 1))
-
-    if "$BACKEND_BIN" "$hulk_file" > "$actual_file.default.out" 2>&1; then
-        echo -e "  ${RED}FAIL${RESET} $name"
-        echo "       backend accepted unsupported feature '$feature'"
-        FAILED=$((FAILED + 1))
-        return
-    fi
-
-    if ! grep -q "Feature no soportado en el flujo end-to-end: $feature" "$actual_file.default.out"; then
-        echo -e "  ${RED}FAIL${RESET} $name"
-        echo "       unsupported feature diagnostic was not reported for '$feature'"
-        sed 's/^/         /' "$actual_file.default.out"
-        FAILED=$((FAILED + 1))
-        return
-    fi
-
-    if "$BACKEND_BIN" "$hulk_file" --emit-ir -o "$ir_file" > "$actual_file.emit-ir.out" 2>&1; then
-        echo -e "  ${RED}FAIL${RESET} $name"
-        echo "       backend emitted IR for unsupported feature '$feature'"
-        FAILED=$((FAILED + 1))
-        return
-    fi
-
-    if [[ -e "$ir_file" ]]; then
-        echo -e "  ${RED}FAIL${RESET} $name"
-        echo "       IR file was created despite unsupported feature '$feature'"
-        FAILED=$((FAILED + 1))
-        return
-    fi
-
-    if "$BACKEND_BIN" "$hulk_file" --emit-banner -o "$banner_file" > "$actual_file.emit-banner.out" 2>&1; then
-        echo -e "  ${RED}FAIL${RESET} $name"
-        echo "       backend emitted BannerIR for unsupported feature '$feature'"
-        FAILED=$((FAILED + 1))
-        return
-    fi
-
-    if [[ -e "$banner_file" ]]; then
-        echo -e "  ${RED}FAIL${RESET} $name"
-        echo "       BannerIR file was created despite unsupported feature '$feature'"
-        FAILED=$((FAILED + 1))
-        return
-    fi
-
-    if "$BACKEND_BIN" "$hulk_file" --emit-banner-compiled -o "$compiled_banner_file" > "$actual_file.emit-banner-compiled.out" 2>&1; then
-        echo -e "  ${RED}FAIL${RESET} $name"
-        echo "       backend emitted compiled BannerIR for unsupported feature '$feature'"
-        FAILED=$((FAILED + 1))
-        return
-    fi
-
-    if [[ -e "$compiled_banner_file" ]]; then
-        echo -e "  ${RED}FAIL${RESET} $name"
-        echo "       compiled BannerIR file was created despite unsupported feature '$feature'"
-        FAILED=$((FAILED + 1))
-        return
-    fi
-
-    echo -e "  ${GREEN}OK${RESET}  $name"
-    PASSED=$((PASSED + 1))
-}
-
 run_invalid_frontend_one() {
     local hulk_file="$1"
     local expected_diagnostic="$2"
@@ -680,13 +607,11 @@ for f in "$ROOT"/tests/extension/restricted_invalid_*.hulk; do
     run_restricted_invalid_one "$f"
 done
 
-suite_header "BACKEND FEATURES NO SOPORTADOS"
-run_unsupported_feature_one "$ROOT/tests/backend/unsupported/unsupported_lambda.hulk" "lambda"
-
 suite_header "BACKEND FRONTEND INVALIDOS"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/out_of_range_number.hulk" "Literal numerico fuera de rango"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/invalid_string_escape.hulk" "Escape de string no soportado"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/multiple_global_exprs.hulk" "Solo se permite una expresion global final"
+run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/lambda_expr.hulk" "syntax error"
 
 suite_header "BACKEND SEMANTICOS INVALIDOS"
 for f in "$ROOT"/tests/backend/invalid/*.hulk; do

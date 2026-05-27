@@ -26,7 +26,6 @@ namespace Hulk {
     class DestructiveAssign;
     class DestructiveAssignMember;
     class FunctionCall;
-    class Lambda;
     class IfStmt;
     class WhileStmt;
     class For;
@@ -274,7 +273,6 @@ namespace Hulk {
 
         // Funciones — anotan en resolution_map_
         void visit(FunctionCall& n)       override;
-        void visit(Lambda& n)             override;
 
         // OOP — anotan en resolution_map_
         void visit(NewExpr& n)            override;

@@ -239,5 +239,5 @@ Los criterios de aceptacion son:
 - `for` funciona sobre `range`;
 - `for` funciona sobre iterables creados por el usuario;
 - protocolos no generan estructuras runtime;
-- `lambda` permanece como feature no soportada;
+- `lambda` queda fuera del subconjunto soportado y se rechaza en frontend;
 - no se implementan vectores, comprehensions, `Enumerable` ni `T*`.

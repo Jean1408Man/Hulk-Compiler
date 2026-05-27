@@ -30,7 +30,7 @@ HULK fuente
 | 7. Errores runtime sin contexto | Resuelta | Los errores runtime incluyen funcion, pc, source span, instruccion y stack trace. |
 | 8. Tests sin invariantes internas de VM | Resuelta | Se ampliaron `vm-tests` con checks de `Word`, heap y BannerVM construido en C++. |
 | 9. Falta `restricted-inference` | Resuelta | Se agrego modo opt-in que bloquea inferencia implicita y permite solo tipos concretos, `_` o `auto`. |
-| 10. Features parciales en frontend/backend | Resuelta y ampliada | `lambda` sigue bloqueada; `protocol`, `Iterable`, `Range`, `range()` y `for` quedaron soportados end-to-end con tests. |
+| 10. Features parciales en frontend/backend | Resuelta y ampliada | `lambda` fue retirada del parser/AST/visitors/backend y se rechaza en frontend; `protocol`, `Iterable`, `Range`, `range()` y `for` quedaron soportados end-to-end con tests. |
 | 11. Literales numericos invalidos convertidos a `0` | Resuelta | Los numeros no representables reportan error sintactico y no se transforman en `Number(0)`. |
 | 12. Escapes de strings aceptados pero no interpretados | Resuelta | Los literales decodifican `\n`, `\r`, `\t`, `\"` y `\\`; escapes desconocidos bloquean el frontend. |
 | 13. `grammar.y` y parser generado desincronizados | Resuelta | `auto` y `_` quedan como pseudo-tipos via `IDENTIFIER`, el parser fue regenerado y se agrego `make parser-sync-check`. |
@@ -453,7 +453,6 @@ cuando encuentra anotaciones omitidas en:
 - parametros y retornos de metodos;
 - parametros de constructores;
 - atributos de tipos;
-- lambdas, por consistencia con el visitor existente.
 
 La regla se basa en el dato que ya conserva el AST: anotacion omitida es cadena
 vacia. Por eso `_` y `auto` quedan permitidos como solicitudes explicitas de
@@ -513,7 +512,7 @@ explicitas siguen funcionando con la bandera. Los invalidos demuestran que:
 
 ### Problema
 
-El frontend conservaba piezas para features que no forman parte del flujo
+El frontend conservaba piezas para features que no formaban parte del flujo
 soportado por el backend final en ese momento:
 
 - `lambda`;
@@ -528,19 +527,18 @@ pipeline end-to-end no podia bajar a HulkIR/BannerIR.
 
 ### Solucion aplicada
 
-Primero se formalizo una politica conservadora: mantener nodos y parser donde
-ya aportaban estructura, pero bloquear los features no cerrados en
-`SemanticAnalyzer` antes de resolver, inferir, type-checkear o generar IR.
+Primero se formalizo una politica conservadora para bloquear features no
+cerrados antes de generar IR. En el caso de `lambda`, la politica final fue mas
+estricta: se elimino la implementacion de todas las etapas del compilador. Ya
+no existe nodo AST `Lambda`, no hay reglas `lambda_expr` en `grammar.y`, no hay
+visitors de resolucion/inferencia/typecheck/evaluador/IRGen, y el caso queda
+cubierto como error de frontend.
 
-El nuevo pase de politica semantica reporta:
+El token `=>` se mantiene porque sigue siendo parte de declaraciones de
+funciones y metodos, pero ya no introduce expresiones lambda.
 
-```text
-Feature no soportado en el flujo end-to-end: <feature>.
-```
-
-Esa politica sigue vigente para `lambda`. Posteriormente, `protocol`,
-`Iterable`, `Range`, `range` y `for` dejaron de ser features parciales y fueron
-promovidos al flujo soportado.
+Posteriormente, `protocol`, `Iterable`, `Range`, `range` y `for` dejaron de ser
+features parciales y fueron promovidos al flujo soportado.
 
 ### Ampliacion aplicada: protocolos, `Iterable`, `Range`, `range` y `for`
 
@@ -581,8 +579,6 @@ Para que el soporte sea consistente:
 
 - se agrego token `extends`;
 - se completo el parser de declaraciones `protocol`;
-- se mantuvo el parser minimo para lambdas de la forma `(x: T): R => expr`,
-  pero `lambda` sigue bloqueada por politica end-to-end;
 - se enlazo `ProtocolDecl` en el build compartido;
 - se agregaron diagnosticos semanticos para firmas de protocolos invalidas,
   ciclos, redeclaraciones reservadas y usos runtime de protocolos.
@@ -622,13 +618,14 @@ Para que el soporte sea consistente:
 
 ### Validacion
 
-La seccion:
+El caso de lambda se movio a `BACKEND FRONTEND INVALIDOS`:
 
-```text
-BACKEND FEATURES NO SOPORTADOS
+```bash
+./hulk_backend tests/backend/frontend_invalid/lambda_expr.hulk
 ```
 
-queda reducida a `lambda`.
+Ese test verifica que una expresion de la forma `(x: Number): Number => x + 1`
+ya no entra al AST ni alcanza semantica/backend.
 
 Se agregaron regresiones backend validas para:
 
@@ -1102,7 +1099,7 @@ git diff --check
 ./hulk_semantic tests/extension/restricted_invalid_implicit_let.hulk --restricted-inference
 ./hulk_semantic tests/extension/restricted_valid_let.hulk --restricted-inference
 ./hulk_backend tests/extension/restricted_invalid_implicit_let.hulk
-./hulk_backend tests/backend/unsupported/unsupported_lambda.hulk
+./hulk_backend tests/backend/frontend_invalid/lambda_expr.hulk
 ./hulk_backend tests/backend/regression/for_range.hulk
 ./hulk_backend tests/backend/regression/for_custom_iterable.hulk
 ./hulk_backend tests/backend/regression/protocol_a10_core.hulk
@@ -1170,11 +1167,13 @@ observables del lenguaje. La firma oficial de `print` tambien queda alineada
 con su comportamiento real: imprimir no convierte el resultado a `String`, sino
 que conserva el valor retornado por la expresion impresa.
 
-Actualizacion posterior: `protocol`, `Iterable`, `Range`, `range` y `for`
+Actualizacion posterior: `lambda` fue eliminada como implementacion interna:
+la sintaxis lambda se rechaza en frontend y no existen nodo AST ni visitors
+asociados. `protocol`, `Iterable`, `Range`, `range` y `for`
 tambien quedaron incorporados al flujo end-to-end. Los protocolos son
 estructurales y no generan runtime propio; la conformidad A.10 acepta firmas
 inferidas cuando son determinables; `Range` conforma a `Iterable` por firma;
 `range` construye objetos `Range`; y `for` baja a llamadas virtuales
 `next/current`; y `T*` se modela como protocolo sintetico para conservar el tipo
-del elemento. `lambda`, `Enumerable`, vectores, comprehensions, functors y
-macros permanecen fuera de este corte.
+del elemento. `Enumerable`, vectores, comprehensions, functors y macros
+permanecen fuera de este corte.

@@ -34,7 +34,6 @@ namespace Hulk {
 
     // Funciones
     class FunctionCall;
-    class Lambda;
 
     // Builtins
     class Print;
@@ -102,7 +101,6 @@ namespace Hulk {
 
         // Funciones
         virtual void visit(FunctionCall&) = 0;
-        virtual void visit(Lambda&) = 0;
 
         // Builtins
         virtual void visit(Print&) = 0;

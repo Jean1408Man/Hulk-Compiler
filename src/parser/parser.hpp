@@ -64,7 +64,6 @@
     #include "../ast/domainFunctions/print.h"
     #include "../ast/functions/functionCall.h"
     #include "../ast/functions/functionDecl.h"
-    #include "../ast/functions/lambda.h"
     #include "../ast/functions/param.h"
     #include "../ast/literales/boolean.h"
     #include "../ast/literales/number.h"
@@ -122,7 +121,7 @@
         };
     }
 
-#line 126 "src/parser/parser.hpp"
+#line 125 "src/parser/parser.hpp"
 
 
 # include <cstdlib> // std::abort
@@ -258,7 +257,7 @@
 
 #line 4 "src/parser/grammar.y"
 namespace hulk { namespace parser {
-#line 262 "src/parser/parser.hpp"
+#line 261 "src/parser/parser.hpp"
 
 
 
@@ -477,7 +476,6 @@ namespace hulk { namespace parser {
       char dummy5[sizeof (ExprList)];
 
       // expr
-      // lambda_expr
       // let_expr
       // if_expr
       // while_expr
@@ -499,7 +497,6 @@ namespace hulk { namespace parser {
       char dummy6[sizeof (ExprPtr)];
 
       // param
-      // lambda_param
       char dummy7[sizeof (Hulk::Param)];
 
       // protocol_member
@@ -511,7 +508,6 @@ namespace hulk { namespace parser {
       // ctor_params_opt
       // params_opt
       // param_list
-      // lambda_param_list
       char dummy10[sizeof (ParamList)];
 
       // program
@@ -756,35 +752,32 @@ namespace hulk { namespace parser {
         S_type_ann_opt = 83,                     // type_ann_opt
         S_type_expr = 84,                        // type_expr
         S_expr = 85,                             // expr
-        S_lambda_expr = 86,                      // lambda_expr
-        S_lambda_param_list = 87,                // lambda_param_list
-        S_lambda_param = 88,                     // lambda_param
-        S_let_expr = 89,                         // let_expr
-        S_binding_list = 90,                     // binding_list
-        S_binding = 91,                          // binding
-        S_if_expr = 92,                          // if_expr
-        S_elif_clauses = 93,                     // elif_clauses
-        S_while_expr = 94,                       // while_expr
-        S_for_expr = 95,                         // for_expr
-        S_assign_expr = 96,                      // assign_expr
-        S_lvalue = 97,                           // lvalue
-        S_logic_or = 98,                         // logic_or
-        S_logic_and = 99,                        // logic_and
-        S_equality = 100,                        // equality
-        S_relation = 101,                        // relation
-        S_type_test_expr = 102,                  // type_test_expr
-        S_concat = 103,                          // concat
-        S_additive = 104,                        // additive
-        S_multiplicative = 105,                  // multiplicative
-        S_power = 106,                           // power
-        S_unary = 107,                           // unary
-        S_postfix = 108,                         // postfix
-        S_primary = 109,                         // primary
-        S_args_opt = 110,                        // args_opt
-        S_arg_list = 111,                        // arg_list
-        S_block = 112,                           // block
-        S_block_body_opt = 113,                  // block_body_opt
-        S_expr_list = 114                        // expr_list
+        S_let_expr = 86,                         // let_expr
+        S_binding_list = 87,                     // binding_list
+        S_binding = 88,                          // binding
+        S_if_expr = 89,                          // if_expr
+        S_elif_clauses = 90,                     // elif_clauses
+        S_while_expr = 91,                       // while_expr
+        S_for_expr = 92,                         // for_expr
+        S_assign_expr = 93,                      // assign_expr
+        S_lvalue = 94,                           // lvalue
+        S_logic_or = 95,                         // logic_or
+        S_logic_and = 96,                        // logic_and
+        S_equality = 97,                         // equality
+        S_relation = 98,                         // relation
+        S_type_test_expr = 99,                   // type_test_expr
+        S_concat = 100,                          // concat
+        S_additive = 101,                        // additive
+        S_multiplicative = 102,                  // multiplicative
+        S_power = 103,                           // power
+        S_unary = 104,                           // unary
+        S_postfix = 105,                         // postfix
+        S_primary = 106,                         // primary
+        S_args_opt = 107,                        // args_opt
+        S_arg_list = 108,                        // arg_list
+        S_block = 109,                           // block
+        S_block_body_opt = 110,                  // block_body_opt
+        S_expr_list = 111                        // expr_list
       };
     };
 
@@ -849,7 +842,6 @@ namespace hulk { namespace parser {
         break;
 
       case symbol_kind::S_expr: // expr
-      case symbol_kind::S_lambda_expr: // lambda_expr
       case symbol_kind::S_let_expr: // let_expr
       case symbol_kind::S_if_expr: // if_expr
       case symbol_kind::S_while_expr: // while_expr
@@ -872,7 +864,6 @@ namespace hulk { namespace parser {
         break;
 
       case symbol_kind::S_param: // param
-      case symbol_kind::S_lambda_param: // lambda_param
         value.move< Hulk::Param > (std::move (that.value));
         break;
 
@@ -887,7 +878,6 @@ namespace hulk { namespace parser {
       case symbol_kind::S_ctor_params_opt: // ctor_params_opt
       case symbol_kind::S_params_opt: // params_opt
       case symbol_kind::S_param_list: // param_list
-      case symbol_kind::S_lambda_param_list: // lambda_param_list
         value.move< ParamList > (std::move (that.value));
         break;
 
@@ -1257,7 +1247,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_expr: // expr
-      case symbol_kind::S_lambda_expr: // lambda_expr
       case symbol_kind::S_let_expr: // let_expr
       case symbol_kind::S_if_expr: // if_expr
       case symbol_kind::S_while_expr: // while_expr
@@ -1280,7 +1269,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_param: // param
-      case symbol_kind::S_lambda_param: // lambda_param
         value.template destroy< Hulk::Param > ();
         break;
 
@@ -1295,7 +1283,6 @@ switch (yykind)
       case symbol_kind::S_ctor_params_opt: // ctor_params_opt
       case symbol_kind::S_params_opt: // params_opt
       case symbol_kind::S_param_list: // param_list
-      case symbol_kind::S_lambda_param_list: // lambda_param_list
         value.template destroy< ParamList > ();
         break;
 
@@ -2458,7 +2445,7 @@ switch (yykind)
 
 
     /// Stored state numbers (used for stacks).
-    typedef short state_type;
+    typedef unsigned char state_type;
 
     /// The arguments of the error message.
     int yy_syntax_error_arguments_ (const context& yyctx,
@@ -2753,9 +2740,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 356,     ///< Last index in yytable_.
-      yynnts_ = 53,  ///< Number of nonterminal symbols.
-      yyfinal_ = 84 ///< Termination state number.
+      yylast_ = 318,     ///< Last index in yytable_.
+      yynnts_ = 50,  ///< Number of nonterminal symbols.
+      yyfinal_ = 79 ///< Termination state number.
     };
 
 
@@ -2855,7 +2842,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_expr: // expr
-      case symbol_kind::S_lambda_expr: // lambda_expr
       case symbol_kind::S_let_expr: // let_expr
       case symbol_kind::S_if_expr: // if_expr
       case symbol_kind::S_while_expr: // while_expr
@@ -2878,7 +2864,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_param: // param
-      case symbol_kind::S_lambda_param: // lambda_param
         value.copy< Hulk::Param > (YY_MOVE (that.value));
         break;
 
@@ -2893,7 +2878,6 @@ switch (yykind)
       case symbol_kind::S_ctor_params_opt: // ctor_params_opt
       case symbol_kind::S_params_opt: // params_opt
       case symbol_kind::S_param_list: // param_list
-      case symbol_kind::S_lambda_param_list: // lambda_param_list
         value.copy< ParamList > (YY_MOVE (that.value));
         break;
 
@@ -2995,7 +2979,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_expr: // expr
-      case symbol_kind::S_lambda_expr: // lambda_expr
       case symbol_kind::S_let_expr: // let_expr
       case symbol_kind::S_if_expr: // if_expr
       case symbol_kind::S_while_expr: // while_expr
@@ -3018,7 +3001,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_param: // param
-      case symbol_kind::S_lambda_param: // lambda_param
         value.move< Hulk::Param > (YY_MOVE (s.value));
         break;
 
@@ -3033,7 +3015,6 @@ switch (yykind)
       case symbol_kind::S_ctor_params_opt: // ctor_params_opt
       case symbol_kind::S_params_opt: // params_opt
       case symbol_kind::S_param_list: // param_list
-      case symbol_kind::S_lambda_param_list: // lambda_param_list
         value.move< ParamList > (YY_MOVE (s.value));
         break;
 
@@ -3143,17 +3124,17 @@ switch (yykind)
 
 #line 4 "src/parser/grammar.y"
 } } // hulk::parser
-#line 3147 "src/parser/parser.hpp"
+#line 3128 "src/parser/parser.hpp"
 
 
 // "%code provides" blocks.
-#line 90 "src/parser/grammar.y"
+#line 89 "src/parser/grammar.y"
 
     namespace hulk::parser {
         Parser::symbol_type yylex(ParserDriver& driver);
     }
 
-#line 3157 "src/parser/parser.hpp"
+#line 3138 "src/parser/parser.hpp"
 
 
 #endif // !YY_YY_SRC_PARSER_PARSER_HPP_INCLUDED

@@ -20,7 +20,6 @@
 #include "../ast/loops/for.h"
 #include "../ast/functions/functionCall.h"
 #include "../ast/functions/functionDecl.h"
-#include "../ast/functions/lambda.h"
 #include "../ast/domainFunctions/print.h"
 #include "../ast/domainFunctions/builtinCall.h"
 #include "../ast/others/exprBlock.h"
@@ -573,12 +572,6 @@ void Evaluator::visit(FunctionCall& n) {
     env_ = func_env;
     result_ = eval(decl->GetBody());
     env_ = prev_env;
-}
-
-void Evaluator::visit(Lambda& n) {
-    // Lambdas de primera clase no soportadas en esta versión.
-    // El parser desazucara la mayoría de lambdas inline antes de llegar aquí.
-    report_error(n.span, "SEM_UNSUPPORTED", "lambda");
 }
 
 // ============================================================================
