@@ -41,6 +41,8 @@ enum class TokenKind {
     New,
     Is,
     As,
+    Self,
+    Base,
 
     // operadores
     Plus,              // +

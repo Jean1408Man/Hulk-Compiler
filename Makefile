@@ -56,6 +56,7 @@ SEMANTIC_SRCS := \
 	src/objects/hulk_value.cpp \
 	src/semantic/semantic_tables.cpp \
 	src/semantic/analyzer.cpp \
+	src/semantic/type_utils.cpp \
 	src/binding/symbol_resolver.cpp \
 	src/inference/hulk_type.cpp \
 	src/inference/type_inferencer.cpp \
@@ -118,16 +119,6 @@ parser-gen:
 
 parser-sync-check:
 	@set -e; \
-	if grep -n -E 'AUTO|UNDERSCORE_TYPE' \
-		src/parser/grammar.y \
-		src/parser/parser.cpp \
-		src/parser/parser.hpp \
-		src/lexer/token_kind.hpp \
-		src/lexer/keywords.hpp \
-		src/parser/parser_lexer_adapter.cpp; then \
-		echo "parser-sync-check: tokens AUTO/UNDERSCORE_TYPE no deben reaparecer; use IDENTIFIER como pseudo-tipo."; \
-		exit 1; \
-	fi; \
 	tmp_dir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp_dir"' EXIT; \
 	mkdir -p "$$tmp_dir/src/parser"; \

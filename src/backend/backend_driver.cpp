@@ -60,7 +60,7 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
             return result;
         }
 
-        IRGen irgen(sem.tables(), sem.resolution_map(), sem.type_map(), options.input_path);
+        IRGen irgen(sem.tables(), sem.resolution_map(), options.input_path);
         const IR::IRProgram ir = irgen.generate(*program);
 
         if (options.emit_ir) {

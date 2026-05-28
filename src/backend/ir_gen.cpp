@@ -178,15 +178,12 @@ namespace Hulk::Backend {
 
 IRGen::IRGen(const SemanticTables& tables,
              const std::unordered_map<Expr*, ResolutionResult>& resolution_map,
-             const std::unordered_map<Expr*, HulkType>& type_map,
              std::string source_path)
     : tables_(tables),
       resolution_map_(resolution_map),
-      type_map_(type_map),
       source_path_(std::move(source_path)) {}
 
 IR::IRProgram IRGen::generate(Program& program) {
-    (void)type_map_;
     program_ = IR::IRProgram{};
     temp_counter_ = 0;
     label_counter_ = 0;
@@ -752,7 +749,6 @@ std::string IRGen::emit_range_call(const std::vector<std::unique_ptr<Expr>>& arg
 std::string IRGen::lookup_symbol(Expr& node, const std::string& fallback_name) {
     auto it = resolution_map_.find(&node);
     if (it == resolution_map_.end()) {
-        if (fallback_name == "self" && !current_self_name_.empty()) return current_self_name_;
         throw CodegenError("Backend IR: referencia sin resolver '" + fallback_name + "'.");
     }
 
@@ -1057,8 +1053,7 @@ void IRGen::visit(For& node) {
 
 void IRGen::visit(FunctionCall& node) {
     auto res_it = resolution_map_.find(&node);
-    if (node.GetName() == "base" ||
-        (res_it != resolution_map_.end() && res_it->second.kind == ResolutionKind::Method)) {
+    if (res_it != resolution_map_.end() && res_it->second.kind == ResolutionKind::Method) {
         expr_result_ = emit_base_call(node.GetArgs());
         return;
     }

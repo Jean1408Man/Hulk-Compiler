@@ -721,15 +721,13 @@ void SymbolResolver::visit(DestructiveAssign& n) {
 
 void SymbolResolver::visit(DestructiveAssignMember& n) {
     resolve(n.GetObject());
-    
-    auto* var_ref = dynamic_cast<VariableReference*>(n.GetObject());
+
     auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
-    
-    if (!((var_ref && var_ref->GetName() == "self") || self_ref)) {
+    if (!self_ref) {
         report_raw(n.span, "Los atributos son privados. Solo se pueden modificar mediante 'self'.");
         resolution_map_[&n] = ResolutionResult{};
     }
-    
+
     resolve(n.GetValue());
 }
 
@@ -772,28 +770,6 @@ void SymbolResolver::visit(For& n) {
 
 void SymbolResolver::visit(FunctionCall& n) {
     for (auto& arg : n.GetArgs()) resolve(arg.get());
-
-    if (n.GetName() == "base") {
-        if (context_ != ResolverContext::Method) {
-            report_raw(n.span, "'base()' solo puede usarse dentro de métodos de tipo.");
-            resolution_map_[&n] = ResolutionResult{};
-            return;
-        }
-        const SemanticTypeInfo* type_info = tables_.lookup_type(current_type_name_);
-        if (!type_info || type_info->parent_name.empty()) {
-            report_raw(n.span, "'base()' solo puede usarse en tipos con herencia.");
-            resolution_map_[&n] = ResolutionResult{};
-            return;
-        }
-        const SemanticMethodInfo* parent_method = tables_.find_method(type_info->parent_name, current_func_name_);
-        if (!parent_method) {
-            report_raw(n.span, "El método '" + current_func_name_ + "' no existe en el padre '" + type_info->parent_name + "'.");
-            resolution_map_[&n] = ResolutionResult{};
-            return;
-        }
-        resolution_map_[&n] = ResolutionResult::from_method(parent_method);
-        return;
-    }
 
     const SemanticFuncInfo* info = tables_.lookup_func(n.GetName());
     if (!info) {
@@ -868,10 +844,9 @@ void SymbolResolver::visit(NewExpr& n) {
 // Caso 6: resolver MemberAccess sobre self
 void SymbolResolver::visit(MemberAccess& n) {
     resolve(n.GetObject());
-    auto* var_ref = dynamic_cast<VariableReference*>(n.GetObject());
     auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
-    
-    if ((var_ref && var_ref->GetName() == "self") || self_ref) {
+
+    if (self_ref) {
         if (current_type_name_.empty()) {
             report_raw(n.span, "'self' no es válido en este contexto.");
             resolution_map_[&n] = ResolutionResult{};
@@ -896,8 +871,8 @@ void SymbolResolver::visit(MethodCall& n) {
     resolve(n.GetObject());
     for (auto& arg : n.GetArgs()) resolve(arg.get());
 
-    auto* var_ref = dynamic_cast<VariableReference*>(n.GetObject());
-    if (var_ref && var_ref->GetName() == "self" && !current_type_name_.empty()) {
+    auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
+    if (self_ref && !current_type_name_.empty()) {
         const SemanticMethodInfo* method =
             tables_.find_method(current_type_name_, n.GetMethodName());
         if (!method) {
