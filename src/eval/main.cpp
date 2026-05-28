@@ -1,4 +1,5 @@
 #include "evaluator.h"
+#include "../semantic/analyzer.h"
 #include "../parser/parser.hpp"
 #include "../parser/parser_driver.hpp"
 #include "../common/diagnosticEngine.hpp"
@@ -48,6 +49,15 @@ int main(int argc, char* argv[]) {
 
         auto* program = dynamic_cast<Hulk::Program*>(root);
         if (!program) { std::cerr << "El AST raíz no es un Program\n"; return 1; }
+
+        // --- análisis semántico antes de evaluar ---
+        Hulk::SemanticAnalyzer sem(engine);
+        sem.analyze(*program);
+
+        if (engine.has_errors()) {
+            engine.print_all();
+            return 1;
+        }
 
         Hulk::Evaluator ev(engine);
         try {

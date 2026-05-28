@@ -16,7 +16,8 @@ namespace Hulk {
     // -----------------------------------------------------------------------
     struct BuiltinFuncInfo {
         std::string name;
-        int         arity;   // -1 = variadic
+        int         arity;
+        bool        is_variadic = false;
         std::vector<std::string> param_types;
         std::string return_type;
     };

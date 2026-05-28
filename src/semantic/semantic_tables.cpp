@@ -1,5 +1,6 @@
 #include "semantic_tables.h"
 #include <stdexcept>
+#include <unordered_set>
 
 namespace {
 
@@ -72,8 +73,9 @@ SemanticTables::SemanticTables() {
         })
     {
         BuiltinFuncInfo bfi;
-        bfi.name  = def.name;
-        bfi.arity = def.arity;
+        bfi.name        = def.name;
+        bfi.arity       = def.arity;
+        bfi.is_variadic = false;
         bfi.param_types = def.param_types;
         bfi.return_type = def.return_type;
         builtin_funcs_[bfi.name] = bfi;
@@ -93,17 +95,15 @@ SemanticTables::SemanticTables() {
 }
 
 std::vector<Param> SemanticTables::get_effective_constructor(const std::string& type_name) const {
-    const SemanticTypeInfo* info = lookup_type(type_name);
-    if (!info) return {};
-    
-    if (info->defines_constructor) {
-        return info->ctor_params;
+    std::unordered_set<std::string> visited;
+    std::string cur = type_name;
+    while (!cur.empty()) {
+        if (!visited.insert(cur).second) return {};  // cycle guard
+        const SemanticTypeInfo* info = lookup_type(cur);
+        if (!info) return {};
+        if (info->defines_constructor) return info->ctor_params;
+        cur = info->parent_name;
     }
-    
-    if (!info->parent_name.empty()) {
-        return get_effective_constructor(info->parent_name);
-    }
-    
     return {};
 }
 

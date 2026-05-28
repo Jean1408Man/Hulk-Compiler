@@ -39,8 +39,10 @@
 #include "../ast/functions/param.h"
 #include "../common/diagnosticRepository.hpp"
 
+#include <algorithm>
 #include <sstream>
 #include <unordered_set>
+#include <vector>
 
 namespace Hulk {
 
@@ -475,29 +477,43 @@ void SymbolResolver::run_checks() {
 }
 
 void SymbolResolver::check_inheritance() {
-    for (auto& [name, info] : tables_.all_types()) {
+    // Sort names for deterministic error ordering
+    std::vector<std::string> names;
+    for (auto& [n, _] : tables_.all_types()) names.push_back(n);
+    std::sort(names.begin(), names.end());
+
+    std::unordered_set<std::string> cycle_reported;
+
+    for (const auto& name : names) {
+        const auto& info = tables_.all_types().at(name);
         if (info.is_builtin) continue;
 
         if (!info.parent_name.empty()) {
             const auto* parent = tables_.lookup_type(info.parent_name);
             if (!parent) {
                 hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
-                report(sp, "SEM_UNDEFINED_PARENT", name, info.parent_name);
+                report(sp, "BIND_PARENT_NOT_FOUND", info.parent_name, name);
             } else if (parent->is_builtin &&
                        (info.parent_name == "Number" ||
                         info.parent_name == "String"  ||
                         info.parent_name == "Boolean" ||
                         info.parent_name == "Range")) {
-                // Caso 9: no heredar de Number/String/Boolean
                 hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
                 report_raw(sp, "No se puede heredar del tipo builtin '" +
                            info.parent_name + "'.");
             }
         }
 
-        if (tables_.has_inheritance_cycle(name)) {
+        if (cycle_reported.count(name) == 0 && tables_.has_inheritance_cycle(name)) {
             hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
-            report_raw(sp, "Ciclo de herencia detectado en el tipo '" + name + "'.");
+            report(sp, "BIND_INHERIT_CYCLE", name, info.parent_name);
+            std::string cur = name;
+            while (!cur.empty()) {
+                if (!cycle_reported.insert(cur).second) break;
+                auto it = tables_.all_types().find(cur);
+                if (it == tables_.all_types().end()) break;
+                cur = it->second.parent_name;
+            }
         }
     }
 }
@@ -639,7 +655,7 @@ void SymbolResolver::visit(BuiltinCall& n) {
         resolution_map_[&n] = ResolutionResult{};
         return;
     }
-    if (bf->arity >= 0 && static_cast<int>(n.GetArgs().size()) != bf->arity) {
+    if (!bf->is_variadic && static_cast<int>(n.GetArgs().size()) != bf->arity) {
         std::ostringstream oss;
         oss << "Función builtin '" << fname << "' espera "
             << bf->arity << " argumento(s) pero recibió "
@@ -776,7 +792,7 @@ void SymbolResolver::visit(FunctionCall& n) {
         // Fallback: algunas funciones builtin (como 'range') se parsean como FunctionCall
         const BuiltinFuncInfo* builtin = tables_.lookup_builtin_func(n.GetName());
         if (builtin) {
-            if (builtin->arity >= 0 && static_cast<int>(n.GetArgs().size()) != builtin->arity) {
+            if (!builtin->is_variadic && static_cast<int>(n.GetArgs().size()) != builtin->arity) {
                 std::ostringstream oss;
                 oss << "Función builtin '" << n.GetName() << "' espera "
                     << builtin->arity << " argumento(s) pero recibió "

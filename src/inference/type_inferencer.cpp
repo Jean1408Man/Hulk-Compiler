@@ -63,7 +63,7 @@ namespace Hulk {
                         if (!func_decl->HasReturnTypeAnnotation()) {
                             if (body_type.is_error() || body_type.is_unknown()) {
                                 engine_.report_raw(hulk::common::DiagnosticLevel::Semantic, hulk::common::Severity::Error, func_decl->span, 
-                                    "Cannot infer return type for function '" + func_decl->GetName() + "'. Explicit type annotation required.");
+                                    "No se pudo inferir el tipo de retorno de la función '" + func_decl->GetName() + "'. Se requiere una anotación de tipo explícita.");
                             }
                         }
                     }
@@ -92,7 +92,7 @@ namespace Hulk {
                                 if (!method->HasReturnTypeAnnotation()) {
                                     if (body_type.is_error() || body_type.is_unknown()) {
                                         engine_.report_raw(hulk::common::DiagnosticLevel::Semantic, hulk::common::Severity::Error, method->span, 
-                                            "Cannot infer return type for method '" + method->GetName() + "'. Explicit type annotation required.");
+                                            "No se pudo inferir el tipo de retorno del método '" + method->GetName() + "'. Se requiere una anotación de tipo explícita.");
                                     }
                                 }
                             }
@@ -546,7 +546,7 @@ namespace Hulk {
         if (!current_type_decl_.empty()) {
             set_type(node, HulkType::make_object(current_type_decl_));
         } else {
-            engine_.report_raw(hulk::common::DiagnosticLevel::Semantic, hulk::common::Severity::Error, node.span, "Cannot use 'self' outside a class");
+            engine_.report_raw(hulk::common::DiagnosticLevel::Semantic, hulk::common::Severity::Error, node.span, "'self' solo puede usarse dentro de un tipo");
             set_type(node, HulkType::make_error());
         }
     }

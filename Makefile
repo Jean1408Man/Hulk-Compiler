@@ -49,7 +49,6 @@ LEXER_AST_SRCS := \
 	src/ast/accept_impl.cpp
 
 EVAL_SRCS := \
-	src/objects/hulk_value.cpp \
 	src/eval/evaluator.cpp
 
 SEMANTIC_SRCS := \
@@ -146,11 +145,13 @@ parser-demo: $(LEXER_AST_OBJS) $(PARSER_OBJS)
 # ─────────────────────────────────────────────────────────────────────────────
 # Evaluador (cortes 4, 5 y 6)
 # ─────────────────────────────────────────────────────────────────────────────
-eval: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS)
+$(OBJDIR)/eval_main/main.o: src/eval/main.cpp
 	@mkdir -p $(OBJDIR)/eval_main
 	$(CXX) $(CXXFLAGS) -c src/eval/main.cpp -o $(OBJDIR)/eval_main/main.o
+
+eval: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS) $(SEMANTIC_OBJS) $(OBJDIR)/eval_main/main.o
 	$(CXX) $(CXXFLAGS) \
-		$(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS) \
+		$(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS) $(SEMANTIC_OBJS) \
 		$(OBJDIR)/eval_main/main.o \
 		-o hulk_eval
 
