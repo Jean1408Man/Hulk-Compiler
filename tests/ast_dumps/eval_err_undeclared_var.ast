@@ -1,8 +1,0 @@
-=== AST ===
-print(Variable(x))
-
-=== TREE ===
-Program
-  globalExpr
-    Print
-      VariableReference(name=x)

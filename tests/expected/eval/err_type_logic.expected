@@ -1,1 +1,1 @@
-error [3:7 - 3:18]: Operación aritmética requiere Number, se obtuvo hola.
+error [3:7 - 3:13]: Error de tipos en operando izquierdo de comparación: se esperaba 'Number' pero se encontró 'String'.

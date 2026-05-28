@@ -1,8 +1,0 @@
-=== AST ===
-print(StringLiteral: base() pendiente de soporte en parser)
-
-=== TREE ===
-Program
-  globalExpr
-    Print
-      String(value="base() pendiente de soporte en parser")

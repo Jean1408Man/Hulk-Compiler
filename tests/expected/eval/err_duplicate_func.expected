@@ -1,1 +1,1 @@
-error [4:1 - 4:19]: Función duplicada: 'f'.
+error [4:1 - 4:19]: Función 'f' ya fue declarada en este scope.

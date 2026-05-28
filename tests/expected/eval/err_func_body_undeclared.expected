@@ -1,1 +1,2 @@
-1
+error [4:17 - 4:18]: La variable 'x' no ha sido declarada en este ámbito.
+error [4:1 - 4:19]: No se pudo inferir el tipo de retorno de la función 'f'. Se requiere una anotación de tipo explícita.
