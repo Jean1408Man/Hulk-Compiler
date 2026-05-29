@@ -51,7 +51,7 @@ Por ahora el parser implementa y prueba:
 
 - tipos extendidos como `T[]` o tipos de functor;
 - vectores explícitos e implícitos;
-- lambdas;
+- lambdas, que no se parsean ni tienen nodo AST en el subconjunto soportado;
 - macros y pattern matching.
 
 ## Nota importante

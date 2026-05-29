@@ -135,7 +135,6 @@ namespace Hulk {
         void visit(DestructiveAssign& n)   override;
         void visit(DestructiveAssignMember& n) override;
         void visit(FunctionCall& n)        override;
-        void visit(Lambda& n)              override;
 
         // DeclVisitor — registra funciones y tipos en las tablas globales
         void visit(FunctionDecl& n)        override;

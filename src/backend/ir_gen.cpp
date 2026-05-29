@@ -10,7 +10,6 @@
 #include "../ast/domainFunctions/print.h"
 #include "../ast/functions/functionCall.h"
 #include "../ast/functions/functionDecl.h"
-#include "../ast/functions/lambda.h"
 #include "../ast/literales/boolean.h"
 #include "../ast/literales/number.h"
 #include "../ast/literales/string.h"
@@ -134,9 +133,6 @@ bool expr_uses_range(const Expr* expr) {
     }
     if (auto* node = dynamic_cast<const FunctionCall*>(expr)) {
         return node->GetName() == "range" || expr_list_uses_range(node->GetArgs());
-    }
-    if (auto* node = dynamic_cast<const Lambda*>(expr)) {
-        return expr_uses_range(node->GetBody());
     }
     if (auto* node = dynamic_cast<const Print*>(expr)) {
         return expr_uses_range(node->GetExpr());
@@ -1099,10 +1095,6 @@ void IRGen::visit(FunctionCall& node) {
     instr.args = lower_args(node.GetArgs());
     emit(std::move(instr));
     expr_result_ = dest;
-}
-
-void IRGen::visit(Lambda&) {
-    unsupported("lambda");
 }
 
 void IRGen::visit(Print& node) {

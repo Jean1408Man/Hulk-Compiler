@@ -33,7 +33,6 @@
 // Funciones
 #include "ast/functions/functionCall.h"
 #include "ast/functions/functionDecl.h"
-#include "ast/functions/lambda.h"
 
 // Builtins
 #include "ast/domainFunctions/print.h"
@@ -86,7 +85,6 @@ void WhileStmt::accept(ExprVisitor& v)            { v.visit(*this); }
 void For::accept(ExprVisitor& v)                  { v.visit(*this); }
 
 void FunctionCall::accept(ExprVisitor& v)         { v.visit(*this); }
-void Lambda::accept(ExprVisitor& v)               { v.visit(*this); }
 
 void Print::accept(ExprVisitor& v)                { v.visit(*this); }
 void BuiltinCall::accept(ExprVisitor& v)          { v.visit(*this); }

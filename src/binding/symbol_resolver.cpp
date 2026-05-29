@@ -20,7 +20,6 @@
 #include "../ast/loops/for.h"
 #include "../ast/functions/functionCall.h"
 #include "../ast/functions/functionDecl.h"
-#include "../ast/functions/lambda.h"
 #include "../ast/domainFunctions/print.h"
 #include "../ast/domainFunctions/builtinCall.h"
 #include "../ast/others/exprBlock.h"
@@ -814,14 +813,6 @@ void SymbolResolver::visit(FunctionCall& n) {
         }
         resolution_map_[&n] = ResolutionResult::from_func(info->decl);
     }
-}
-
-void SymbolResolver::visit(Lambda& n) {
-    push_scope();
-    for (const auto& p : n.GetParams())
-        scope_->define_param(p.name, &p);
-    resolve(n.GetBody());
-    pop_scope();
 }
 
 // ─── OOP ───────────────────────────────────────────────────────────────────

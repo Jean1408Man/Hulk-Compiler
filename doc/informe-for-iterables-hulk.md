@@ -41,7 +41,7 @@ Siguen fuera de este corte:
 - comprehensions;
 - `Enumerable`;
 - functors;
-- `lambda`, que permanece bloqueada end-to-end;
+- `lambda`, cuya implementacion fue retirada y cuya sintaxis se rechaza en frontend;
 - macros.
 
 ## Resumen ejecutivo

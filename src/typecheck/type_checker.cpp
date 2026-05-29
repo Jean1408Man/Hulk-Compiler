@@ -18,7 +18,6 @@
 #include "../ast/loops/for.h"
 #include "../ast/functions/functionCall.h"
 #include "../ast/functions/functionDecl.h"
-#include "../ast/functions/lambda.h"
 #include "../ast/domainFunctions/print.h"
 #include "../ast/domainFunctions/builtinCall.h"
 #include "../ast/others/exprBlock.h"
@@ -376,10 +375,6 @@ namespace Hulk {
                 }
             }
         }
-    }
-
-    void TypeChecker::visit(Lambda& node) {
-        node.GetBody()->accept(*this);
     }
 
     void TypeChecker::visit(Print& node) {

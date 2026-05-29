@@ -10,7 +10,6 @@
 #include "../ast/domainFunctions/print.h"
 #include "../ast/functions/functionCall.h"
 #include "../ast/functions/functionDecl.h"
-#include "../ast/functions/lambda.h"
 #include "../ast/literales/boolean.h"
 #include "../ast/literales/number.h"
 #include "../ast/literales/string.h"
@@ -46,10 +45,6 @@ constexpr const char* kRestrictedInferenceMessage =
     "Inferencia implicita no permitida en modo restringido. "
     "Use ': _', ': auto' o escriba un tipo concreto.";
 
-std::string unsupported_feature_message(const std::string& feature) {
-    return "Feature no soportado en el flujo end-to-end: " + feature + ".";
-}
-
 class SemanticPolicyChecker : public ExprVisitor, public DeclVisitor {
 public:
     SemanticPolicyChecker(hulk::common::DiagnosticEngine& engine,
@@ -65,13 +60,11 @@ public:
     }
 
     [[nodiscard]] bool has_errors() const { return has_errors_; }
-    [[nodiscard]] bool has_unsupported_errors() const { return has_unsupported_errors_; }
 
 private:
     hulk::common::DiagnosticEngine& engine_;
     bool restricted_inference_ = false;
     bool has_errors_ = false;
-    bool has_unsupported_errors_ = false;
 
     void report_restricted(const hulk::common::Span& span) {
         engine_.report_raw(hulk::common::DiagnosticLevel::Semantic,
@@ -79,16 +72,6 @@ private:
                            span,
                            kRestrictedInferenceMessage);
         has_errors_ = true;
-    }
-
-    void report_unsupported(const hulk::common::Span& span,
-                            const std::string& feature) {
-        engine_.report_raw(hulk::common::DiagnosticLevel::Semantic,
-                           hulk::common::Severity::Error,
-                           span,
-                           unsupported_feature_message(feature));
-        has_errors_ = true;
-        has_unsupported_errors_ = true;
     }
 
     // Reports a restricted-inference error only when the position has neither
@@ -253,19 +236,18 @@ bool SemanticAnalyzer::analyze(Program& program) {
     SemanticPolicyChecker policy_checker(engine_, options_.restricted_inference);
     policy_checker.check(program);
     if (policy_checker.has_errors()) has_errors_ = true;
-    if (policy_checker.has_unsupported_errors()) return false;
 
     resolver_ = std::make_unique<SymbolResolver>(tables_, engine_);
     resolver_->run(program);
     // Continuamos a pesar de errores en el resolver para capturar errores de tipos
     // a menos que el resolver haya fallado catastróficamente (sin tablas consistentes)
-    
+
     inferencer_ = std::make_unique<TypeInferencer>(tables_, resolver_->resolution_map(), engine_);
     inferencer_->infer(program);
-    
+
     type_checker_ = std::make_unique<TypeChecker>(
-        tables_, 
-        inferencer_->type_map(), 
+        tables_,
+        inferencer_->type_map(),
         resolver_->resolution_map(),
         inferencer_->param_types(),
         inferencer_->binding_types(),

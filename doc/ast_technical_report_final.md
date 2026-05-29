@@ -21,7 +21,7 @@ El AST del proyecto está organizado por dominios sintácticos y semánticos:
 - `unaryOps`: operaciones unarias;
 - `conditionals`: condicionales;
 - `loops`: estructuras iterativas;
-- `functions`: funciones, llamadas y lambdas;
+- `functions`: funciones y llamadas;
 - `domainFunctions`: builtins modelados como nodos;
 - `types`: tipos, miembros, acceso, `new`, `is`, `as`;
 - `protocols`: declaraciones de protocolo;
@@ -859,44 +859,6 @@ public:
 };
 ```
 
-#### `Lambda`
-
-Archivos:
-
-- [src/ast/functions/lambda.h](/home/jean/School/Compilacion/Hulk/src/ast/functions/lambda.h:1)
-- [src/ast/functions/lambda.cpp](/home/jean/School/Compilacion/Hulk/src/ast/functions/lambda.cpp:1)
-
-Payload:
-
-- `std::vector<Param> params`
-- `std::string returnTypeAnnotation`
-- `std::unique_ptr<ASTnode> body`
-
-Código:
-
-```cpp
-class Lambda : public ASTnode {
-private:
-    std::vector<Param> params;
-    std::string returnTypeAnnotation;
-    std::unique_ptr<ASTnode> body;
-
-public:
-    Lambda(std::vector<Param> params,
-           std::unique_ptr<ASTnode> body);
-
-    Lambda(std::vector<Param> params,
-           const std::string& returnTypeAnnotation,
-           std::unique_ptr<ASTnode> body);
-
-    const std::vector<Param>& GetParams() const;
-    const std::string& GetReturnTypeAnnotation() const;
-    bool HasReturnTypeAnnotation() const;
-    ASTnode* GetBody() const;
-    std::string ToString() const override;
-};
-```
-
 ### 4.9 Builtins del dominio
 
 #### `Print`
@@ -1588,7 +1550,6 @@ public:
 - `For`
 - `FunctionDecl`
 - `FunctionCall`
-- `Lambda`
 - `Print`
 - `BuiltinCall`
 - `IsExpr`
@@ -1629,7 +1590,7 @@ El AST ya cubre una porción importante del lenguaje objetivo:
 - variables y `let`;
 - operadores aritméticos, lógicos y de strings;
 - control de flujo;
-- funciones y lambdas;
+- funciones;
 - tipos, miembros, instanciación y acceso;
 - protocolos;
 - vectores;

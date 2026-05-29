@@ -46,7 +46,6 @@ namespace Hulk {
         void visit(For& node) override;
 
         void visit(FunctionCall& node) override;
-        void visit(Lambda& node) override;
 
         void visit(Print& node) override;
         void visit(BuiltinCall& node) override;
