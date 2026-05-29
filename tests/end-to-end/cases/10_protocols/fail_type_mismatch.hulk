@@ -1,0 +1,5 @@
+protocol Renderable {
+    render(): String;
+}
+type Empty {}
+let r: Renderable = new Empty() in print(r.render());

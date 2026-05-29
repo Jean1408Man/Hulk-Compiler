@@ -1,0 +1,7 @@
+protocol Combiner {
+    combine(a: Number, b: Number): Number;
+}
+type WrongArity {
+    combine(a: Number): Number => a;
+}
+let c: Combiner = new WrongArity() in print(c.combine(1, 2));

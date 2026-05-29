@@ -1,0 +1,9 @@
+type Animal {}
+type Dog inherits Animal {}
+protocol DogFactory {
+    make(): Dog;
+}
+protocol AnimalFactory extends DogFactory {
+    make(): Animal;
+}
+print(0);

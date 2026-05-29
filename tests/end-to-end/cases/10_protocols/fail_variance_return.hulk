@@ -1,0 +1,13 @@
+type Animal {
+    kind(): String => "animal";
+}
+type Dog inherits Animal {
+    kind(): String => "dog";
+}
+protocol Factory {
+    make(): Dog;
+}
+type AnimalFactory {
+    make(): Animal => new Animal();
+}
+let f: Factory = new AnimalFactory() in print(f.make().kind());

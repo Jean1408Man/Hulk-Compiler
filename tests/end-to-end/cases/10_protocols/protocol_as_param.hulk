@@ -1,0 +1,9 @@
+protocol Printable {
+    show(): String;
+}
+type Tag(name: String) {
+    name: String = name;
+    show(): String => "<" @ self.name @ ">";
+}
+function display(p: Printable): String => p.show();
+print(display(new Tag("h1")));

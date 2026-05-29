@@ -1,0 +1,4 @@
+protocol BadBody {
+    foo(): Number => 1;
+}
+print(0);
