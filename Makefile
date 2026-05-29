@@ -86,7 +86,7 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests run-tests update-expected clean
+.PHONY: all parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
 
@@ -238,6 +238,9 @@ vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.
 
 backend-tests: backend
 	@bash tests/backend/run_backend_tests.sh
+
+end-to-end-tests: backend
+	@cd tests/end-to-end && HULK=../../hulk_backend ./end-to-end_tests.sh $(FOLDER)
 
 semantic-tests: semantic
 	@echo "=== chequeos semánticos — programas válidos ==="; \

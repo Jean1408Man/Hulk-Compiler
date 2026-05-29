@@ -1,0 +1,11 @@
+function gcd(a, b) => {
+    while (b != 0)
+        let t = a % b in {
+            a := b;
+            b := t;
+        };
+    a
+};
+{
+    let x = 48, y = 18 in print(gcd(x, y));
+}

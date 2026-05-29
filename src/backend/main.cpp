@@ -20,9 +20,8 @@ int main(int argc, char** argv) {
     }
 
     Hulk::Backend::BackendOptions options;
-    options.input_path = argv[1];
 
-    for (int i = 2; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-o") {
             if (i + 1 >= argc) {
@@ -40,11 +39,23 @@ int main(int argc, char** argv) {
             options.emit_ir = true;
         } else if (arg == "--restricted-inference") {
             options.semantic.restricted_inference = true;
+        } else if (!arg.empty() && arg[0] != '-') {
+            if (!options.input_path.empty()) {
+                std::cerr << "Error: multiple archivos de entrada especificados.\n";
+                print_usage();
+                return 1;
+            }
+            options.input_path = arg;
         } else {
             std::cerr << "Opcion desconocida: " << arg << "\n";
             print_usage();
             return 1;
         }
+    }
+
+    if (options.input_path.empty()) {
+        print_usage();
+        return 1;
     }
 
     const int final_actions = static_cast<int>(options.emit_ir) +

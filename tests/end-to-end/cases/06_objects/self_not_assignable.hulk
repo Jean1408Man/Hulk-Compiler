@@ -1,0 +1,6 @@
+type A {
+    f() {
+        self := new A();
+    }
+}
+let a = new A() in a.f();

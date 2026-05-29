@@ -582,9 +582,12 @@ namespace Hulk {
             infer_expr(*arg);
         }
         
-        const SemanticTypeInfo* info = tables_.lookup_type(node.GetTypeName());
-        if (info && info->decl) {
-            const auto& ast_params = info->decl->GetCtorParams();
+        const SemanticTypeInfo* ctor_info = tables_.lookup_type(node.GetTypeName());
+        while (ctor_info && !ctor_info->defines_constructor && !ctor_info->parent_name.empty()) {
+            ctor_info = tables_.lookup_type(ctor_info->parent_name);
+        }
+        if (ctor_info && ctor_info->decl) {
+            const auto& ast_params = ctor_info->decl->GetCtorParams();
             for (size_t i = 0; i < node.GetArgs().size() && i < ast_params.size(); ++i) {
                 HulkType arg_type = type_map_[node.GetArgs()[i].get()];
                 if (!arg_type.is_unknown() && !arg_type.is_error()) {

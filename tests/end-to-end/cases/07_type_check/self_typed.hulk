@@ -1,0 +1,9 @@
+type Acc(start: Number) {
+    total: Number = start;
+    add(v: Number): Number => self.total := self.total + v;
+}
+let a = new Acc(10) in {
+    a.add(15);
+    a.add(17);
+    print(a.add(0));
+}

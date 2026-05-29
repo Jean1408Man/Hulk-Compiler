@@ -1,0 +1,2 @@
+function same(a: _, b: _) => a == b;
+print(0);

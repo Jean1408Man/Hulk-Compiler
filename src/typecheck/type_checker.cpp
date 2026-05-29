@@ -224,13 +224,6 @@ namespace Hulk {
                          right.to_string() + "'.");
         }
 
-        if (left_known && right_known &&
-            is_concat_operand_type(left) && is_concat_operand_type(right) &&
-            !is_string_type(left) && !is_string_type(right)) {
-            report_error(node.span,
-                         "Operador de concatenacion '" + op +
-                         "' requiere al menos un operando String.");
-        }
     }
 
     void TypeChecker::visit(ArithmeticUnaryOp& node) {
@@ -544,16 +537,6 @@ namespace Hulk {
 
     void TypeChecker::visit(IsExpr& node) {
         node.GetExpr()->accept(*this);
-        HulkType expr_type = get_type(node.GetExpr());
-        HulkType target_type = from_string_type(node.GetTypeName());
-        
-        if (!expr_type.is_unknown() && !target_type.is_unknown() && !expr_type.is_error() && !target_type.is_error()) {
-            if (!expr_type.conforms_to(target_type, tables_) && 
-                !target_type.conforms_to(expr_type, tables_)) {
-                report_error(node.span, "Operación 'is' no plausible: tipo '" + expr_type.to_string() + 
-                             "' y '" + target_type.to_string() + "' no están relacionados.");
-            }
-        }
     }
 
     void TypeChecker::visit(AsExpr& node) {

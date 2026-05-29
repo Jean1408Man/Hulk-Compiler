@@ -1,0 +1,6 @@
+type Point(x: Number, y: Number) {
+    x = x;
+    y = y;
+    sum(): Number => self.x + self.y;
+}
+let p = new Point(1, 2) in print(p.sum());

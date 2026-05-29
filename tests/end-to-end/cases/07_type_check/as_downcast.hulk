@@ -1,0 +1,12 @@
+type A {
+    who(): String => "A";
+}
+type B inherits A {
+    who(): String => "B";
+    extra(): Number => 99;
+}
+let x: A = new B() in
+if (x is B)
+    let y: B = x as B in print(y.extra())
+else
+    print(0);

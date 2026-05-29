@@ -136,7 +136,9 @@ std::string to_string(Word value, const VMHeap& heap) {
     if (!std::isnan(number) && number == static_cast<long long>(number)) {
         return std::to_string(static_cast<long long>(number));
     }
-    return std::to_string(number);
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%.14g", number);
+    return buf;
 }
 
 }

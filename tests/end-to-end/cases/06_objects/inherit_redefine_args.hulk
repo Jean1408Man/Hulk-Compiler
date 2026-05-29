@@ -1,0 +1,9 @@
+type Point(x, y) {
+    x = x;
+    y = y;
+    sum() => self.x + self.y;
+}
+type Shifted(d) inherits Point(d + 1, d + 2) {
+    label() => self.sum();
+}
+let s = new Shifted(10) in print(s.label());

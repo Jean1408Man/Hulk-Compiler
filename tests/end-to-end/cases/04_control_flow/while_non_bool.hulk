@@ -1,0 +1,1 @@
+while ("loop") print(1);

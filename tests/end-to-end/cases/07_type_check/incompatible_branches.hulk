@@ -1,0 +1,3 @@
+type Bird {}
+type Plane {}
+let x: Bird = if (rand() < 0.5) new Bird() else new Plane() in print(0);

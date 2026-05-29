@@ -1,0 +1,13 @@
+type Animal {
+    sound() => "...";
+}
+type Dog inherits Animal {
+    sound() => "Woof";
+}
+type Cat inherits Animal {
+    sound() => "Meow";
+}
+{
+    let a = new Dog() in print(a.sound());
+    let b = new Cat() in print(b.sound());
+}
