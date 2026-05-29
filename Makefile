@@ -86,9 +86,43 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
+# Archivo de entrada por defecto para run-eval / run-vm / emit-banner
+FILE ?= examples/example.hulk
+
+.PHONY: all compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Comandos principales de usuario
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Compila todos los binarios principales (evaluador + compilador completo)
+compile: eval backend
+
+# Ejecuta un archivo .hulk mediante el evaluador de árbol (sin backend)
+#   make run-eval FILE=examples/example.hulk
+run-eval: eval
+	./hulk_eval $(FILE)
+
+# Ejecuta un archivo .hulk mediante el pipeline completo (IR → BannerVM)
+#   make run-vm FILE=examples/example.hulk
+run-vm: backend
+	./hulk_backend --run-banner $(FILE)
+
+# Emite el Banner IR generado: lo guarda en outputs/ y lo imprime en terminal
+#   make emit-banner FILE=examples/example.hulk
+emit-banner: backend
+	@mkdir -p outputs
+	@name=$$(basename $(FILE) .hulk); \
+	out=outputs/$${name}.banner; \
+	./hulk_backend --emit-banner -o $$out $(FILE) && \
+	echo "--- Banner IR: $$out ---" && \
+	cat $$out
+
+# Corre los tests de restricted-inference usando el evaluador de árbol
+eval-restricted-tests: eval
+	@bash tests/eval/run_eval_restricted_tests.sh
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Directorios de objetos
