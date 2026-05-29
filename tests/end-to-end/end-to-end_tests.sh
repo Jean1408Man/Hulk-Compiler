@@ -129,6 +129,7 @@ run_case() {
     local missing=0
     if [ -s "${base}.err" ]; then
       while IFS= read -r needle; do
+        needle="${needle%$'\r'}"   # strip trailing CR (Windows CRLF .err files)
         [ -z "$needle" ] && continue
         if ! grep -qiF -- "$needle" <<<"$output"; then
           missing=1

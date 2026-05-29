@@ -8,6 +8,7 @@
 #include "../common/diagnosticEngine.hpp"
 #include "hulk_type.h"
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <vector>
 

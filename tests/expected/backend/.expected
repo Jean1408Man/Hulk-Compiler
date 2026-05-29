@@ -1,0 +1,1 @@
+Uso: hulk_backend <archivo.hulk> [-o salida] [--emit-ir] [--emit-banner] [--emit-banner-compiled] [--run-banner] [--restricted-inference]

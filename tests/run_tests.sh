@@ -51,10 +51,10 @@ run_one() {
 
     # captura stdout+stderr juntos (igual que el .expected)
     local actual
-    actual="$("$bin" "$hulk_file" 2>&1 || true)"
+    actual="$({ "$bin" "$hulk_file" 2>&1 || true; } | tr -d '\r')"
 
     local expected
-    expected="$(cat "$expected_file" 2>/dev/null || echo '')"
+    expected="$({ cat "$expected_file" 2>/dev/null || echo ''; } | tr -d '\r')"
 
     # genera siempre el AST dump (sobreescribe si ya existe)
     dump_ast "$hulk_file" "$suite"

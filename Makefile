@@ -1,4 +1,6 @@
 SHELL    := bash
+export TEMP := /tmp
+export TMP  := /tmp
 CXX      := g++
 CXXFLAGS := -std=c++20 -Wall -Wextra -pedantic -Isrc
 # Flags sin warnings para código generado por Bison (parser.cpp / parser.hpp)
@@ -318,13 +320,23 @@ run-tests: eval parser-demo semantic
 	@bash tests/run_tests.sh $(SUITE)
 
 # Regenera todos los archivos .expected con la salida actual (usar tras cambios intencionales)
-update-expected: eval semantic
+update-expected: eval backend semantic
 	@echo "=== Actualizando archivos .expected ==="; \
-	mkdir -p tests/expected/eval tests/expected/semantic tests/expected/typecheck; \
-	for f in tests/eval/c4_*.hulk tests/eval/c5_*.hulk tests/eval/c6_*.hulk tests/eval/err_*.hulk; do \
+	mkdir -p tests/expected/eval tests/expected/semantic tests/expected/typecheck tests/expected/backend; \
+	for f in tests/eval/c4_*.hulk tests/eval/c5_*.hulk tests/eval/c6_*.hulk; do \
+		name=$$(basename $$f .hulk); \
+		{ ./hulk_backend $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
+		echo "  updated eval/$${name}.expected"; \
+	done; \
+	for f in tests/eval/err_*.hulk; do \
 		name=$$(basename $$f .hulk); \
 		{ ./hulk_eval $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
 		echo "  updated eval/$${name}.expected"; \
+	done; \
+	for f in tests/backend/regression/*.hulk; do \
+		name=$$(basename $$f .hulk); \
+		{ ./hulk_backend $$f 2>&1; } > tests/expected/backend/$${name}.expected || true; \
+		echo "  updated backend/$${name}.expected"; \
 	done; \
 	for f in tests/semantic/ok_*.hulk tests/semantic/err_*.hulk; do \
 		name=$$(basename $$f .hulk); \
@@ -339,4 +351,7 @@ update-expected: eval semantic
 	echo "=== Done ==="
 
 clean:
-	rm -rf $(OBJDIR) hulk_lexer hulk_parser_demo hulk_eval hulk_semantic hulk_backend
+	rm -rf $(OBJDIR) hulk_lexer hulk_parser_demo hulk_eval hulk_semantic hulk_backend \
+		hulk_lexer.exe hulk_parser_demo.exe hulk_eval.exe hulk_semantic.exe hulk_backend.exe \
+		hulk_vm_value_tests hulk_vm_tests hulk_vm_limits_tests hulk_vm_semantics_tests \
+		hulk_vm_value_tests.exe hulk_vm_tests.exe hulk_vm_limits_tests.exe hulk_vm_semantics_tests.exe

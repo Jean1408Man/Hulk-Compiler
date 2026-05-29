@@ -161,13 +161,6 @@ private:
         visit_args(node.GetArgs());
     }
 
-    void visit(Lambda& node) override {
-        report_unsupported(node.span, "lambda");
-        for (const auto& param : node.GetParams()) require_param_annotation(param, node.span);
-        require_annotation(node.HasReturnTypeAnnotation(), node.IsReturnTypeHole(), node.span);
-        visit_expr(node.GetBody());
-    }
-
     void visit(Print& node) override { visit_expr(node.GetExpr()); }
     void visit(BuiltinCall& node) override {
         visit_args(node.GetArgs());

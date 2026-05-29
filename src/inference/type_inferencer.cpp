@@ -575,8 +575,12 @@ namespace Hulk {
         }
         
         const SemanticTypeInfo* ctor_info = tables_.lookup_type(node.GetTypeName());
-        while (ctor_info && !ctor_info->defines_constructor && !ctor_info->parent_name.empty()) {
-            ctor_info = tables_.lookup_type(ctor_info->parent_name);
+        {
+            std::unordered_set<std::string> visited_ctor;
+            while (ctor_info && !ctor_info->defines_constructor && !ctor_info->parent_name.empty()) {
+                if (!visited_ctor.insert(ctor_info->name).second) break;
+                ctor_info = tables_.lookup_type(ctor_info->parent_name);
+            }
         }
         if (ctor_info && ctor_info->decl) {
             const auto& ast_params = ctor_info->decl->GetCtorParams();

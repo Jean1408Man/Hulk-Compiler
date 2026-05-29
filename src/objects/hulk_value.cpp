@@ -1,6 +1,7 @@
 #include "hulk_value.h"
 #include "hulk_object.h"
 #include <string>
+#include <cstdio>
 
 namespace Hulk {
 
@@ -9,7 +10,9 @@ std::string HulkValue::to_string() const {
         std::string operator()(Nil) const { return "nil"; }
         std::string operator()(double v) const {
             if (v == (long long)v) return std::to_string((long long)v);
-            return std::to_string(v);
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), "%.14g", v);
+            return buf;
         }
         std::string operator()(const std::string& v) const { return v; }
         std::string operator()(bool v) const { return v ? "true" : "false"; }

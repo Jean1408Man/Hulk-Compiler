@@ -40,9 +40,6 @@ bool is_concat_operand_type(const Hulk::HulkType& type) {
            type.kind() == Hulk::HulkType::Kind::Number;
 }
 
-bool is_string_type(const Hulk::HulkType& type) {
-    return type.kind() == Hulk::HulkType::Kind::String;
-}
 
 const char* string_operator_name(Hulk::StringOp op) {
     switch (op) {
@@ -222,6 +219,7 @@ namespace Hulk {
                          "' solo admite operandos String o Number; se encontro '" +
                          right.to_string() + "'.");
         }
+
 
     }
 
@@ -532,6 +530,7 @@ namespace Hulk {
 
     void TypeChecker::visit(IsExpr& node) {
         node.GetExpr()->accept(*this);
+
     }
 
     void TypeChecker::visit(AsExpr& node) {
