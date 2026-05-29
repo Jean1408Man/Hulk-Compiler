@@ -1,0 +1,11 @@
+protocol HasName {
+    name(): String;
+}
+protocol HasFullName {
+    name(): String;
+}
+type Person {
+    name(): String => "Phil";
+}
+function greet(x: HasFullName): String => "Hello " @ x.name();
+let p: HasName = new Person() in print(greet(p));

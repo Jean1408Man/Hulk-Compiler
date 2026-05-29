@@ -1,0 +1,16 @@
+protocol Area {
+    area(): Number;
+}
+type Square(s: Number) {
+    s: Number = s;
+    area(): Number => self.s * self.s;
+}
+type Circle(r: Number) {
+    r: Number = r;
+    area(): Number => PI * self.r * self.r;
+}
+function describe(a: Area): Number => a.area();
+{
+    print(describe(new Square(5)));
+    print(describe(new Circle(0)));
+}

@@ -3,6 +3,7 @@
 
 #include "../eval/visitor.h"
 #include "../semantic/semantic_tables.h"
+#include "../semantic/type_utils.h"
 #include "../binding/symbol_resolver.h"
 #include "../inference/hulk_type.h"
 #include "../common/diagnosticEngine.hpp"
@@ -73,16 +74,6 @@ namespace Hulk {
         HulkType get_type(Expr* node);
         void report_error(const hulk::common::Span& span, const std::string& msg);
         void check_conforms(Expr* node, const HulkType& expected, const std::string& context);
-        bool type_conforms_with_inference(const HulkType& found, const HulkType& expected) const;
-        bool type_conforms_to_protocol_inferred(const std::string& type_name,
-                                                const std::string& protocol_name,
-                                                int depth = 0) const;
-        bool method_satisfies_protocol_inferred(const SemanticMethodInfo& actual,
-                                                const SemanticProtocolMethodInfo& required) const;
-        HulkType resolve_method_param_type(const SemanticMethodInfo& method, std::size_t index) const;
-        HulkType resolve_method_return_type(const SemanticMethodInfo& method) const;
-        
-        HulkType from_string_type(const std::string& name) const;
     };
 
 }

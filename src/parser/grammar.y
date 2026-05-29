@@ -34,8 +34,10 @@
     #include "../ast/literales/string.h"
     #include "../ast/loops/for.h"
     #include "../ast/loops/while.h"
+    #include "../ast/others/baseCall.h"
     #include "../ast/others/exprBlock.h"
     #include "../ast/others/program.h"
+    #include "../ast/others/selfRef.h"
     #include "../ast/protocols/protocolDecl.h"
     #include "../ast/protocols/protocolMethodSig.h"
     #include "../ast/types/asExpr.h"
@@ -115,6 +117,7 @@
 %token PRINT SQRT SIN COS EXP LOG RAND PI_CONST E_CONST
 %token LET IN IF ELIF ELSE WHILE FOR
 %token FUNCTION TYPE PROTOCOL EXTENDS INHERITS NEW IS AS
+%token SELF BASE
 
 %token PLUS MINUS STAR SLASH PERCENT CARET
 %token ASSIGN DESTRUCTIVE_ASSIGN
@@ -124,6 +127,7 @@
 %token FATARROW
 
 %token LPAREN RPAREN LBRACE RBRACE COMMA SEMICOLON COLON DOT
+%token UNDERSCORE AUTO
 %token END 0
 
 %left OR
@@ -478,6 +482,14 @@ type_expr
       {
           $$ = std::move($1) + "*";
       }
+    | UNDERSCORE
+      {
+          $$ = "_";
+      }
+    | AUTO
+      {
+          $$ = "auto";
+      }
     ;
 
 expr
@@ -597,6 +609,10 @@ lvalue
     | postfix DOT IDENTIFIER
       {
           $$ = hulk::parser::LValueTarget { std::move($1), $3, true };
+      }
+    | SELF
+      {
+          $$ = hulk::parser::LValueTarget { nullptr, "self", false };
       }
     ;
 
@@ -854,6 +870,16 @@ primary
     | IDENTIFIER
       {
           $$ = std::make_unique<Hulk::VariableReference>($1);
+          $$->span = to_span(@$);
+      }
+    | SELF
+      {
+          $$ = std::make_unique<Hulk::SelfRef>();
+          $$->span = to_span(@$);
+      }
+    | BASE LPAREN args_opt RPAREN
+      {
+          $$ = std::make_unique<Hulk::BaseCall>(std::move($3));
           $$->span = to_span(@$);
       }
     | NEW IDENTIFIER LPAREN args_opt RPAREN

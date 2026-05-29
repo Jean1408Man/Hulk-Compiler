@@ -1,0 +1,13 @@
+protocol Hashable {
+    hash(): Number;
+}
+protocol Equatable extends Hashable {
+    equals(other: Object): Boolean;
+}
+type Key(v: Number) {
+    v: Number = v;
+    hash(): Number => self.v * 2;
+    equals(other: Object): Boolean => false;
+}
+function bucket(h: Hashable): Number => h.hash();
+let k: Equatable = new Key(21) in print(bucket(k));

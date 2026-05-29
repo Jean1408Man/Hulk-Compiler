@@ -1,0 +1,8 @@
+protocol Showable {
+    show(): String;
+}
+function pr(s: Showable): String => s.show();
+type Plain {
+    other(): Number => 0;
+}
+print(pr(new Plain()));

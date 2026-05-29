@@ -70,8 +70,10 @@
     #include "../ast/literales/string.h"
     #include "../ast/loops/for.h"
     #include "../ast/loops/while.h"
+    #include "../ast/others/baseCall.h"
     #include "../ast/others/exprBlock.h"
     #include "../ast/others/program.h"
+    #include "../ast/others/selfRef.h"
     #include "../ast/protocols/protocolDecl.h"
     #include "../ast/protocols/protocolMethodSig.h"
     #include "../ast/types/asExpr.h"
@@ -121,7 +123,7 @@
         };
     }
 
-#line 125 "src/parser/parser.hpp"
+#line 127 "src/parser/parser.hpp"
 
 
 # include <cstdlib> // std::abort
@@ -257,7 +259,7 @@
 
 #line 4 "src/parser/grammar.y"
 namespace hulk { namespace parser {
-#line 261 "src/parser/parser.hpp"
+#line 263 "src/parser/parser.hpp"
 
 
 
@@ -619,35 +621,39 @@ namespace hulk { namespace parser {
     NEW = 285,                     // NEW
     IS = 286,                      // IS
     AS = 287,                      // AS
-    PLUS = 288,                    // PLUS
-    MINUS = 289,                   // MINUS
-    STAR = 290,                    // STAR
-    SLASH = 291,                   // SLASH
-    PERCENT = 292,                 // PERCENT
-    CARET = 293,                   // CARET
-    ASSIGN = 294,                  // ASSIGN
-    DESTRUCTIVE_ASSIGN = 295,      // DESTRUCTIVE_ASSIGN
-    EQUAL_EQUAL = 296,             // EQUAL_EQUAL
-    NOT_EQUAL = 297,               // NOT_EQUAL
-    LESS = 298,                    // LESS
-    LESS_EQUAL = 299,              // LESS_EQUAL
-    GREATER = 300,                 // GREATER
-    GREATER_EQUAL = 301,           // GREATER_EQUAL
-    AND = 302,                     // AND
-    OR = 303,                      // OR
-    NOT = 304,                     // NOT
-    CONCAT = 305,                  // CONCAT
-    DOUBLECONCAT = 306,            // DOUBLECONCAT
-    FATARROW = 307,                // FATARROW
-    LPAREN = 308,                  // LPAREN
-    RPAREN = 309,                  // RPAREN
-    LBRACE = 310,                  // LBRACE
-    RBRACE = 311,                  // RBRACE
-    COMMA = 312,                   // COMMA
-    SEMICOLON = 313,               // SEMICOLON
-    COLON = 314,                   // COLON
-    DOT = 315,                     // DOT
-    UMINUS = 316                   // UMINUS
+    SELF = 288,                    // SELF
+    BASE = 289,                    // BASE
+    PLUS = 290,                    // PLUS
+    MINUS = 291,                   // MINUS
+    STAR = 292,                    // STAR
+    SLASH = 293,                   // SLASH
+    PERCENT = 294,                 // PERCENT
+    CARET = 295,                   // CARET
+    ASSIGN = 296,                  // ASSIGN
+    DESTRUCTIVE_ASSIGN = 297,      // DESTRUCTIVE_ASSIGN
+    EQUAL_EQUAL = 298,             // EQUAL_EQUAL
+    NOT_EQUAL = 299,               // NOT_EQUAL
+    LESS = 300,                    // LESS
+    LESS_EQUAL = 301,              // LESS_EQUAL
+    GREATER = 302,                 // GREATER
+    GREATER_EQUAL = 303,           // GREATER_EQUAL
+    AND = 304,                     // AND
+    OR = 305,                      // OR
+    NOT = 306,                     // NOT
+    CONCAT = 307,                  // CONCAT
+    DOUBLECONCAT = 308,            // DOUBLECONCAT
+    FATARROW = 309,                // FATARROW
+    LPAREN = 310,                  // LPAREN
+    RPAREN = 311,                  // RPAREN
+    LBRACE = 312,                  // LBRACE
+    RBRACE = 313,                  // RBRACE
+    COMMA = 314,                   // COMMA
+    SEMICOLON = 315,               // SEMICOLON
+    COLON = 316,                   // COLON
+    DOT = 317,                     // DOT
+    UNDERSCORE = 318,              // UNDERSCORE
+    AUTO = 319,                    // AUTO
+    UMINUS = 320                   // UMINUS
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -664,7 +670,7 @@ namespace hulk { namespace parser {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 62, ///< Number of tokens.
+        YYNTOKENS = 66, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // END
         S_YYerror = 1,                           // error
@@ -699,85 +705,89 @@ namespace hulk { namespace parser {
         S_NEW = 30,                              // NEW
         S_IS = 31,                               // IS
         S_AS = 32,                               // AS
-        S_PLUS = 33,                             // PLUS
-        S_MINUS = 34,                            // MINUS
-        S_STAR = 35,                             // STAR
-        S_SLASH = 36,                            // SLASH
-        S_PERCENT = 37,                          // PERCENT
-        S_CARET = 38,                            // CARET
-        S_ASSIGN = 39,                           // ASSIGN
-        S_DESTRUCTIVE_ASSIGN = 40,               // DESTRUCTIVE_ASSIGN
-        S_EQUAL_EQUAL = 41,                      // EQUAL_EQUAL
-        S_NOT_EQUAL = 42,                        // NOT_EQUAL
-        S_LESS = 43,                             // LESS
-        S_LESS_EQUAL = 44,                       // LESS_EQUAL
-        S_GREATER = 45,                          // GREATER
-        S_GREATER_EQUAL = 46,                    // GREATER_EQUAL
-        S_AND = 47,                              // AND
-        S_OR = 48,                               // OR
-        S_NOT = 49,                              // NOT
-        S_CONCAT = 50,                           // CONCAT
-        S_DOUBLECONCAT = 51,                     // DOUBLECONCAT
-        S_FATARROW = 52,                         // FATARROW
-        S_LPAREN = 53,                           // LPAREN
-        S_RPAREN = 54,                           // RPAREN
-        S_LBRACE = 55,                           // LBRACE
-        S_RBRACE = 56,                           // RBRACE
-        S_COMMA = 57,                            // COMMA
-        S_SEMICOLON = 58,                        // SEMICOLON
-        S_COLON = 59,                            // COLON
-        S_DOT = 60,                              // DOT
-        S_UMINUS = 61,                           // UMINUS
-        S_YYACCEPT = 62,                         // $accept
-        S_program = 63,                          // program
-        S_top_level_items = 64,                  // top_level_items
-        S_top_level_item = 65,                   // top_level_item
-        S_opt_semi = 66,                         // opt_semi
-        S_decl = 67,                             // decl
-        S_function_decl = 68,                    // function_decl
-        S_type_decl = 69,                        // type_decl
-        S_protocol_decl = 70,                    // protocol_decl
-        S_protocol_extends_opt = 71,             // protocol_extends_opt
-        S_protocol_member_list = 72,             // protocol_member_list
-        S_protocol_member = 73,                  // protocol_member
-        S_ctor_params_opt = 74,                  // ctor_params_opt
-        S_inherits_opt = 75,                     // inherits_opt
-        S_parent_args_opt = 76,                  // parent_args_opt
-        S_type_member_list = 77,                 // type_member_list
-        S_type_member = 78,                      // type_member
-        S_params_opt = 79,                       // params_opt
-        S_param_list = 80,                       // param_list
-        S_param = 81,                            // param
-        S_return_ann_opt = 82,                   // return_ann_opt
-        S_type_ann_opt = 83,                     // type_ann_opt
-        S_type_expr = 84,                        // type_expr
-        S_expr = 85,                             // expr
-        S_let_expr = 86,                         // let_expr
-        S_binding_list = 87,                     // binding_list
-        S_binding = 88,                          // binding
-        S_if_expr = 89,                          // if_expr
-        S_elif_clauses = 90,                     // elif_clauses
-        S_while_expr = 91,                       // while_expr
-        S_for_expr = 92,                         // for_expr
-        S_assign_expr = 93,                      // assign_expr
-        S_lvalue = 94,                           // lvalue
-        S_logic_or = 95,                         // logic_or
-        S_logic_and = 96,                        // logic_and
-        S_equality = 97,                         // equality
-        S_relation = 98,                         // relation
-        S_type_test_expr = 99,                   // type_test_expr
-        S_concat = 100,                          // concat
-        S_additive = 101,                        // additive
-        S_multiplicative = 102,                  // multiplicative
-        S_power = 103,                           // power
-        S_unary = 104,                           // unary
-        S_postfix = 105,                         // postfix
-        S_primary = 106,                         // primary
-        S_args_opt = 107,                        // args_opt
-        S_arg_list = 108,                        // arg_list
-        S_block = 109,                           // block
-        S_block_body_opt = 110,                  // block_body_opt
-        S_expr_list = 111                        // expr_list
+        S_SELF = 33,                             // SELF
+        S_BASE = 34,                             // BASE
+        S_PLUS = 35,                             // PLUS
+        S_MINUS = 36,                            // MINUS
+        S_STAR = 37,                             // STAR
+        S_SLASH = 38,                            // SLASH
+        S_PERCENT = 39,                          // PERCENT
+        S_CARET = 40,                            // CARET
+        S_ASSIGN = 41,                           // ASSIGN
+        S_DESTRUCTIVE_ASSIGN = 42,               // DESTRUCTIVE_ASSIGN
+        S_EQUAL_EQUAL = 43,                      // EQUAL_EQUAL
+        S_NOT_EQUAL = 44,                        // NOT_EQUAL
+        S_LESS = 45,                             // LESS
+        S_LESS_EQUAL = 46,                       // LESS_EQUAL
+        S_GREATER = 47,                          // GREATER
+        S_GREATER_EQUAL = 48,                    // GREATER_EQUAL
+        S_AND = 49,                              // AND
+        S_OR = 50,                               // OR
+        S_NOT = 51,                              // NOT
+        S_CONCAT = 52,                           // CONCAT
+        S_DOUBLECONCAT = 53,                     // DOUBLECONCAT
+        S_FATARROW = 54,                         // FATARROW
+        S_LPAREN = 55,                           // LPAREN
+        S_RPAREN = 56,                           // RPAREN
+        S_LBRACE = 57,                           // LBRACE
+        S_RBRACE = 58,                           // RBRACE
+        S_COMMA = 59,                            // COMMA
+        S_SEMICOLON = 60,                        // SEMICOLON
+        S_COLON = 61,                            // COLON
+        S_DOT = 62,                              // DOT
+        S_UNDERSCORE = 63,                       // UNDERSCORE
+        S_AUTO = 64,                             // AUTO
+        S_UMINUS = 65,                           // UMINUS
+        S_YYACCEPT = 66,                         // $accept
+        S_program = 67,                          // program
+        S_top_level_items = 68,                  // top_level_items
+        S_top_level_item = 69,                   // top_level_item
+        S_opt_semi = 70,                         // opt_semi
+        S_decl = 71,                             // decl
+        S_function_decl = 72,                    // function_decl
+        S_type_decl = 73,                        // type_decl
+        S_protocol_decl = 74,                    // protocol_decl
+        S_protocol_extends_opt = 75,             // protocol_extends_opt
+        S_protocol_member_list = 76,             // protocol_member_list
+        S_protocol_member = 77,                  // protocol_member
+        S_ctor_params_opt = 78,                  // ctor_params_opt
+        S_inherits_opt = 79,                     // inherits_opt
+        S_parent_args_opt = 80,                  // parent_args_opt
+        S_type_member_list = 81,                 // type_member_list
+        S_type_member = 82,                      // type_member
+        S_params_opt = 83,                       // params_opt
+        S_param_list = 84,                       // param_list
+        S_param = 85,                            // param
+        S_return_ann_opt = 86,                   // return_ann_opt
+        S_type_ann_opt = 87,                     // type_ann_opt
+        S_type_expr = 88,                        // type_expr
+        S_expr = 89,                             // expr
+        S_let_expr = 90,                         // let_expr
+        S_binding_list = 91,                     // binding_list
+        S_binding = 92,                          // binding
+        S_if_expr = 93,                          // if_expr
+        S_elif_clauses = 94,                     // elif_clauses
+        S_while_expr = 95,                       // while_expr
+        S_for_expr = 96,                         // for_expr
+        S_assign_expr = 97,                      // assign_expr
+        S_lvalue = 98,                           // lvalue
+        S_logic_or = 99,                         // logic_or
+        S_logic_and = 100,                       // logic_and
+        S_equality = 101,                        // equality
+        S_relation = 102,                        // relation
+        S_type_test_expr = 103,                  // type_test_expr
+        S_concat = 104,                          // concat
+        S_additive = 105,                        // additive
+        S_multiplicative = 106,                  // multiplicative
+        S_power = 107,                           // power
+        S_unary = 108,                           // unary
+        S_postfix = 109,                         // postfix
+        S_primary = 110,                         // primary
+        S_args_opt = 111,                        // args_opt
+        S_arg_list = 112,                        // arg_list
+        S_block = 113,                           // block
+        S_block_body_opt = 114,                  // block_body_opt
+        S_expr_list = 115                        // expr_list
       };
     };
 
@@ -1983,6 +1993,36 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
+      make_SELF (location_type l)
+      {
+        return symbol_type (token::SELF, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_SELF (const location_type& l)
+      {
+        return symbol_type (token::SELF, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_BASE (location_type l)
+      {
+        return symbol_type (token::BASE, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_BASE (const location_type& l)
+      {
+        return symbol_type (token::BASE, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
       make_PLUS (location_type l)
       {
         return symbol_type (token::PLUS, std::move (l));
@@ -2403,6 +2443,36 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
+      make_UNDERSCORE (location_type l)
+      {
+        return symbol_type (token::UNDERSCORE, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_UNDERSCORE (const location_type& l)
+      {
+        return symbol_type (token::UNDERSCORE, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_AUTO (location_type l)
+      {
+        return symbol_type (token::AUTO, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_AUTO (const location_type& l)
+      {
+        return symbol_type (token::AUTO, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
       make_UMINUS (location_type l)
       {
         return symbol_type (token::UMINUS, std::move (l));
@@ -2740,9 +2810,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 318,     ///< Last index in yytable_.
+      yylast_ = 299,     ///< Last index in yytable_.
       yynnts_ = 50,  ///< Number of nonterminal symbols.
-      yyfinal_ = 79 ///< Termination state number.
+      yyfinal_ = 83 ///< Termination state number.
     };
 
 
@@ -2792,10 +2862,11 @@ switch (yykind)
       25,    26,    27,    28,    29,    30,    31,    32,    33,    34,
       35,    36,    37,    38,    39,    40,    41,    42,    43,    44,
       45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
-      55,    56,    57,    58,    59,    60,    61
+      55,    56,    57,    58,    59,    60,    61,    62,    63,    64,
+      65
     };
     // Last valid token kind.
-    const int code_max = 316;
+    const int code_max = 320;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -3124,17 +3195,17 @@ switch (yykind)
 
 #line 4 "src/parser/grammar.y"
 } } // hulk::parser
-#line 3128 "src/parser/parser.hpp"
+#line 3199 "src/parser/parser.hpp"
 
 
 // "%code provides" blocks.
-#line 89 "src/parser/grammar.y"
+#line 91 "src/parser/grammar.y"
 
     namespace hulk::parser {
         Parser::symbol_type yylex(ParserDriver& driver);
     }
 
-#line 3138 "src/parser/parser.hpp"
+#line 3209 "src/parser/parser.hpp"
 
 
 #endif // !YY_YY_SRC_PARSER_PARSER_HPP_INCLUDED

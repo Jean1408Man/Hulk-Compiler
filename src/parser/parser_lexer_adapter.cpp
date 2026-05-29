@@ -134,6 +134,8 @@ Parser::symbol_type yylex(ParserDriver& driver) {
         case TK::New: return Parser::make_NEW(loc);
         case TK::Is: return Parser::make_IS(loc);
         case TK::As: return Parser::make_AS(loc);
+        case TK::Self: return Parser::make_SELF(loc);
+        case TK::Base: return Parser::make_BASE(loc);
 
         case TK::Plus: return Parser::make_PLUS(loc);
         case TK::Minus: return Parser::make_MINUS(loc);
@@ -165,6 +167,9 @@ Parser::symbol_type yylex(ParserDriver& driver) {
         case TK::Colon: return Parser::make_COLON(loc);
         case TK::Dot: return Parser::make_DOT(loc);
         case TK::Protocol: return Parser::make_PROTOCOL(loc);
+
+        case TK::Underscore: return Parser::make_UNDERSCORE(loc);
+        case TK::Auto:       return Parser::make_AUTO(loc);
     }
 
     return Parser::make_ERROR_TOKEN("<unknown>", loc);

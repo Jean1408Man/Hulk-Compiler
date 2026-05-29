@@ -1,0 +1,15 @@
+protocol Hashable {
+    hash(): Number;
+}
+protocol Equatable extends Hashable {
+    equals(other: Object): Boolean;
+}
+type Item(id: Number) {
+    id: Number = id;
+    hash(): Number => self.id;
+    equals(other: Object): Boolean => true;
+}
+let e: Equatable = new Item(5) in {
+    print(e.hash());
+    print(e.equals(new Item(5)));
+}

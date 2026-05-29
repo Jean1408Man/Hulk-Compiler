@@ -7,7 +7,6 @@
 
 #include "../binding/symbol_resolver.h"
 #include "../eval/visitor.h"
-#include "../inference/hulk_type.h"
 #include "../ir/ir.h"
 #include "../semantic/semantic_tables.h"
 
@@ -31,7 +30,6 @@ class IRGen : public ExprVisitor, public DeclVisitor {
 public:
     IRGen(const SemanticTables& tables,
           const std::unordered_map<Expr*, ResolutionResult>& resolution_map,
-          const std::unordered_map<Expr*, HulkType>& type_map,
           std::string source_path = {});
 
     IR::IRProgram generate(Program& program);
@@ -39,7 +37,6 @@ public:
 private:
     const SemanticTables& tables_;
     const std::unordered_map<Expr*, ResolutionResult>& resolution_map_;
-    const std::unordered_map<Expr*, HulkType>& type_map_;
     std::string source_path_;
 
     NameMangler mangler_;

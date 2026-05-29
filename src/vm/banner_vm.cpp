@@ -57,10 +57,6 @@ std::string concat_operand_to_string(Word value, const VMHeap& heap) {
 }
 
 std::string concat_values(Word lhs, Word rhs, const VMHeap& heap, bool with_space) {
-    if (!is_string(lhs) && !is_string(rhs)) {
-        throw std::runtime_error("Runtime error: operador de concatenacion requiere al menos un String.");
-    }
-
     std::string result = concat_operand_to_string(lhs, heap);
     if (with_space) result += " ";
     result += concat_operand_to_string(rhs, heap);

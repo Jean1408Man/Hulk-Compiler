@@ -1,0 +1,7 @@
+type Animal {
+    kind(): String => "animal";
+}
+type Dog inherits Animal {
+    kind(): String => "dog";
+}
+let a: Animal = new Dog() in print(a.kind());

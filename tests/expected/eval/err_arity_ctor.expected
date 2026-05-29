@@ -1,1 +1,5 @@
-error [9:9 - 9:21]: El constructor de 'Punto' espera 2 argumento(s) pero recibió 1.
+error [9:9 - 9:21]: Constructor de 'Punto' espera 2 argumento(s) pero recibió 1.
+error [4:5 - 4:22]: No se pudo inferir el tipo de retorno del método 'getX'. Se requiere una anotación de tipo explícita.
+error [5:5 - 5:22]: No se pudo inferir el tipo de retorno del método 'getY'. Se requiere una anotación de tipo explícita.
+error [5:5 - 5:22]: No se pudo inferir el tipo de retorno del método 'getY'. Se requiere una anotación de tipo explícita.
+error [9:9 - 9:21]: Constructor de 'Punto' espera 2 argumento(s) pero recibió 1.

@@ -1,0 +1,5 @@
+function bad(x: _): _ => {
+    print(x + 1);
+    !x;
+};
+print(0);

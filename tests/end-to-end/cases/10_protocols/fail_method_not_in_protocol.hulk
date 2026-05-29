@@ -1,0 +1,8 @@
+protocol Tiny {
+    a(): Number;
+}
+type Big {
+    a(): Number => 1;
+    b(): Number => 2;
+}
+let t: Tiny = new Big() in print(t.b());

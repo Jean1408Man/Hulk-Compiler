@@ -1,0 +1,1 @@
+let x: auto = 42 in print(x);

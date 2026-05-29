@@ -1,0 +1,11 @@
+type Animal {
+    speak(): String => "generic";
+}
+type Dog inherits Animal {
+    speak(): String => "woof";
+}
+type Cat inherits Animal {
+    speak(): String => "meow";
+}
+function pick(b: Boolean) => if (b) new Dog() else new Cat();
+let a = pick(true) in print(a.speak());

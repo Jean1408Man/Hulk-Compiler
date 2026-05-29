@@ -1,1 +1,1 @@
-1
+error [5:26 - 5:29]: Los atributos son privados. Solo se pueden acceder mediante 'self'.

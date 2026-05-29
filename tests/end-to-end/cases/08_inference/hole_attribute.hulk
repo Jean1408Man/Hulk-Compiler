@@ -1,0 +1,6 @@
+type Point(x: auto, y: auto) {
+    x: _ = x;
+    y: _ = y;
+    norm(): auto => self.x * self.x + self.y * self.y;
+}
+let p = new Point(3, 4) in print(p.norm());

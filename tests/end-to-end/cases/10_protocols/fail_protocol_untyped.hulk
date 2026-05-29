@@ -1,0 +1,4 @@
+protocol Bad {
+    foo(x);
+}
+print(0);

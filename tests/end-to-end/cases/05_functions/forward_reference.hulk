@@ -1,0 +1,3 @@
+function cot(x) => 1 / tan(x);
+function tan(x) => sin(x) / cos(x);
+print(cot(PI / 4));

@@ -38,8 +38,10 @@
 #include "../ast/functions/param.h"
 #include "../common/diagnosticRepository.hpp"
 
+#include <algorithm>
 #include <sstream>
 #include <unordered_set>
+#include <vector>
 
 namespace Hulk {
 
@@ -474,29 +476,43 @@ void SymbolResolver::run_checks() {
 }
 
 void SymbolResolver::check_inheritance() {
-    for (auto& [name, info] : tables_.all_types()) {
+    // Sort names for deterministic error ordering
+    std::vector<std::string> names;
+    for (auto& [n, _] : tables_.all_types()) names.push_back(n);
+    std::sort(names.begin(), names.end());
+
+    std::unordered_set<std::string> cycle_reported;
+
+    for (const auto& name : names) {
+        const auto& info = tables_.all_types().at(name);
         if (info.is_builtin) continue;
 
         if (!info.parent_name.empty()) {
             const auto* parent = tables_.lookup_type(info.parent_name);
             if (!parent) {
                 hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
-                report(sp, "SEM_UNDEFINED_PARENT", name, info.parent_name);
+                report(sp, "BIND_PARENT_NOT_FOUND", info.parent_name, name);
             } else if (parent->is_builtin &&
                        (info.parent_name == "Number" ||
                         info.parent_name == "String"  ||
                         info.parent_name == "Boolean" ||
                         info.parent_name == "Range")) {
-                // Caso 9: no heredar de Number/String/Boolean
                 hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
                 report_raw(sp, "No se puede heredar del tipo builtin '" +
                            info.parent_name + "'.");
             }
         }
 
-        if (tables_.has_inheritance_cycle(name)) {
+        if (cycle_reported.count(name) == 0 && tables_.has_inheritance_cycle(name)) {
             hulk::common::Span sp = info.decl ? info.decl->span : hulk::common::Span{};
-            report_raw(sp, "Ciclo de herencia detectado en el tipo '" + name + "'.");
+            report(sp, "BIND_INHERIT_CYCLE", name, info.parent_name);
+            std::string cur = name;
+            while (!cur.empty()) {
+                if (!cycle_reported.insert(cur).second) break;
+                auto it = tables_.all_types().find(cur);
+                if (it == tables_.all_types().end()) break;
+                cur = it->second.parent_name;
+            }
         }
     }
 }
@@ -638,7 +654,7 @@ void SymbolResolver::visit(BuiltinCall& n) {
         resolution_map_[&n] = ResolutionResult{};
         return;
     }
-    if (bf->arity >= 0 && static_cast<int>(n.GetArgs().size()) != bf->arity) {
+    if (!bf->is_variadic && static_cast<int>(n.GetArgs().size()) != bf->arity) {
         std::ostringstream oss;
         oss << "Función builtin '" << fname << "' espera "
             << bf->arity << " argumento(s) pero recibió "
@@ -720,15 +736,13 @@ void SymbolResolver::visit(DestructiveAssign& n) {
 
 void SymbolResolver::visit(DestructiveAssignMember& n) {
     resolve(n.GetObject());
-    
-    auto* var_ref = dynamic_cast<VariableReference*>(n.GetObject());
+
     auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
-    
-    if (!((var_ref && var_ref->GetName() == "self") || self_ref)) {
+    if (!self_ref) {
         report_raw(n.span, "Los atributos son privados. Solo se pueden modificar mediante 'self'.");
         resolution_map_[&n] = ResolutionResult{};
     }
-    
+
     resolve(n.GetValue());
 }
 
@@ -772,34 +786,12 @@ void SymbolResolver::visit(For& n) {
 void SymbolResolver::visit(FunctionCall& n) {
     for (auto& arg : n.GetArgs()) resolve(arg.get());
 
-    if (n.GetName() == "base") {
-        if (context_ != ResolverContext::Method) {
-            report_raw(n.span, "'base()' solo puede usarse dentro de métodos de tipo.");
-            resolution_map_[&n] = ResolutionResult{};
-            return;
-        }
-        const SemanticTypeInfo* type_info = tables_.lookup_type(current_type_name_);
-        if (!type_info || type_info->parent_name.empty()) {
-            report_raw(n.span, "'base()' solo puede usarse en tipos con herencia.");
-            resolution_map_[&n] = ResolutionResult{};
-            return;
-        }
-        const SemanticMethodInfo* parent_method = tables_.find_method(type_info->parent_name, current_func_name_);
-        if (!parent_method) {
-            report_raw(n.span, "El método '" + current_func_name_ + "' no existe en el padre '" + type_info->parent_name + "'.");
-            resolution_map_[&n] = ResolutionResult{};
-            return;
-        }
-        resolution_map_[&n] = ResolutionResult::from_method(parent_method);
-        return;
-    }
-
     const SemanticFuncInfo* info = tables_.lookup_func(n.GetName());
     if (!info) {
         // Fallback: algunas funciones builtin (como 'range') se parsean como FunctionCall
         const BuiltinFuncInfo* builtin = tables_.lookup_builtin_func(n.GetName());
         if (builtin) {
-            if (builtin->arity >= 0 && static_cast<int>(n.GetArgs().size()) != builtin->arity) {
+            if (!builtin->is_variadic && static_cast<int>(n.GetArgs().size()) != builtin->arity) {
                 std::ostringstream oss;
                 oss << "Función builtin '" << n.GetName() << "' espera "
                     << builtin->arity << " argumento(s) pero recibió "
@@ -859,10 +851,9 @@ void SymbolResolver::visit(NewExpr& n) {
 // Caso 6: resolver MemberAccess sobre self
 void SymbolResolver::visit(MemberAccess& n) {
     resolve(n.GetObject());
-    auto* var_ref = dynamic_cast<VariableReference*>(n.GetObject());
     auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
-    
-    if ((var_ref && var_ref->GetName() == "self") || self_ref) {
+
+    if (self_ref) {
         if (current_type_name_.empty()) {
             report_raw(n.span, "'self' no es válido en este contexto.");
             resolution_map_[&n] = ResolutionResult{};
@@ -887,8 +878,8 @@ void SymbolResolver::visit(MethodCall& n) {
     resolve(n.GetObject());
     for (auto& arg : n.GetArgs()) resolve(arg.get());
 
-    auto* var_ref = dynamic_cast<VariableReference*>(n.GetObject());
-    if (var_ref && var_ref->GetName() == "self" && !current_type_name_.empty()) {
+    auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
+    if (self_ref && !current_type_name_.empty()) {
         const SemanticMethodInfo* method =
             tables_.find_method(current_type_name_, n.GetMethodName());
         if (!method) {

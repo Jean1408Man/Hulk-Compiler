@@ -1,0 +1,9 @@
+protocol Sized {
+    size(): Number;
+}
+type Box(n: Number) {
+    n: Number = n;
+    size(): Number => self.n;
+}
+function make(n: Number): Sized => new Box(n);
+let s: Sized = make(42) in print(s.size());

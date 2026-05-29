@@ -1,1 +1,1 @@
-error [7:34 - 7:37]: Atributo o método 'z' no encontrado en el tipo 'Punto'.
+error [7:34 - 7:37]: Los atributos son privados. Solo se pueden acceder mediante 'self'.

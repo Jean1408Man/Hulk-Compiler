@@ -1,0 +1,1 @@
+print(sqrt(sqrt(81)) + log(10, 1000));

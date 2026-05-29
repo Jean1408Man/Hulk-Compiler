@@ -1,0 +1,2 @@
+type Empty {}
+let e = new Empty() in print(e.ghost());

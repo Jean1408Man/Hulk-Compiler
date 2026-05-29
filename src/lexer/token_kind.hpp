@@ -41,6 +41,8 @@ enum class TokenKind {
     New,
     Is,
     As,
+    Self,
+    Base,
 
     // operadores
     Plus,              // +
@@ -74,6 +76,10 @@ enum class TokenKind {
     Colon,             // :
     Dot,               // .
     Protocol,          // protocol
+
+    // anotaciones de inferencia explícita (type holes)
+    Underscore,        // _
+    Auto,              // auto
 };
 
 } // namespace hulk::lexer

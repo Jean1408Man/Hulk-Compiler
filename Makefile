@@ -1,4 +1,6 @@
 SHELL    := bash
+export TEMP := /tmp
+export TMP  := /tmp
 CXX      := g++
 CXXFLAGS := -std=c++20 -Wall -Wextra -pedantic -Isrc
 # Flags sin warnings para código generado por Bison (parser.cpp / parser.hpp)
@@ -48,13 +50,13 @@ LEXER_AST_SRCS := \
 	src/ast/accept_impl.cpp
 
 EVAL_SRCS := \
-	src/objects/hulk_value.cpp \
 	src/eval/evaluator.cpp
 
 SEMANTIC_SRCS := \
 	src/objects/hulk_value.cpp \
 	src/semantic/semantic_tables.cpp \
 	src/semantic/analyzer.cpp \
+	src/semantic/type_utils.cpp \
 	src/binding/symbol_resolver.cpp \
 	src/inference/hulk_type.cpp \
 	src/inference/type_inferencer.cpp \
@@ -85,9 +87,43 @@ PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-.PHONY: all parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests run-tests update-expected clean
+# Archivo de entrada por defecto para run-eval / run-vm / emit-banner
+FILE ?= examples/example.hulk
+
+.PHONY: all compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Comandos principales de usuario
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Compila todos los binarios principales (evaluador + compilador completo)
+compile: eval backend
+
+# Ejecuta un archivo .hulk mediante el evaluador de árbol (sin backend)
+#   make run-eval FILE=examples/example.hulk
+run-eval: eval
+	./hulk_eval $(FILE)
+
+# Ejecuta un archivo .hulk mediante el pipeline completo (IR → BannerVM)
+#   make run-vm FILE=examples/example.hulk
+run-vm: backend
+	./hulk_backend --run-banner $(FILE)
+
+# Emite el Banner IR generado: lo guarda en outputs/ y lo imprime en terminal
+#   make emit-banner FILE=examples/example.hulk
+emit-banner: backend
+	@mkdir -p outputs
+	@name=$$(basename $(FILE) .hulk); \
+	out=outputs/$${name}.banner; \
+	./hulk_backend --emit-banner -o $$out $(FILE) && \
+	echo "--- Banner IR: $$out ---" && \
+	cat $$out
+
+# Corre los tests de restricted-inference usando el evaluador de árbol
+eval-restricted-tests: eval
+	@bash tests/eval/run_eval_restricted_tests.sh
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Directorios de objetos
@@ -117,16 +153,6 @@ parser-gen:
 
 parser-sync-check:
 	@set -e; \
-	if grep -n -E 'AUTO|UNDERSCORE_TYPE' \
-		src/parser/grammar.y \
-		src/parser/parser.cpp \
-		src/parser/parser.hpp \
-		src/lexer/token_kind.hpp \
-		src/lexer/keywords.hpp \
-		src/parser/parser_lexer_adapter.cpp; then \
-		echo "parser-sync-check: tokens AUTO/UNDERSCORE_TYPE no deben reaparecer; use IDENTIFIER como pseudo-tipo."; \
-		exit 1; \
-	fi; \
 	tmp_dir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp_dir"' EXIT; \
 	mkdir -p "$$tmp_dir/src/parser"; \
@@ -154,11 +180,13 @@ parser-demo: $(LEXER_AST_OBJS) $(PARSER_OBJS)
 # ─────────────────────────────────────────────────────────────────────────────
 # Evaluador (cortes 4, 5 y 6)
 # ─────────────────────────────────────────────────────────────────────────────
-eval: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS)
+$(OBJDIR)/eval_main/main.o: src/eval/main.cpp
 	@mkdir -p $(OBJDIR)/eval_main
 	$(CXX) $(CXXFLAGS) -c src/eval/main.cpp -o $(OBJDIR)/eval_main/main.o
+
+eval: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS) $(SEMANTIC_OBJS) $(OBJDIR)/eval_main/main.o
 	$(CXX) $(CXXFLAGS) \
-		$(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS) \
+		$(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS) $(SEMANTIC_OBJS) \
 		$(OBJDIR)/eval_main/main.o \
 		-o hulk_eval
 
@@ -246,6 +274,9 @@ vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.
 backend-tests: backend
 	@bash tests/backend/run_backend_tests.sh
 
+end-to-end-tests: backend
+	@cd tests/end-to-end && HULK=../../hulk_backend ./end-to-end_tests.sh $(FOLDER)
+
 semantic-tests: semantic
 	@echo "=== chequeos semánticos — programas válidos ==="; \
 	for f in tests/semantic/ok_*.hulk; do \
@@ -289,13 +320,23 @@ run-tests: eval parser-demo semantic
 	@bash tests/run_tests.sh $(SUITE)
 
 # Regenera todos los archivos .expected con la salida actual (usar tras cambios intencionales)
-update-expected: eval semantic
+update-expected: eval backend semantic
 	@echo "=== Actualizando archivos .expected ==="; \
-	mkdir -p tests/expected/eval tests/expected/semantic tests/expected/typecheck; \
-	for f in tests/eval/c4_*.hulk tests/eval/c5_*.hulk tests/eval/c6_*.hulk tests/eval/err_*.hulk; do \
+	mkdir -p tests/expected/eval tests/expected/semantic tests/expected/typecheck tests/expected/backend; \
+	for f in tests/eval/c4_*.hulk tests/eval/c5_*.hulk tests/eval/c6_*.hulk; do \
+		name=$$(basename $$f .hulk); \
+		{ ./hulk_backend $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
+		echo "  updated eval/$${name}.expected"; \
+	done; \
+	for f in tests/eval/err_*.hulk; do \
 		name=$$(basename $$f .hulk); \
 		{ ./hulk_eval $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
 		echo "  updated eval/$${name}.expected"; \
+	done; \
+	for f in tests/backend/regression/*.hulk; do \
+		name=$$(basename $$f .hulk); \
+		{ ./hulk_backend $$f 2>&1; } > tests/expected/backend/$${name}.expected || true; \
+		echo "  updated backend/$${name}.expected"; \
 	done; \
 	for f in tests/semantic/ok_*.hulk tests/semantic/err_*.hulk; do \
 		name=$$(basename $$f .hulk); \
@@ -310,4 +351,7 @@ update-expected: eval semantic
 	echo "=== Done ==="
 
 clean:
-	rm -rf $(OBJDIR) hulk_lexer hulk_parser_demo hulk_eval hulk_semantic hulk_backend
+	rm -rf $(OBJDIR) hulk_lexer hulk_parser_demo hulk_eval hulk_semantic hulk_backend \
+		hulk_lexer.exe hulk_parser_demo.exe hulk_eval.exe hulk_semantic.exe hulk_backend.exe \
+		hulk_vm_value_tests hulk_vm_tests hulk_vm_limits_tests hulk_vm_semantics_tests \
+		hulk_vm_value_tests.exe hulk_vm_tests.exe hulk_vm_limits_tests.exe hulk_vm_semantics_tests.exe

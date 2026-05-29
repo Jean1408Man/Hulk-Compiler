@@ -74,14 +74,17 @@ private:
         has_errors_ = true;
     }
 
-    void require_annotation(const std::string& annotation,
+    // Reports a restricted-inference error only when the position has neither
+    // a concrete type annotation nor an explicit type-hole request (_ / auto).
+    void require_annotation(bool has_concrete_annotation, bool is_type_hole,
                             const hulk::common::Span& span) {
-        if (restricted_inference_ && annotation.empty()) report_restricted(span);
+        if (restricted_inference_ && !has_concrete_annotation && !is_type_hole)
+            report_restricted(span);
     }
 
     void require_param_annotation(const Param& param,
                                   const hulk::common::Span& owner_span) {
-        require_annotation(param.typeAnnotation, owner_span);
+        require_annotation(param.HasTypeAnnotation(), param.IsTypeHole(), owner_span);
     }
 
     void visit_expr(Expr* expr) {
@@ -114,7 +117,7 @@ private:
     void visit(LogicUnaryOp& node) override { visit_unary(node); }
 
     void visit(VariableBinding& node) override {
-        require_annotation(node.GetTypeAnnotation(), node.span);
+        require_annotation(node.HasTypeAnnotation(), node.IsTypeHole(), node.span);
         visit_expr(node.GetInitializer());
     }
 
@@ -184,7 +187,7 @@ private:
 
     void visit(FunctionDecl& node) override {
         for (const auto& param : node.GetParams()) require_param_annotation(param, node.span);
-        require_annotation(node.GetReturnTypeAnnotation(), node.span);
+        require_annotation(node.HasReturnTypeAnnotation(), node.IsReturnTypeHole(), node.span);
         visit_expr(node.GetBody());
     }
 
@@ -197,13 +200,13 @@ private:
     }
 
     void visit(TypeMemberAttribute& node) override {
-        require_annotation(node.GetTypeAnnotation(), node.span);
+        require_annotation(node.HasTypeAnnotation(), node.IsTypeHole(), node.span);
         visit_expr(node.GetInitializer());
     }
 
     void visit(TypeMemberMethod& node) override {
         for (const auto& param : node.GetParams()) require_param_annotation(param, node.span);
-        require_annotation(node.GetReturnTypeAnnotation(), node.span);
+        require_annotation(node.HasReturnTypeAnnotation(), node.IsReturnTypeHole(), node.span);
         visit_expr(node.GetBody());
     }
 
@@ -231,13 +234,13 @@ bool SemanticAnalyzer::analyze(Program& program) {
     resolver_->run(program);
     // Continuamos a pesar de errores en el resolver para capturar errores de tipos
     // a menos que el resolver haya fallado catastróficamente (sin tablas consistentes)
-    
+
     inferencer_ = std::make_unique<TypeInferencer>(tables_, resolver_->resolution_map(), engine_);
     inferencer_->infer(program);
-    
+
     type_checker_ = std::make_unique<TypeChecker>(
-        tables_, 
-        inferencer_->type_map(), 
+        tables_,
+        inferencer_->type_map(),
         resolver_->resolution_map(),
         inferencer_->param_types(),
         inferencer_->binding_types(),

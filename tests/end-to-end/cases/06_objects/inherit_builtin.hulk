@@ -1,0 +1,4 @@
+type MyNum inherits Number {
+    x = 0;
+}
+print(0);

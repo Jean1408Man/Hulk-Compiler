@@ -1,0 +1,1 @@
+let r = { print("side"); 1 + 1; } in print(r);

@@ -1,0 +1,11 @@
+protocol Speakable {
+    speak(): String;
+}
+type Animal {
+    speak(): String => "...";
+}
+type Cow inherits Animal {
+    speak(): String => "Moo";
+}
+function broadcast(s: Speakable): String => s.speak();
+let c: Speakable = new Cow() in print(broadcast(c));

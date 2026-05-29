@@ -1,0 +1,7 @@
+protocol Hashable {
+    hash(): Number;
+}
+type Incomplete {
+    other(): Number => 0;
+}
+let h: Hashable = new Incomplete() in print(h.hash());

@@ -174,15 +174,12 @@ namespace Hulk::Backend {
 
 IRGen::IRGen(const SemanticTables& tables,
              const std::unordered_map<Expr*, ResolutionResult>& resolution_map,
-             const std::unordered_map<Expr*, HulkType>& type_map,
              std::string source_path)
     : tables_(tables),
       resolution_map_(resolution_map),
-      type_map_(type_map),
       source_path_(std::move(source_path)) {}
 
 IR::IRProgram IRGen::generate(Program& program) {
-    (void)type_map_;
     program_ = IR::IRProgram{};
     temp_counter_ = 0;
     label_counter_ = 0;
@@ -565,8 +562,21 @@ void IRGen::emit_type_initializer(TypeDecl& type) {
     current_self_name_ = self_name;
     add_param(self_name);
 
+    const TypeDecl* ctor_source = &type;
+    if (!type.HasExplicitConstructor() && type.HasParent() && type.GetParentArgs().empty()) {
+        std::string cur = type.GetParentName();
+        while (!cur.empty()) {
+            auto it = type_decls_.find(cur);
+            if (it == type_decls_.end()) break;
+            ctor_source = it->second;
+            if (it->second->HasExplicitConstructor()) break;
+            if (!it->second->HasParent()) break;
+            cur = it->second->GetParentName();
+        }
+    }
+
     context_.push_scope();
-    for (const auto& param : type.GetCtorParams()) {
+    for (const auto& param : ctor_source->GetCtorParams()) {
         const std::string name = mangler_.make_unique("hulk_ctor_param", param.name);
         context_.bind(&param, name);
         add_param(name);
@@ -581,7 +591,8 @@ void IRGen::emit_type_initializer(TypeDecl& type) {
                 const auto lowered = lower_args(type.GetParentArgs());
                 args.insert(args.end(), lowered.begin(), lowered.end());
             } else if (!type.HasExplicitConstructor()) {
-                for (const auto& param : type.GetCtorParams()) {
+                // Forward the inherited ctor params to the parent initializer
+                for (const auto& param : ctor_source->GetCtorParams()) {
                     auto name = context_.lookup(&param);
                     if (!name) {
                         throw CodegenError("Backend IR: parametro de constructor sin nombre.");
@@ -748,7 +759,6 @@ std::string IRGen::emit_range_call(const std::vector<std::unique_ptr<Expr>>& arg
 std::string IRGen::lookup_symbol(Expr& node, const std::string& fallback_name) {
     auto it = resolution_map_.find(&node);
     if (it == resolution_map_.end()) {
-        if (fallback_name == "self" && !current_self_name_.empty()) return current_self_name_;
         throw CodegenError("Backend IR: referencia sin resolver '" + fallback_name + "'.");
     }
 
@@ -1053,8 +1063,7 @@ void IRGen::visit(For& node) {
 
 void IRGen::visit(FunctionCall& node) {
     auto res_it = resolution_map_.find(&node);
-    if (node.GetName() == "base" ||
-        (res_it != resolution_map_.end() && res_it->second.kind == ResolutionKind::Method)) {
+    if (res_it != resolution_map_.end() && res_it->second.kind == ResolutionKind::Method) {
         expr_result_ = emit_base_call(node.GetArgs());
         return;
     }

@@ -1,0 +1,12 @@
+protocol Greeter {
+    hello(): String;
+    bye(): String;
+}
+type Cuban {
+    hello(): String => "Hola";
+    bye(): String => "Chao";
+}
+let g: Greeter = new Cuban() in {
+    print(g.hello());
+    print(g.bye());
+}
