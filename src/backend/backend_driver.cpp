@@ -38,6 +38,7 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
         const int parse_rc = parser.parse();
         if (engine.has_errors() || parse_rc != 0) {
             engine.print_all();
+            result.exit_code = engine.exit_code_for_contract();
             return result;
         }
 
@@ -57,6 +58,7 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
         const bool sem_ok = sem.analyze(*program);
         if (!sem_ok || engine.has_blocking_errors()) {
             engine.print_all();
+            result.exit_code = engine.exit_code_for_contract();
             return result;
         }
 
@@ -71,6 +73,7 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
                 return result;
             }
             result.ok = true;
+            result.exit_code = 0;
             return result;
         }
 
@@ -85,6 +88,7 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
                 return result;
             }
             result.ok = true;
+            result.exit_code = 0;
             return result;
         }
 
@@ -96,12 +100,14 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
                 return result;
             }
             result.ok = true;
+            result.exit_code = 0;
             return result;
         }
 
         VM::BannerVM vm;
         (void)vm.run(banner);
         result.ok = true;
+        result.exit_code = 0;
         return result;
     } catch (const CodegenError& err) {
         std::cerr << err.what() << "\n";

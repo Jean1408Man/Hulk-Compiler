@@ -70,5 +70,5 @@ int main(int argc, char** argv) {
     }
 
     const Hulk::Backend::BackendResult result = Hulk::Backend::run_backend(options);
-    return result.ok ? 0 : 1;
+    return result.exit_code;
 }
