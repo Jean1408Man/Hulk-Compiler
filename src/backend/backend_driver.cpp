@@ -3,6 +3,7 @@
 #include "codegen_error.h"
 #include "hulkir_to_banner.h"
 #include "ir_gen.h"
+#include "output_packager.h"
 
 #include "../banner/banner_printer.h"
 #include "../ast/others/program.h"
@@ -104,8 +105,24 @@ BackendResult BackendDriver::run(const BackendOptions& options) {
             return result;
         }
 
-        VM::BannerVM vm;
-        (void)vm.run(banner);
+        if (options.run_banner) {
+            // Explicit developer mode: execute in-process.
+            VM::BannerVM vm;
+            (void)vm.run(banner);
+        } else {
+#ifdef __linux__
+            // Contract mode (Linux): emit a standalone ./output.
+            const std::string out = options.output_path.empty()
+                                        ? "./output"
+                                        : options.output_path;
+            package_output(banner, out);
+#else
+            // Non-Linux (development): packaging requires /proc/self/exe.
+            // Fall back to in-process execution so local tests still work.
+            VM::BannerVM vm;
+            (void)vm.run(banner);
+#endif
+        }
         result.ok = true;
         result.exit_code = 0;
         return result;

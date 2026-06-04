@@ -83,12 +83,16 @@ run_case() {
   fi
 
   # Determinar tipo de caso
+  #   .out   → programa válido: compilar debe dar exit 0, ./output produce stdout esperado
+  #   .err   → error de compilador: ./hulk debe dar exit !=0 (léxico/sintáctico/semántico)
+  #   .rterr → error de runtime: compilar debe dar exit 0, pero ./output debe dar exit !=0
   local mode=""
-  [ -f "${base}.out" ] && mode="out"
-  [ -f "${base}.err" ] && mode="err"
+  [ -f "${base}.out"   ] && mode="out"
+  [ -f "${base}.err"   ] && mode="err"
+  [ -f "${base}.rterr" ] && mode="rterr"
 
   if [ -z "$mode" ]; then
-    printf "  ${YEL}SKIP${RST} %-34s ${DIM}(sin .out ni .err)${RST}\n" "$name"
+    printf "  ${YEL}SKIP${RST} %-34s ${DIM}(sin .out, .err ni .rterr)${RST}\n" "$name"
     SKIP=$((SKIP+1)); return
   fi
 
@@ -103,20 +107,71 @@ run_case() {
   exit_code=$?
 
   if [ "$mode" = "out" ]; then
-    # Caso válido: exit 0 + stdout idéntico
+    # Caso válido: ./hulk compila (exit 0), luego ./output produce el stdout esperado
     local expected; expected="$(cat "${base}.out")"
     if [ "$exit_code" -ne 0 ]; then
-      printf "  ${RED}FAIL${RST} %-34s ${DIM}(exit=%s, se esperaba 0)${RST}\n" "$name" "$exit_code"
+      printf "  ${RED}FAIL${RST} %-34s ${DIM}(compilacion fallo exit=%s)${RST}\n" "$name" "$exit_code"
       FAIL=$((FAIL+1)); FAILED_LIST+=("$dir/$name")
-      echo "${DIM}        salida: $(echo "$output" | head -3 | tr '\n' '|')${RST}"
-    elif [ "$output" = "$expected" ]; then
-      printf "  ${GRN}PASS${RST} %-34s ${DIM}(valido)${RST}\n" "$name"
+      echo "${DIM}        error: $(echo "$output" | head -3 | tr '\n' '|')${RST}"
+    elif [ ! -x "./output" ]; then
+      printf "  ${RED}FAIL${RST} %-34s ${DIM}(./output no existe o no es ejecutable)${RST}\n" "$name"
+      FAIL=$((FAIL+1)); FAILED_LIST+=("$dir/$name")
+    else
+      local run_output
+      run_output="$(timeout "$TIMEOUT_SECS" ./output 2>&1)"
+      local run_exit=$?
+      if [ "$run_output" = "$expected" ]; then
+        printf "  ${GRN}PASS${RST} %-34s ${DIM}(valido)${RST}\n" "$name"
+        PASS=$((PASS+1))
+      else
+        printf "  ${RED}FAIL${RST} %-34s ${DIM}(stdout de ./output no coincide, exit=%s)${RST}\n" "$name" "$run_exit"
+        FAIL=$((FAIL+1)); FAILED_LIST+=("$dir/$name")
+        diff <(printf '%s' "$expected") <(printf '%s' "$run_output") \
+          | sed 's/^/        /' | head -8
+      fi
+    fi
+    # Limpiar el ejecutable generado
+    rm -f ./output
+  elif [ "$mode" = "rterr" ]; then
+    # Error de runtime: compilar debe devolver exit 0 y producir ./output,
+    # pero ./output debe fallar (exit != 0).
+    if [ "$exit_code" -ne 0 ]; then
+      printf "  ${RED}FAIL${RST} %-34s ${DIM}(compilacion fallo exit=%s; se esperaba exito)${RST}\n" "$name" "$exit_code"
+      FAIL=$((FAIL+1)); FAILED_LIST+=("$dir/$name")
+      rm -f ./output; return
+    fi
+    if [ ! -x "./output" ]; then
+      printf "  ${RED}FAIL${RST} %-34s ${DIM}(./output no existe o no es ejecutable)${RST}\n" "$name"
+      FAIL=$((FAIL+1)); FAILED_LIST+=("$dir/$name")
+      return
+    fi
+    local rt_output rt_exit
+    rt_output="$(timeout "$TIMEOUT_SECS" ./output 2>&1)"
+    rt_exit=$?
+    rm -f ./output
+    if [ "$rt_exit" -eq 0 ]; then
+      printf "  ${RED}FAIL${RST} %-34s ${DIM}(./output termino con exit 0; se esperaba error de runtime)${RST}\n" "$name"
+      FAIL=$((FAIL+1)); FAILED_LIST+=("$dir/$name")
+      return
+    fi
+    # Verificar substrings opcionales en la salida de runtime
+    local missing=0
+    if [ -s "${base}.rterr" ]; then
+      while IFS= read -r needle; do
+        needle="${needle%$'\r'}"
+        [ -z "$needle" ] && continue
+        if ! grep -qiF -- "$needle" <<<"$rt_output"; then
+          missing=1
+          echo "${DIM}        falta en runtime: \"$needle\"${RST}"
+        fi
+      done < "${base}.rterr"
+    fi
+    if [ "$missing" -eq 0 ]; then
+      printf "  ${GRN}PASS${RST} %-34s ${DIM}(runtime error esperado)${RST}\n" "$name"
       PASS=$((PASS+1))
     else
-      printf "  ${RED}FAIL${RST} %-34s ${DIM}(stdout no coincide)${RST}\n" "$name"
+      printf "  ${RED}FAIL${RST} %-34s ${DIM}(runtime error, pero mensaje no coincide)${RST}\n" "$name"
       FAIL=$((FAIL+1)); FAILED_LIST+=("$dir/$name")
-      diff <(printf '%s' "$expected") <(printf '%s' "$output") \
-        | sed 's/^/        /' | head -8
     fi
   else
     # Caso inválido: exit != 0, y substrings opcionales
