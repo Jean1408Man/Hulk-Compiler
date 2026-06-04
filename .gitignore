@@ -34,9 +34,10 @@
 
 # Executables
 *.exe
-*.out
 *.app
 /hulk_*
+/hulk
+/output
 
 # debug information files
 *.dwo
