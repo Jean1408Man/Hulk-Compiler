@@ -1,0 +1,4 @@
+type OnlyNext {
+    next(): Boolean => false;
+}
+for (x in new OnlyNext()) print(x);

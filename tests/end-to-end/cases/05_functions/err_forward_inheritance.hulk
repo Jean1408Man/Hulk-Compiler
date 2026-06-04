@@ -1,0 +1,16 @@
+// Test: herencia hacia adelante — B se declara DESPUES de A
+// Según la guía, el Pase 1 del binding registra TODAS las declaraciones
+// antes de validar nada. Esto significa que B ya existe en las tablas
+// cuando se ejecuta check_inheritance() en el Pase 3.
+// La pregunta clave es: ¿el compilador acepta forward references en herencia?
+
+type A inherits B {
+    value = 42;
+    getValue() => self.value;
+}
+
+type B {
+    extra = 0;
+}
+
+print(new A().getValue());

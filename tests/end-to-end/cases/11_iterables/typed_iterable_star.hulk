@@ -1,0 +1,6 @@
+function sum(numbers: Number*): Number =>
+    let total = 0 in {
+        for (x in numbers) total := total + x;
+        total;
+    };
+print(sum(range(1, 5)));

@@ -1,0 +1,7 @@
+type StringIter {
+    done: Boolean = false;
+    next(): Boolean => if (self.done) false else (self.done := true);
+    current(): String => "nope";
+}
+function sum(xs: Number*): Number => 0;
+print(sum(new StringIter()));

@@ -1,0 +1,11 @@
+type Once {
+    done: Boolean = false;
+    next(): Boolean => if (self.done) false else (self.done := true);
+    current(): Number => 42;
+}
+function first(it: Iterable): Object =>
+    let r = 0 in {
+        if (it.next()) r := it.current() else 0;
+        r;
+    };
+print(first(new Once()));

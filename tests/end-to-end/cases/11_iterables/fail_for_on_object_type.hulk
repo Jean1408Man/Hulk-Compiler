@@ -1,0 +1,4 @@
+type Plain {
+    foo(): Number => 0;
+}
+for (x in new Plain()) print(x);

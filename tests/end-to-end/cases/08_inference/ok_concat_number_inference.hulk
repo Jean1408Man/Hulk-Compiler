@@ -1,0 +1,3 @@
+function joinWords(a, b) => a @ b;
+
+print(joinWords(42, 100));

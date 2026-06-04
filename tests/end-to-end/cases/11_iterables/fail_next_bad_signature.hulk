@@ -1,0 +1,5 @@
+type WrongNext {
+    next(): Number => 0;
+    current(): Number => 0;
+}
+for (x in new WrongNext()) print(x);

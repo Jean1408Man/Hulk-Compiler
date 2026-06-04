@@ -1,0 +1,6 @@
+function count_items(it: Iterable): Number =>
+    let total = 0 in {
+        for (x in it) total := total + 1;
+        total;
+    };
+print(count_items(range(10, 15)));

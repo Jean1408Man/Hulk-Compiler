@@ -1,0 +1,6 @@
+function describe(items: Number*): Number =>
+    let count = 0 in {
+        for (n in items) count := count + 1;
+        count;
+    };
+print(describe(range(0, 7)));
