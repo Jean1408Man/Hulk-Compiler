@@ -1,1 +1,1 @@
-error [1:17 - 1:23]: Atributo 'x' duplicado en tipo 'A'.
+(1,17) SEMANTIC: Atributo 'x' duplicado en tipo 'A'.

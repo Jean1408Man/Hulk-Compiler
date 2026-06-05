@@ -289,6 +289,9 @@ backend-tests: backend
 end-to-end-tests: build
 	@cd tests/end-to-end && HULK=../../hulk ./end-to-end_tests.sh $(FOLDER)
 
+hulk-tests: build
+	@bash tests/hulk/run_tests.sh
+
 semantic-tests: semantic
 	@echo "=== chequeos semánticos — programas válidos ==="; \
 	for f in tests/semantic/ok_*.hulk; do \
@@ -337,7 +340,7 @@ update-expected: eval backend semantic
 	mkdir -p tests/expected/eval tests/expected/semantic tests/expected/typecheck tests/expected/backend; \
 	for f in tests/eval/c4_*.hulk tests/eval/c5_*.hulk tests/eval/c6_*.hulk; do \
 		name=$$(basename $$f .hulk); \
-		{ ./hulk_backend $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
+		{ ./hulk_eval $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
 		echo "  updated eval/$${name}.expected"; \
 	done; \
 	for f in tests/eval/err_*.hulk; do \
@@ -347,7 +350,8 @@ update-expected: eval backend semantic
 	done; \
 	for f in tests/backend/regression/*.hulk; do \
 		name=$$(basename $$f .hulk); \
-		{ ./hulk_backend $$f 2>&1; } > tests/expected/backend/$${name}.expected || true; \
+		{ ./hulk_backend $$f 2>/dev/null && ./output 2>&1; } > tests/expected/backend/$${name}.expected || true; \
+		rm -f ./output; \
 		echo "  updated backend/$${name}.expected"; \
 	done; \
 	for f in tests/semantic/ok_*.hulk tests/semantic/err_*.hulk; do \

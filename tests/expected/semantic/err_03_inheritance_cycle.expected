@@ -1,1 +1,1 @@
-error [4:1 - 6:2]: Ciclo de herencia detectado: 'A' -> 'B'.
+(4,1) SEMANTIC: Ciclo de herencia detectado: 'A' -> 'B'.

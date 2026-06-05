@@ -1,1 +1,1 @@
-error [3:7 - 3:11]: Error de tipos en operando izquierdo de operador aritmético: se esperaba 'Number' pero se encontró 'Boolean'.
+(3,7) SEMANTIC: Error de tipos en operando izquierdo de operador aritmético: se esperaba 'Number' pero se encontró 'Boolean'.

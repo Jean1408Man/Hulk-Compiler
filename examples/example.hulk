@@ -1,4 +1,1 @@
-let x = 42 in print(x);
-function id(x) => x;
-x := x + 1;
-if (x >= 10) print("ok") else print("no");
+let x = 42 in print(x)

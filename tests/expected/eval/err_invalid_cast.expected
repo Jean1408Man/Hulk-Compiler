@@ -1,1 +1,1 @@
-error [14:14 - 14:24]: Operación 'as' no plausible: tipo 'Gato' y 'Perro' no están relacionados.
+(14,14) SEMANTIC: Operación 'as' no plausible: tipo 'Gato' y 'Perro' no están relacionados.

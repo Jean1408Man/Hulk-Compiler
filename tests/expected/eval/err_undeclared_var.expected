@@ -1,1 +1,1 @@
-error [3:7 - 3:8]: La variable 'x' no ha sido declarada en este ámbito.
+(3,7) SEMANTIC: La variable 'x' no ha sido declarada en este ámbito.

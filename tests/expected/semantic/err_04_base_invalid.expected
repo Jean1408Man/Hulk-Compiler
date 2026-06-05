@@ -1,2 +1,2 @@
-error [2:12 - 2:18]: 'base()' no tiene método base para 'f' en el padre.
-error [2:5 - 2:19]: No se pudo inferir el tipo de retorno del método 'f'. Se requiere una anotación de tipo explícita.
+(2,12) SEMANTIC: 'base()' no tiene método base para 'f' en el padre.
+(2,5) SEMANTIC: No se pudo inferir el tipo de retorno del método 'f'. Se requiere una anotación de tipo explícita.

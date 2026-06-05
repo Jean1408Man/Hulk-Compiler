@@ -1,1 +1,1 @@
-error [3:21 - 3:27]: Los atributos son privados. Solo se pueden acceder mediante 'self'.
+(3,21) SEMANTIC: Los atributos son privados. Solo se pueden acceder mediante 'self'.
