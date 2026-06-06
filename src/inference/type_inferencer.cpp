@@ -693,4 +693,4 @@ namespace Hulk {
         set_type(node, from_string_type(node.GetTypeName()));
     }
 
-} // namespace Hulk
+}

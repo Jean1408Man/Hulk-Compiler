@@ -1,7 +1,6 @@
 #include "evaluator.h"
 #include "visitor.h"
 
-// AST includes — todos los nodos concretos que visita este evaluador
 #include "../ast/literales/number.h"
 #include "../ast/literales/string.h"
 #include "../ast/literales/boolean.h"
@@ -44,9 +43,6 @@
 
 namespace Hulk {
 
-// ============================================================================
-// Constructor y punto de entrada
-// ============================================================================
 
 Evaluator::Evaluator(hulk::common::DiagnosticEngine& engine)
     : engine_(engine)
@@ -67,9 +63,6 @@ void Evaluator::run(Program& program) {
         eval(global);
 }
 
-// ============================================================================
-// Helpers
-// ============================================================================
 
 HulkValue Evaluator::eval(Expr* node) {
     if (!node) return HulkValue{};
@@ -228,9 +221,7 @@ void Evaluator::init_object(HulkObject& obj, const TypeDef& def,
     self_ = prev_self;
 }
 
-// ============================================================================
-// CORTE 4 — Literales, operaciones, builtins, bloques, let, if, while
-// ============================================================================
+// Literales, operaciones, builtins, bloques, let, if, while
 
 void Evaluator::visit(Number& n) {
     result_ = HulkValue(n.GetValue());
@@ -244,7 +235,7 @@ void Evaluator::visit(Boolean& n) {
     result_ = HulkValue(n.GetValue());
 }
 
-// --- Aritmética --------------------------------------------------------------
+//  Aritmética
 
 void Evaluator::visit(ArithmeticBinOp& n) {
     HulkValue left  = eval(n.GetLeft());
@@ -282,7 +273,7 @@ void Evaluator::visit(ArithmeticUnaryOp& n) {
     result_ = HulkValue(-val.as_number());
 }
 
-// --- Lógica y comparación ---------------------------------------------------
+//  Lógica y comparación 
 
 void Evaluator::visit(LogicBinOp& n) {
     // Evaluación en corto-circuito para and/or
@@ -359,7 +350,7 @@ void Evaluator::visit(LogicUnaryOp& n) {
     result_ = HulkValue(!val.is_truthy());
 }
 
-// --- Strings ----------------------------------------------------------------
+//  Strings 
 
 void Evaluator::visit(StringBinOp& n) {
     HulkValue left  = eval(n.GetLeft());
@@ -373,7 +364,7 @@ void Evaluator::visit(StringBinOp& n) {
     }
 }
 
-// --- Builtins ---------------------------------------------------------------
+//  Builtins 
 
 void Evaluator::visit(Print& n) {
     HulkValue val = eval(n.GetExpr());
@@ -404,7 +395,7 @@ void Evaluator::visit(BuiltinCall& n) {
     }
 }
 
-// --- Bloques y agrupación ---------------------------------------------------
+//  Bloques y agrupación 
 
 void Evaluator::visit(ExprBlock& n) {
     auto block_env = make_child_env();
@@ -422,7 +413,7 @@ void Evaluator::visit(Group& n) {
     result_ = eval(n.GetExpr());
 }
 
-// --- Let/in -----------------------------------------------------------------
+//  Let/in 
 
 void Evaluator::visit(LetIn& n) {
     // Cada binding ve los anteriores del mismo let (scopes encadenados)
@@ -443,7 +434,7 @@ void Evaluator::visit(VariableBinding& n) {
     result_ = eval(n.GetInitializer());
 }
 
-// --- Control de flujo -------------------------------------------------------
+//  Control de flujo 
 
 void Evaluator::visit(IfStmt& n) {
     HulkValue cond = eval(n.GetCondition());
@@ -486,9 +477,7 @@ void Evaluator::visit(For& n) {
     }
 }
 
-// ============================================================================
-// CORTE 5 — Variables, scopes, funciones, recursión, :=
-// ============================================================================
+// Variables, scopes, funciones, recursión, :=
 
 void Evaluator::visit(VariableReference& n) {
     if (!env_->contains(n.GetName()))
@@ -574,9 +563,7 @@ void Evaluator::visit(FunctionCall& n) {
     env_ = prev_env;
 }
 
-// ============================================================================
-// CORTE 6 — OOP: tipos, instancias, miembros, herencia, self, base, is, as
-// ============================================================================
+// OOP: tipos, instancias, miembros, herencia, self, base, is, as
 
 // Registro de tipo (pase de declaraciones en run())
 void Evaluator::visit(TypeDecl& n) {
@@ -756,4 +743,4 @@ void Evaluator::visit(AsExpr& n) {
     result_ = val;
 }
 
-} // namespace Hulk
+}

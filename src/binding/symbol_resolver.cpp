@@ -70,7 +70,6 @@ SymbolResolver::SymbolResolver(SemanticTables& tables,
       scope_(std::make_shared<StaticScope>())
 {}
 
-// ─── Punto de entrada ──────────────────────────────────────────────────────
 
 bool SymbolResolver::run(Program& program) {
     // Pase 1: registrar declaraciones
@@ -142,13 +141,11 @@ bool SymbolResolver::run(Program& program) {
         } else if (auto* td = dynamic_cast<TypeDecl*>(decl.get())) {
             current_type_name_ = td->GetName();
 
-            // Caso 12: parent args ven ctor params
             if (td->HasParent()) {
                 std::vector<Param> parent_params = tables_.get_effective_constructor(td->GetParentName());
                 bool has_explicit_parent_args = !td->GetParentArgs().empty();
 
                 if (has_explicit_parent_args) {
-                    // Hay args explícitos al padre: resolverlos y validar aridad
                     push_scope();
                     for (const auto& p : td->GetCtorParams())
                         scope_->define_param(p.name, &p);
@@ -163,36 +160,30 @@ bool SymbolResolver::run(Program& program) {
                         report_raw(td->span, oss.str());
                     }
                 } else if (td->HasExplicitConstructor() && !parent_params.empty()) {
-                    // Tiene su propio ctor pero no pasa args al padre que los necesita
                     std::ostringstream oss;
                     oss << "Tipo '" << td->GetName() << "' declara constructor propio pero no pasa "
                         << "argumentos al padre '" << td->GetParentName() << "' (que espera "
                         << parent_params.size() << " argumento(s)).";
                     report_raw(td->span, oss.str());
                 }
-                // Si no hay ctor propio y no hay parent args → herencia transparente, válido
             }
 
             for (auto& member : td->GetMembers()) {
                 if (member.kind == TypeMember::Kind::Attribute) {
                     auto* attr = static_cast<TypeMemberAttribute*>(member.node.get());
-                    // Caso 2: atributos ven ctor params pero NO self
                     auto old_ctx = context_;
                     context_ = ResolverContext::TypeAttributeInit;
                     push_scope();
                     for (const auto& p : td->GetCtorParams())
                         scope_->define_param(p.name, &p);
-                    // NO se define self aquí
                     resolve(attr->GetInitializer());
                     pop_scope();
                     context_ = old_ctx;
                 } else {
                     auto* method = static_cast<TypeMemberMethod*>(member.node.get());
-                    // Caso 3: métodos NO ven ctor params
                     auto old_ctx = context_;
                     context_ = ResolverContext::Method;
 
-                    // Caso 13: crear SyntheticSymbol para self
                     auto self_sym = std::make_unique<SyntheticSymbol>();
                     self_sym->name      = "self";
                     self_sym->kind      = SyntheticKind::Self;
@@ -226,7 +217,7 @@ bool SymbolResolver::run(Program& program) {
     return !has_errors_;
 }
 
-// ─── Helpers de scope ──────────────────────────────────────────────────────
+//  Helpers de scope 
 
 void SymbolResolver::push_scope() {
     scope_ = std::make_shared<StaticScope>(scope_);
@@ -238,7 +229,7 @@ std::shared_ptr<StaticScope> SymbolResolver::make_child_scope() {
     return std::make_shared<StaticScope>(scope_);
 }
 
-// ─── Reporte de errores ────────────────────────────────────────────────────
+//  Reporte de errores 
 
 void SymbolResolver::report(const hulk::common::Span& span, const std::string& id) {
     engine_.report(id, hulk::common::DiagnosticLevel::Semantic,
@@ -263,7 +254,7 @@ void SymbolResolver::report_raw(const hulk::common::Span& span, const std::strin
     has_errors_ = true;
 }
 
-// ─── Helpers de validación ─────────────────────────────────────────────────
+//  Helpers de validación 
 
 bool SymbolResolver::is_known_type_name(const std::string& name) const {
     if (name.empty()) return true;
@@ -272,7 +263,6 @@ bool SymbolResolver::is_known_type_name(const std::string& name) const {
         return is_valid_typed_iterable_element_name(element) &&
                is_known_type_name(element);
     }
-    // "auto" y "_" son anotaciones de inferencia de tipos válidas (type holes)
     if (name == "auto" || name == "_") return true;
     return tables_.lookup_type(name) != nullptr || tables_.lookup_protocol(name) != nullptr;
 }
@@ -323,7 +313,7 @@ const SemanticAttrInfo* SymbolResolver::find_attribute_in_ancestors(
     return nullptr;
 }
 
-// ─── Pase 1 — Registro de declaraciones ───────────────────────────────────
+//  Pase 1 — Registro de declaraciones 
 
 void SymbolResolver::visit(FunctionDecl& n) {
     // Validaciones movidas a Pase 1.5
@@ -372,13 +362,10 @@ void SymbolResolver::visit(TypeDecl& n) {
     info.decl                = &n;
     info.defines_constructor = n.HasExplicitConstructor();
 
-    // Caso 12: parámetros duplicados en constructor
+    // parámetros duplicados en constructor
     check_duplicate_params(n.GetCtorParams(), n.span,
                            "constructor de '" + n.GetName() + "'");
 
-    // Caso 8: anotaciones validadas en Pase 1.5
-
-    // Caso 10: detectar atributos duplicados; caso 8: anotar tipos
     std::unordered_set<std::string> attr_names;
     std::unordered_set<std::string> member_names;
 
@@ -390,13 +377,11 @@ void SymbolResolver::visit(TypeDecl& n) {
             ai.type_annotation = attr->GetTypeAnnotation();
             ai.initializer     = attr->GetInitializer();
 
-            // Caso 10: duplicado
             if (!attr_names.insert(ai.name).second)
                 report_raw(attr->span, "Atributo '" + ai.name +
                            "' duplicado en tipo '" + n.GetName() + "'.");
             member_names.insert(ai.name);
 
-            // Caso 8: validadas en Pase 1.5
             info.attributes.push_back(std::move(ai));
         } else {
             auto* method = static_cast<TypeMemberMethod*>(member.node.get());
@@ -413,10 +398,9 @@ void SymbolResolver::visit(TypeDecl& n) {
                 report_raw(method->span, "Método '" + mi.name +
                            "' duplicado en tipo '" + n.GetName() + "'.");
             } else {
-                // Caso 12: params duplicados en método
+                //  params duplicados en método
                 check_duplicate_params(mi.params, method->span,
                                        "método '" + mi.name + "'");
-                // Caso 8: anotaciones validadas en Pase 1.5
                 member_names.insert(mi.name);
                 info.methods[mi.name] = std::move(mi);
             }
@@ -467,7 +451,7 @@ void SymbolResolver::visit(ProtocolDecl& n) {
         report_raw(n.span, "Protocolo '" + n.GetName() + "' ya fue declarado.");
 }
 
-// ─── Pase 3 — Chequeos globales ───────────────────────────────────────────
+//  Chequeos globales 
 
 void SymbolResolver::run_checks() {
     check_inheritance();
@@ -476,7 +460,6 @@ void SymbolResolver::run_checks() {
 }
 
 void SymbolResolver::check_inheritance() {
-    // Sort names for deterministic error ordering
     std::vector<std::string> names;
     for (auto& [n, _] : tables_.all_types()) names.push_back(n);
     std::sort(names.begin(), names.end());
@@ -544,7 +527,7 @@ void SymbolResolver::check_protocols() {
     }
 }
 
-// Caso 5: validar override — aridad y tipos de parámetros/retorno
+// validar override — aridad y tipos de parámetros/retorno
 void SymbolResolver::check_methods() {
     for (auto& [type_name, type_info] : tables_.all_types()) {
         if (type_info.is_builtin || type_info.parent_name.empty()) continue;
@@ -600,35 +583,33 @@ void SymbolResolver::check_methods() {
     }
 }
 
-void SymbolResolver::check_arities() {}  // inline en Pase 2
+void SymbolResolver::check_arities() {} 
 
-// ─── Helper resolve ────────────────────────────────────────────────────────
+//  Helper resolve 
 
 void SymbolResolver::resolve(Expr* node) {
     if (!node) return;
     node->accept(*this);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PASE 2 — Resolución de referencias (ExprVisitor)
-// ═══════════════════════════════════════════════════════════════════════════
+// Resolución de referencias
 
-// ─── Literales ─────────────────────────────────────────────────────────────
+//  Literales 
 void SymbolResolver::visit(Number&)  {}
 void SymbolResolver::visit(String&)  {}
 void SymbolResolver::visit(Boolean&) {}
 
-// ─── Operaciones ───────────────────────────────────────────────────────────
+//  Operaciones 
 void SymbolResolver::visit(ArithmeticBinOp& n) { resolve(n.GetLeft()); resolve(n.GetRight()); }
 void SymbolResolver::visit(LogicBinOp& n)      { resolve(n.GetLeft()); resolve(n.GetRight()); }
 void SymbolResolver::visit(StringBinOp& n)     { resolve(n.GetLeft()); resolve(n.GetRight()); }
 void SymbolResolver::visit(ArithmeticUnaryOp& n){ resolve(n.GetOperand()); }
 void SymbolResolver::visit(LogicUnaryOp& n)    { resolve(n.GetOperand()); }
 
-// ─── Builtins ──────────────────────────────────────────────────────────────
+//  Builtins 
 void SymbolResolver::visit(Print& n) { resolve(n.GetExpr()); }
 
-// Caso 11: validar nombre y aridad de BuiltinCall
+// validar nombre y aridad de BuiltinCall
 // BuiltinCall usa un enum GetFunc(), así que mapeamos al nombre string.
 static std::string builtin_func_name(Hulk::BuiltinFunc f) {
     switch (f) {
@@ -664,7 +645,7 @@ void SymbolResolver::visit(BuiltinCall& n) {
     resolution_map_[&n] = ResolutionResult::from_builtin_func(bf);
 }
 
-// ─── Bloques ───────────────────────────────────────────────────────────────
+//  Bloques 
 void SymbolResolver::visit(ExprBlock& n) {
     push_scope();
     for (auto& e : n.GetExprs()) resolve(e.get());
@@ -672,10 +653,10 @@ void SymbolResolver::visit(ExprBlock& n) {
 }
 void SymbolResolver::visit(Group& n) { resolve(n.GetExpr()); }
 
-// ─── Variables ─────────────────────────────────────────────────────────────
+//  Variables 
 
 void SymbolResolver::visit(VariableReference& n) {
-    // Caso 11: constantes builtin (PI, E)
+    // constantes builtin 
     if (const BuiltinConstInfo* bc = tables_.lookup_builtin_const(n.GetName())) {
         resolution_map_[&n] = ResolutionResult::from_builtin_const(bc);
         return;
@@ -694,7 +675,7 @@ void SymbolResolver::visit(VariableReference& n) {
 }
 
 void SymbolResolver::visit(VariableBinding& n) {
-    // Caso 8: anotación de tipo en binding let
+    // anotación de tipo en binding let
     check_type_annotation(n.span, n.GetTypeAnnotation());
     resolve(n.GetInitializer());
     scope_->define_binding(n.GetName(), &n);
@@ -712,7 +693,7 @@ void SymbolResolver::visit(LetIn& n) {
     scope_ = prev;
 }
 
-// ─── Asignaciones ──────────────────────────────────────────────────────────
+//  Asignaciones 
 
 void SymbolResolver::visit(DestructiveAssign& n) {
     if (tables_.lookup_builtin_const(n.GetName())) {
@@ -746,7 +727,7 @@ void SymbolResolver::visit(DestructiveAssignMember& n) {
     resolve(n.GetValue());
 }
 
-// ─── Control de flujo ──────────────────────────────────────────────────────
+//  Control de flujo 
 
 void SymbolResolver::visit(IfStmt& n) {
     resolve(n.GetCondition());
@@ -763,7 +744,7 @@ void SymbolResolver::visit(WhileStmt& n) {
     resolve(n.GetBody());
 }
 
-// Caso 7: variable sintética del for
+// variable sintética del for
 void SymbolResolver::visit(For& n) {
     resolve(n.GetIterable());
     push_scope();
@@ -781,7 +762,7 @@ void SymbolResolver::visit(For& n) {
     pop_scope();
 }
 
-// ─── Funciones ─────────────────────────────────────────────────────────────
+//  Funciones 
 
 void SymbolResolver::visit(FunctionCall& n) {
     for (auto& arg : n.GetArgs()) resolve(arg.get());
@@ -815,7 +796,7 @@ void SymbolResolver::visit(FunctionCall& n) {
     }
 }
 
-// ─── OOP ───────────────────────────────────────────────────────────────────
+//  OOP 
 
 void SymbolResolver::visit(NewExpr& n) {
     if (tables_.lookup_protocol(n.GetTypeName())) {
@@ -848,7 +829,7 @@ void SymbolResolver::visit(NewExpr& n) {
     for (auto& arg : n.GetArgs()) resolve(arg.get());
 }
 
-// Caso 6: resolver MemberAccess sobre self
+// resolver MemberAccess sobre self
 void SymbolResolver::visit(MemberAccess& n) {
     resolve(n.GetObject());
     auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
@@ -873,7 +854,7 @@ void SymbolResolver::visit(MemberAccess& n) {
     }
 }
 
-// Caso 6: resolver MethodCall sobre self
+// resolver MethodCall sobre self
 void SymbolResolver::visit(MethodCall& n) {
     resolve(n.GetObject());
     for (auto& arg : n.GetArgs()) resolve(arg.get());
@@ -899,7 +880,7 @@ void SymbolResolver::visit(MethodCall& n) {
     }
 }
 
-// Caso 2 y 13: self solo en métodos, y se anota en resolution_map_
+// self solo en métodos, y se anota en resolution_map_
 void SymbolResolver::visit(SelfRef& n) {
     if (context_ != ResolverContext::Method) {
         report_raw(n.span, "'self' solo puede usarse dentro de métodos de tipo.");
@@ -910,7 +891,7 @@ void SymbolResolver::visit(SelfRef& n) {
         resolution_map_[&n] = ResolutionResult::from_synthetic(current_self_symbol_);
 }
 
-// Caso 4: base() solo en métodos, con padre y método base válidos
+// base() solo en métodos, con padre y método base válidos
 void SymbolResolver::visit(BaseCall& n) {
     for (auto& arg : n.GetArgs()) resolve(arg.get());
 
@@ -966,4 +947,4 @@ void SymbolResolver::visit(AsExpr& n) {
 }
 
 
-} // namespace Hulk
+}

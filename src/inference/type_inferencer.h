@@ -14,7 +14,7 @@
 
 namespace Hulk {
 
-    class Expr; // Forward declaration
+    class Expr; 
 
     class TypeInferencer : public ExprVisitor {
     public:
@@ -100,6 +100,6 @@ namespace Hulk {
         HulkType infer_expr(Expr& node);
     };
 
-} // namespace Hulk
+}
 
-#endif // HULK_TYPE_INFERENCER_H
+#endif

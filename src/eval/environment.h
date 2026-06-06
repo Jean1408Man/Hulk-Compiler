@@ -9,13 +9,10 @@
 
 namespace Hulk {
 
-    // -----------------------------------------------------------------------
     // Environment — tabla de símbolos con scopes encadenados.
-    //
     // Cada scope tiene un puntero a su padre. La búsqueda sube la cadena.
     // La asignación destructiva (:=) también sube la cadena hasta encontrar
     // el scope donde se declaró la variable.
-    // -----------------------------------------------------------------------
     class Environment {
     public:
         explicit Environment(std::shared_ptr<Environment> parent = nullptr)
@@ -62,6 +59,6 @@ namespace Hulk {
         std::shared_ptr<Environment> parent_;
     };
 
-} // namespace Hulk
+}
 
-#endif // HULK_ENVIRONMENT_H
+#endif

@@ -10,12 +10,8 @@
 #include <sstream>
 #include <stdexcept>
 
-// -----------------------------------------------------------------------
-// Uso: hulk_semantic <archivo.hulk> [--restricted-inference]
-//
 // Ejecuta solo el análisis semántico (sin evaluar) e imprime los errores
 // encontrados o un resumen de los tipos y funciones registrados.
-// -----------------------------------------------------------------------
 
 static std::string read_file(const std::string& path) {
     std::ifstream input(path, std::ios::in | std::ios::binary);

@@ -13,7 +13,6 @@ private:
     std::string default_msg = "Error desconocido (ID: {0} no encontrado).";
 
 public:
-    // Carga el archivo JSON
     bool load(const std::string& path) {
         std::ifstream file(path);
         if (!file.is_open()) {

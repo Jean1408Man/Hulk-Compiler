@@ -64,7 +64,7 @@
 #ifndef YY_
 # if defined YYENABLE_NLS && YYENABLE_NLS
 #  if ENABLE_NLS
-#   include <libintl.h> // FIXME: INFRINGES ON USER NAME SPACE.
+#   include <libintl.h> 
 #   define YY_(msgid) dgettext ("bison-runtime", msgid)
 #  endif
 # endif

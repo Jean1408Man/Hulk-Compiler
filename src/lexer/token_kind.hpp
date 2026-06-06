@@ -82,4 +82,4 @@ enum class TokenKind {
     Auto,              // auto
 };
 
-} // namespace hulk::lexer
+}

@@ -53,11 +53,8 @@ namespace Hulk {
 
 namespace Hulk {
 
-    // -----------------------------------------------------------------------
     // ResolutionResult — lo que el SymbolResolver sabe de un nombre concreto.
-    //
     // Se guarda en el mapa externo: Expr* → ResolutionResult.
-    // -----------------------------------------------------------------------
     enum class ResolutionKind {
         Variable,       // VariableBinding*
         Param,          // const Param*
@@ -116,12 +113,9 @@ namespace Hulk {
         }
     };
 
-    // -----------------------------------------------------------------------
     // ResolverContext — contexto semántico del resolver al visitar nodos.
-    //
     // Permite distinguir en qué parte del programa estamos para validar
     // correctamente el uso de self, base, etc.
-    // -----------------------------------------------------------------------
     enum class ResolverContext {
         Global,             // nivel de programa / funciones globales
         Function,           // dentro de una función global
@@ -129,15 +123,10 @@ namespace Hulk {
         Method              // dentro del cuerpo de un método de tipo
     };
 
-    // -----------------------------------------------------------------------
     // SymbolResolver — recorre el AST en tres pases:
+    //   Pase 1 (register_decls): recorre las declaraciones de nivel superior y llena SemanticTables con tipos y funciones.
     //
-    //   Pase 1 (register_decls): recorre las declaraciones de nivel superior
-    //           y llena SemanticTables con tipos y funciones.
-    //
-    //   Pase 2 (resolve_expr): recorre todas las expresiones del programa,
-    //           mantiene scopes estáticos, y anota cada referencia en
-    //           resolution_map_.
+    //   Pase 2 (resolve_expr): recorre todas las expresiones del programa, mantiene scopes estáticos, y anota cada referencia en resolution_map_.
     //
     //   Pase 3 (run_checks): sobre las tablas ya construidas, verifica
     //           - padre declarado
@@ -146,22 +135,13 @@ namespace Hulk {
     //           - override solo si el método existe en el padre
     //           - aridades correctas en FunctionCall y NewExpr
     //           - VariableReference a variable declarada
-    //
-    // Uso:
-    //   SymbolResolver resolver(tables, engine);
-    //   resolver.run(program);
-    //   auto& map = resolver.resolution_map();
-    // -----------------------------------------------------------------------
     class SymbolResolver : public ExprVisitor, public DeclVisitor {
     public:
         SymbolResolver(SemanticTables& tables,
                        hulk::common::DiagnosticEngine& engine);
 
-        // Punto de entrada: ejecuta los tres pases sobre el programa.
-        // Devuelve false si se encontraron errores semánticos.
         bool run(Program& program);
 
-        // Acceso al mapa de resolución
         const std::unordered_map<Expr*, ResolutionResult>& resolution_map() const {
             return resolution_map_;
         }
@@ -176,19 +156,13 @@ namespace Hulk {
         std::unordered_map<Expr*, ResolutionResult> resolution_map_;
         bool has_errors_ = false;
 
-        // Contexto semántico actual
         ResolverContext context_ = ResolverContext::Global;
 
-        // Nombre del tipo en cuyo cuerpo estamos (para self, override, etc.)
         std::string current_type_name_;
-        // Nombre de la función/método actual (para errores contextuales)
         std::string current_func_name_;
-        // Nombre del método actual (para base())
         std::string current_method_name_;
-        // Símbolo sintético self del método actual (para resolution_map_)
         SyntheticSymbol* current_self_symbol_ = nullptr;
 
-        // Almacén de símbolos sintéticos (propiedad del resolver)
         std::vector<std::unique_ptr<SyntheticSymbol>> synthetic_symbols_;
 
         // Helpers de scope
@@ -196,7 +170,6 @@ namespace Hulk {
         void pop_scope();
         std::shared_ptr<StaticScope> make_child_scope();
 
-        // Reporte de errores — no lanza excepción, continúa el recorrido
         void report(const hulk::common::Span& span,
                     const std::string& error_id);
         void report(const hulk::common::Span& span,
@@ -209,22 +182,18 @@ namespace Hulk {
         void report_raw(const hulk::common::Span& span,
                         const std::string& msg);
 
-        // Pase 1 — Registrar declaraciones en las tablas
-        // (implementado como DeclVisitor sobre program.GetDeclarations())
         void visit(FunctionDecl& n) override;
         void visit(TypeDecl& n)     override;
-        void visit(TypeMemberAttribute& n) override;  // no-op (procesado en TypeDecl)
-        void visit(TypeMemberMethod& n)    override;  // no-op (procesado en TypeDecl)
-        void visit(ProtocolDecl& n)        override;  // no-op por ahora
+        void visit(TypeMemberAttribute& n) override; 
+        void visit(TypeMemberMethod& n)    override; 
+        void visit(ProtocolDecl& n)        override;
 
-        // Pase 3 — Chequeos globales sobre las tablas ya construidas
         void run_checks();
-        void check_inheritance();   // padre declarado + sin ciclos
-        void check_methods();       // duplicados + override válido con firma
+        void check_inheritance();  
+        void check_methods();     
         void check_protocols();
-        void check_arities();       // aridades de FunctionCall y NewExpr (via tablas)
+        void check_arities();    
 
-        // Helpers de validación
         bool is_known_type_name(const std::string& name) const;
         void check_type_annotation(const hulk::common::Span& span,
                                    const std::string& type_name);
@@ -235,46 +204,35 @@ namespace Hulk {
                                     const std::string& type_name,
                                     const std::string& attr_name) const;
 
-        // Pase 2 — Resolver referencias (ExprVisitor)
-
-        // Literales — no resuelven nada, son hojas
         void visit(Number& n)             override;
         void visit(String& n)             override;
         void visit(Boolean& n)            override;
 
-        // Operaciones — recorren subexpresiones
         void visit(ArithmeticBinOp& n)    override;
         void visit(LogicBinOp& n)         override;
         void visit(StringBinOp& n)        override;
         void visit(ArithmeticUnaryOp& n)  override;
         void visit(LogicUnaryOp& n)       override;
 
-        // Builtins
         void visit(Print& n)              override;
         void visit(BuiltinCall& n)        override;
 
-        // Bloques
         void visit(ExprBlock& n)          override;
         void visit(Group& n)              override;
 
-        // Variables — anotan en resolution_map_
         void visit(VariableReference& n)  override;
         void visit(VariableBinding& n)    override;
         void visit(LetIn& n)              override;
 
-        // Asignaciones
         void visit(DestructiveAssign& n)        override;
         void visit(DestructiveAssignMember& n)  override;
 
-        // Control de flujo
         void visit(IfStmt& n)             override;
         void visit(WhileStmt& n)          override;
         void visit(For& n)                override;
 
-        // Funciones — anotan en resolution_map_
         void visit(FunctionCall& n)       override;
 
-        // OOP — anotan en resolution_map_
         void visit(NewExpr& n)            override;
         void visit(MemberAccess& n)       override;
         void visit(MethodCall& n)         override;
@@ -283,7 +241,6 @@ namespace Hulk {
         void visit(IsExpr& n)             override;
         void visit(AsExpr& n)             override;
 
-        // Helper: resolver una expresión (como eval() en el Evaluator)
         void resolve(Expr* node);
     };
 

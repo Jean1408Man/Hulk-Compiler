@@ -42,3 +42,14 @@
 # debug information files
 *.dwo
 tests/ast_dumps/
+
+*.ii
+*.s
+/build_word/
+/build/
+/outputs/
+
+*.stackdump
+
+# Carpeta de IDE JetBrains
+.idea/

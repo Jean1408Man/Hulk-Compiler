@@ -11,18 +11,14 @@
 
 namespace Hulk {
 
-    // -----------------------------------------------------------------------
     // Definición de un método tal como se almacena en runtime
-    // -----------------------------------------------------------------------
     struct MethodDef {
         std::vector<Param> params;
-        Expr* body;             // puntero no-owning al AST (vive en Program)
+        Expr* body;           
         bool is_override = false;
     };
 
-    // -----------------------------------------------------------------------
     // Definición de un tipo (clase) tal como se registra en runtime
-    // -----------------------------------------------------------------------
     struct TypeDef {
         std::string name;
         std::string parent_name;                          // "" si no tiene padre
@@ -32,9 +28,7 @@ namespace Hulk {
         std::unordered_map<std::string, MethodDef> methods;
     };
 
-    // -----------------------------------------------------------------------
     // Instancia en runtime de un tipo HULK
-    // -----------------------------------------------------------------------
     struct HulkObject {
         std::string type_name;
         std::unordered_map<std::string, HulkValue> fields;
@@ -42,6 +36,6 @@ namespace Hulk {
         explicit HulkObject(const std::string& type) : type_name(type) {}
     };
 
-} // namespace Hulk
+}
 
-#endif // HULK_OBJECT_H
+#endif
