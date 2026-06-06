@@ -18,35 +18,23 @@
 
 namespace Hulk {
 
-    // -----------------------------------------------------------------------
     // EvalError — excepción interna que corta la evaluación.
     // El mensaje ya fue registrado en el DiagnosticEngine antes de lanzar.
-    // -----------------------------------------------------------------------
     struct EvalError : std::runtime_error {
         explicit EvalError() : std::runtime_error("eval error") {}
     };
 
-    // -----------------------------------------------------------------------
     // Evaluator — implementa ExprVisitor y DeclVisitor.
-    //
-    // Uso:
-    //   Evaluator ev;
-    //   ev.run(*program);          // evalúa el programa completo
-    //
     // El resultado de cada visit() se deposita en result_.
     // Para evaluar una subexpresión se llama eval(expr*) que retorna HulkValue.
-    // -----------------------------------------------------------------------
     class Evaluator : public ExprVisitor, public DeclVisitor {
     public:
         explicit Evaluator(hulk::common::DiagnosticEngine& engine);
 
-        // Punto de entrada: evalúa un Program completo
         void run(Program& program);
 
     private:
-        // ------------------------------------------------------------------
         // Estado del evaluador
-        // ------------------------------------------------------------------
         hulk::common::DiagnosticEngine& engine_;                // diagnósticos compartidos
         HulkValue result_;                                      // registro de retorno
         std::shared_ptr<Environment> global_env_;               // scope global (nunca cambia)
@@ -57,9 +45,6 @@ namespace Hulk {
         std::string current_type_name_;                         // tipo del método en ejecución
         std::string current_method_name_;                       // nombre del método en ejecución
 
-        // ------------------------------------------------------------------
-        // Helper para reportar un error y lanzar EvalError
-        // ------------------------------------------------------------------
         template<typename... Args>
         [[noreturn]] void report_error(const hulk::common::Span& span,
                                        const std::string& error_id,
@@ -81,9 +66,6 @@ namespace Hulk {
             throw EvalError{};
         }
 
-        // ------------------------------------------------------------------
-        // Helpers internos
-        // ------------------------------------------------------------------
         HulkValue eval(Expr* node);
         void push_scope();
         void pop_scope();
@@ -102,9 +84,6 @@ namespace Hulk {
         void init_object(HulkObject& obj, const TypeDef& def,
                          const std::vector<HulkValue>& ctor_args);
 
-        // ------------------------------------------------------------------
-        // CORTE 4 — Expresiones puras, builtins, bloques, let, if, while
-        // ------------------------------------------------------------------
         void visit(Number& n)           override;
         void visit(String& n)           override;
         void visit(Boolean& n)          override;
@@ -128,9 +107,6 @@ namespace Hulk {
         void visit(WhileStmt& n)        override;
         void visit(For& n)              override;
 
-        // ------------------------------------------------------------------
-        // CORTE 5 — Variables, scopes, funciones, recursión, :=
-        // ------------------------------------------------------------------
         void visit(VariableReference& n)   override;
         void visit(DestructiveAssign& n)   override;
         void visit(DestructiveAssignMember& n) override;
@@ -143,9 +119,6 @@ namespace Hulk {
         void visit(TypeMemberMethod& n)    override;
         void visit(ProtocolDecl& n)        override;
 
-        // ------------------------------------------------------------------
-        // CORTE 6 — OOP: instancias, miembros, herencia, self, base
-        // ------------------------------------------------------------------
         void visit(NewExpr& n)          override;
         void visit(MemberAccess& n)     override;
         void visit(MethodCall& n)       override;
@@ -156,6 +129,6 @@ namespace Hulk {
 
     };
 
-} // namespace Hulk
+} 
 
-#endif // HULK_EVALUATOR_H
+#endif 

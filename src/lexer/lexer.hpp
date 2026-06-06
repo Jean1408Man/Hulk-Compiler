@@ -10,8 +10,6 @@ namespace hulk::lexer {
 
 class Lexer {
 public:
-    // El engine se pasa por referencia: el Lexer acumula diagnósticos en él.
-    // El llamador es responsable de la vida del engine (y su repositorio).
     explicit Lexer(std::string source, hulk::common::DiagnosticEngine& engine);
 
     Token next_token();

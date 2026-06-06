@@ -1,1 +1,1 @@
-error [2:9 - 2:13]: 'self' solo puede usarse dentro de métodos de tipo.
+(2,9) SEMANTIC: 'self' solo puede usarse dentro de métodos de tipo.

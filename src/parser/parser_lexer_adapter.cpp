@@ -81,7 +81,7 @@ std::optional<std::string> decode_string_lexeme(const std::string& lexeme,
     return decoded;
 }
 
-} // namespace
+} 
 
 namespace hulk::parser {
 
@@ -175,4 +175,4 @@ Parser::symbol_type yylex(ParserDriver& driver) {
     return Parser::make_ERROR_TOKEN("<unknown>", loc);
 }
 
-} // namespace hulk::parser
+}

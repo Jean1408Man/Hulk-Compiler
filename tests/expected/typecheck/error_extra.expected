@@ -1,6 +1,6 @@
-error [21:15 - 21:18]: Los atributos son privados. Solo se pueden acceder mediante 'self'.
-error [2:26 - 2:27]: Error de tipos en operando izquierdo de operador aritmético: se esperaba 'Number' pero se encontró 'Object'.
-error [12:20 - 12:21]: Error de tipos en operando izquierdo de operador aritmético: se esperaba 'Number' pero se encontró 'Object'.
-error [18:13 - 18:19]: Error de tipos en argumento 1 de método 'f': se esperaba 'Number' pero se encontró 'String'.
-error [24:14 - 24:20]: Error de tipos en asignación a 'x': se esperaba 'Number' pero se encontró 'String'.
-error [32:9 - 32:20]: Operación 'as' no plausible: tipo 'Number' y 'String' no están relacionados.
+(21,15) SEMANTIC: Los atributos son privados. Solo se pueden acceder mediante 'self'.
+(2,26) SEMANTIC: Error de tipos en operando izquierdo de operador aritmético: se esperaba 'Number' pero se encontró 'Object'.
+(12,20) SEMANTIC: Error de tipos en operando izquierdo de operador aritmético: se esperaba 'Number' pero se encontró 'Object'.
+(18,13) SEMANTIC: Error de tipos en argumento 1 de método 'f': se esperaba 'Number' pero se encontró 'String'.
+(24,14) SEMANTIC: Error de tipos en asignación a 'x': se esperaba 'Number' pero se encontró 'String'.
+(32,9) SEMANTIC: Operación 'as' no plausible: tipo 'Number' y 'String' no están relacionados.

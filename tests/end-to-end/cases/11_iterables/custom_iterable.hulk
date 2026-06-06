@@ -1,0 +1,6 @@
+type Countdown(start: Number) {
+    n: Number = start + 1;
+    next(): Boolean => (self.n := self.n - 1) >= 0;
+    current(): Number => self.n;
+}
+for (x in new Countdown(3)) print(x);

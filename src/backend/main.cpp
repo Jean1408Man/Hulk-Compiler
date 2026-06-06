@@ -1,4 +1,6 @@
 #include "backend.h"
+#include "output_packager.h"
+#include "../vm/banner_vm.h"
 
 #include <iostream>
 #include <string>
@@ -6,14 +8,32 @@
 namespace {
 
 void print_usage() {
-    std::cerr << "Uso: hulk_backend <archivo.hulk> [-o salida] "
-                 "[--emit-ir] [--emit-banner] [--emit-banner-compiled] "
-                 "[--run-banner] [--restricted-inference]\n";
+    std::cerr << "Uso: hulk <archivo.hulk> [-o salida]\n"
+                 "  Por defecto compila a un ejecutable (./output).\n"
+                 "Opciones de desarrollo:\n"
+                 "  --run-banner             ejecutar en la VM sin emitir ejecutable\n"
+                 "  --emit-ir                volcar HulkIR a archivo\n"
+                 "  --emit-banner            volcar BannerIR a archivo\n"
+                 "  --emit-banner-compiled   volcar vista compilada de la VM\n"
+                 "  --restricted-inference   exigir anotaciones de tipo\n";
 }
 
-} // namespace
+} 
 
 int main(int argc, char** argv) {
+    // ── Runtime mode ──
+    if (auto embedded = Hulk::Backend::try_load_embedded_ir(); embedded) {
+        try {
+            Hulk::VM::BannerVM vm;
+            (void)vm.run(*embedded);
+            return 0;
+        } catch (const std::exception& e) {
+            std::cerr << "runtime error: " << e.what() << "\n";
+            return 1;
+        }
+    }
+
+    // ── Driver mode (compiler) ───
     if (argc < 2) {
         print_usage();
         return 1;
@@ -70,5 +90,5 @@ int main(int argc, char** argv) {
     }
 
     const Hulk::Backend::BackendResult result = Hulk::Backend::run_backend(options);
-    return result.ok ? 0 : 1;
+    return result.exit_code;
 }

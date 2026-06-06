@@ -1,1 +1,1 @@
-error [4:20 - 4:28]: Los atributos son privados. Solo se pueden modificar mediante 'self'.
+(4,20) SEMANTIC: Los atributos son privados. Solo se pueden modificar mediante 'self'.

@@ -1,6 +1,7 @@
 #pragma once
 #include <format>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 #include "diagnostic.hpp"
@@ -72,16 +73,23 @@ public:
 
     void clear() { diagnostics_.clear(); }
 
+    static const char* level_string(DiagnosticLevel level) {
+        switch (level) {
+            case DiagnosticLevel::Lexical:   return "LEXICAL";
+            case DiagnosticLevel::Syntactic: return "SYNTACTIC";
+            case DiagnosticLevel::Semantic:  return "SEMANTIC";
+        }
+        return "SEMANTIC";
+    }
+
     void print_all() const {
         for (const auto& d : diagnostics_) {
-            const char* prefix = (d.severity == Severity::Error) ? "error" : "warning";
+            const int line = (d.span.start.line > 0) ? d.span.start.line : 0;
+            const int col  = (d.span.start.column > 0) ? d.span.start.column : 0;
             std::cerr
-                << prefix
-                << " ["
-                << d.span.start.line << ":" << d.span.start.column
-                << " - "
-                << d.span.end.line   << ":" << d.span.end.column
-                << "]: "
+                << "(" << line << "," << col << ") "
+                << level_string(d.level)
+                << ": "
                 << d.message
                 << "\n";
         }
@@ -90,18 +98,44 @@ public:
     void print(Severity filter) const {
         for (const auto& d : diagnostics_) {
             if (d.severity != filter) continue;
-            const char* prefix = (d.severity == Severity::Error) ? "error" : "warning";
+            const int line = (d.span.start.line > 0) ? d.span.start.line : 0;
+            const int col  = (d.span.start.column > 0) ? d.span.start.column : 0;
             std::cerr
-                << prefix
-                << " ["
-                << d.span.start.line << ":" << d.span.start.column
-                << " - "
-                << d.span.end.line   << ":" << d.span.end.column
-                << "]: "
+                << "(" << line << "," << col << ") "
+                << level_string(d.level)
+                << ": "
                 << d.message
                 << "\n";
         }
     }
+
+    // (Lexical > Syntactic > Semantic).
+    [[nodiscard]] std::optional<DiagnosticLevel> most_fundamental_error_level() const {
+        bool has_lex = false, has_syn = false, has_sem = false;
+        for (const auto& d : diagnostics_) {
+            if (d.severity != Severity::Error) continue;
+            switch (d.level) {
+                case DiagnosticLevel::Lexical:   has_lex = true; break;
+                case DiagnosticLevel::Syntactic: has_syn = true; break;
+                case DiagnosticLevel::Semantic:  has_sem = true; break;
+            }
+        }
+        if (has_lex) return DiagnosticLevel::Lexical;
+        if (has_syn) return DiagnosticLevel::Syntactic;
+        if (has_sem) return DiagnosticLevel::Semantic;
+        return std::nullopt;
+    }
+
+    [[nodiscard]] int exit_code_for_contract() const {
+        const auto level = most_fundamental_error_level();
+        if (!level) return 0;
+        switch (*level) {
+            case DiagnosticLevel::Lexical:   return 1;
+            case DiagnosticLevel::Syntactic: return 2;
+            case DiagnosticLevel::Semantic:  return 3;
+        }
+        return 3;
+    }
 };
 
-} // namespace hulk::common
+} 

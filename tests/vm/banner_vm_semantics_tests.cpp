@@ -330,7 +330,7 @@ void concat_rejects_boolean_operand() {
                                "operador de concatenacion solo admite String o Number"));
 }
 
-void concat_rejects_without_string_operand() {
+void concat_number_number_succeeds() {
     Banner::BannerProgram program;
     program.entry_function = "hulk_main";
 
@@ -343,8 +343,8 @@ void concat_rejects_without_string_operand() {
     program.functions.push_back(std::move(main));
 
     VM::BannerVM vm;
-    assert(throws_with_message([&] { (void)vm.run(program); },
-                               "operador de concatenacion requiere al menos un String"));
+    const VM::Word result = vm.run(program);
+    assert(VM::is_string(result));
 }
 
 void math_rejects_non_finite_results() {
@@ -555,7 +555,7 @@ int main() {
     dynamic_string_concat_can_be_compared();
     concat_accepts_string_and_number_only();
     concat_rejects_boolean_operand();
-    concat_rejects_without_string_operand();
+    concat_number_number_succeeds();
     math_rejects_non_finite_results();
     vcall_dispatches_through_type_vtable();
     ambiguous_field_name_falls_back_to_runtime_type_lookup();

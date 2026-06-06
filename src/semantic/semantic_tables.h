@@ -11,9 +11,7 @@
 
 namespace Hulk {
 
-    // -----------------------------------------------------------------------
-    // Información de funciones builtin (sqrt, sin, print, etc.)
-    // -----------------------------------------------------------------------
+    // Información de funciones builtin
     struct BuiltinFuncInfo {
         std::string name;
         int         arity;
@@ -22,20 +20,13 @@ namespace Hulk {
         std::string return_type;
     };
 
-    // Información de constantes builtin (PI, E)
+    // Información de constantes builtin
     struct BuiltinConstInfo {
         std::string name;
         std::string type;   // "Number", "String", etc.
     };
 
-    // -----------------------------------------------------------------------
     // SemanticTables — contenedor de todas las tablas de análisis estático.
-    //
-    // Construido por el SymbolResolver (Pase 1) y consumido por:
-    //   - los chequeos semánticos del propio SymbolResolver (Pase 3),
-    //   - el TypeInferencer,
-    //   - el TypeChecker.
-    // -----------------------------------------------------------------------
     class SemanticTables {
     public:
         // Constructor: pre-registra tipos builtin y funciones/constantes builtin.

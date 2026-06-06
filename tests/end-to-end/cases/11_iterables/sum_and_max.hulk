@@ -1,0 +1,14 @@
+function sum(xs: Number*): Number =>
+    let total = 0 in {
+        for (n in xs) total := total + n;
+        total;
+    };
+function max(xs: Number*): Number =>
+    let m = 0 in {
+        for (n in xs) if (n > m) m := n else 0;
+        m;
+    };
+{
+    print(sum(range(1, 6)));
+    print(max(range(1, 11)));
+}

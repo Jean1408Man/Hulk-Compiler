@@ -65,6 +65,7 @@ SEMANTIC_SRCS := \
 BACKEND_SRCS := \
 	src/banner/banner_ir.cpp \
 	src/banner/banner_printer.cpp \
+	src/banner/banner_serializer.cpp \
 	src/ir/ir.cpp \
 	src/ir/ir_printer.cpp \
 	src/backend/backend.cpp \
@@ -73,6 +74,7 @@ BACKEND_SRCS := \
 	src/backend/hulkir_to_banner.cpp \
 	src/backend/ir_gen.cpp \
 	src/backend/name_mangler.cpp \
+	src/backend/output_packager.cpp \
 	src/vm/banner_vm.cpp \
 	src/vm/vm_heap.cpp \
 	src/vm/vm_value.cpp
@@ -90,7 +92,7 @@ EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 # Archivo de entrada por defecto para run-eval / run-vm / emit-banner
 FILE ?= examples/example.hulk
 
-.PHONY: all compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
+.PHONY: all build compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
 
@@ -244,6 +246,16 @@ backend: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) $(BACKEND_OBJS)
 		$(OBJDIR)/backend_main/main.o \
 		-o hulk_backend
 
+#   ./hulk <archivo.hulk>  → compila a un ejecutable ./output
+#   ./output               → ejecuta el programa (IR embebido + VM)
+build: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) $(BACKEND_OBJS)
+	@mkdir -p $(OBJDIR)/backend_main
+	$(CXX) $(CXXFLAGS) -c src/backend/main.cpp -o $(OBJDIR)/backend_main/main.o
+	$(CXX) $(CXXFLAGS) \
+		$(LEXER_AST_OBJS) $(PARSER_OBJS) $(SEMANTIC_OBJS) $(BACKEND_OBJS) \
+		$(OBJDIR)/backend_main/main.o \
+		-o hulk
+
 vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.o $(OBJDIR)/banner/banner_ir.o
 	@mkdir -p $(OBJDIR)/vm_tests
 	$(CXX) $(CXXFLAGS) -c tests/vm/vm_value_tests.cpp -o $(OBJDIR)/vm_tests/vm_value_tests.o
@@ -274,8 +286,11 @@ vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.
 backend-tests: backend
 	@bash tests/backend/run_backend_tests.sh
 
-end-to-end-tests: backend
-	@cd tests/end-to-end && HULK=../../hulk_backend ./end-to-end_tests.sh $(FOLDER)
+end-to-end-tests: build
+	@cd tests/end-to-end && HULK=../../hulk ./end-to-end_tests.sh $(FOLDER)
+
+hulk-tests: build
+	@bash tests/hulk/run_tests.sh
 
 semantic-tests: semantic
 	@echo "=== chequeos semánticos — programas válidos ==="; \
@@ -325,7 +340,7 @@ update-expected: eval backend semantic
 	mkdir -p tests/expected/eval tests/expected/semantic tests/expected/typecheck tests/expected/backend; \
 	for f in tests/eval/c4_*.hulk tests/eval/c5_*.hulk tests/eval/c6_*.hulk; do \
 		name=$$(basename $$f .hulk); \
-		{ ./hulk_backend $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
+		{ ./hulk_eval $$f 2>&1; } > tests/expected/eval/$${name}.expected || true; \
 		echo "  updated eval/$${name}.expected"; \
 	done; \
 	for f in tests/eval/err_*.hulk; do \
@@ -335,7 +350,8 @@ update-expected: eval backend semantic
 	done; \
 	for f in tests/backend/regression/*.hulk; do \
 		name=$$(basename $$f .hulk); \
-		{ ./hulk_backend $$f 2>&1; } > tests/expected/backend/$${name}.expected || true; \
+		{ ./hulk_backend $$f 2>/dev/null && ./output 2>&1; } > tests/expected/backend/$${name}.expected || true; \
+		rm -f ./output; \
 		echo "  updated backend/$${name}.expected"; \
 	done; \
 	for f in tests/semantic/ok_*.hulk tests/semantic/err_*.hulk; do \
@@ -351,7 +367,8 @@ update-expected: eval backend semantic
 	echo "=== Done ==="
 
 clean:
-	rm -rf $(OBJDIR) hulk_lexer hulk_parser_demo hulk_eval hulk_semantic hulk_backend \
-		hulk_lexer.exe hulk_parser_demo.exe hulk_eval.exe hulk_semantic.exe hulk_backend.exe \
+	rm -rf $(OBJDIR) hulk hulk_lexer hulk_parser_demo hulk_eval hulk_semantic hulk_backend \
+		hulk.exe hulk_lexer.exe hulk_parser_demo.exe hulk_eval.exe hulk_semantic.exe hulk_backend.exe \
+		output output.exe \
 		hulk_vm_value_tests hulk_vm_tests hulk_vm_limits_tests hulk_vm_semantics_tests \
 		hulk_vm_value_tests.exe hulk_vm_tests.exe hulk_vm_limits_tests.exe hulk_vm_semantics_tests.exe

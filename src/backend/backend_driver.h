@@ -19,6 +19,7 @@ struct BackendOptions {
 
 struct BackendResult {
     bool ok = false;
+    int exit_code = 1; 
     std::string generated_ir_path;
     std::string generated_banner_path;
 };

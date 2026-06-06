@@ -20,24 +20,11 @@ namespace Hulk {
         bool restricted_inference = false;
     };
 
-    // -----------------------------------------------------------------------
     // SemanticAnalyzer
-    //
     // Orquesta los tres pases del SymbolResolver y expone los resultados
     // que el(TypeInferencer) necesita consumir:
-    //
     //   - SemanticTables con todos los tipos y funciones registrados.
     //   - El mapa de resolución (Expr* → ResolutionResult)
-    //
-    // Uso típico en el pipeline:
-    //
-    //   hulk::common::DiagnosticEngine engine(repo);
-    //   Hulk::SemanticAnalyzer sem(engine);
-    //   bool ok = sem.analyze(*program);
-    //   if (!ok) { engine.print_all(); return; }
-    //   const auto& tables = sem.tables();
-    //   const auto& res_map = sem.resolution_map();
-    // -----------------------------------------------------------------------
     class SemanticAnalyzer {
     public:
         explicit SemanticAnalyzer(hulk::common::DiagnosticEngine& engine,

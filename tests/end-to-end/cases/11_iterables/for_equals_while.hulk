@@ -1,0 +1,3 @@
+let it = range(0, 3) in
+    while (it.next())
+        let x = it.current() in print(x);

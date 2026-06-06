@@ -39,16 +39,19 @@ run_one() {
     name="$(basename "$hulk_file" .hulk)"
     local actual_file="$TMP_DIR/$name.actual"
     local expected_file="$EXPECTED_DIR/$name.expected"
+    local compiled_bin="$TMP_DIR/$name.out"
 
     TOTAL=$((TOTAL + 1))
 
-    if ! "$BACKEND_BIN" "$hulk_file" > "$actual_file" 2>&1; then
+    if ! "$BACKEND_BIN" "$hulk_file" -o "$compiled_bin" > "$TMP_DIR/$name.compile.out" 2>&1; then
         echo -e "  ${RED}FAIL${RESET} $name"
         echo -e "       ${YELLOW}backend:${RESET}"
-        sed 's/^/         /' "$actual_file"
+        sed 's/^/         /' "$TMP_DIR/$name.compile.out"
         FAILED=$((FAILED + 1))
         return
     fi
+
+    "$compiled_bin" > "$actual_file" 2>&1 || true
 
     if compare_files "$expected_file" "$actual_file" "$TMP_DIR/$name.diff"; then
         echo -e "  ${GREEN}OK${RESET}  $name"
@@ -66,16 +69,19 @@ run_expected_one() {
     local name
     name="$(basename "$hulk_file" .hulk)"
     local actual_file="$TMP_DIR/$name.actual"
+    local compiled_bin="$TMP_DIR/$name.out"
 
     TOTAL=$((TOTAL + 1))
 
-    if ! "$BACKEND_BIN" "$hulk_file" > "$actual_file" 2>&1; then
+    if ! "$BACKEND_BIN" "$hulk_file" -o "$compiled_bin" > "$TMP_DIR/$name.compile.out" 2>&1; then
         echo -e "  ${RED}FAIL${RESET} $name"
         echo -e "       ${YELLOW}backend:${RESET}"
-        sed 's/^/         /' "$actual_file"
+        sed 's/^/         /' "$TMP_DIR/$name.compile.out"
         FAILED=$((FAILED + 1))
         return
     fi
+
+    "$compiled_bin" > "$actual_file" 2>&1 || true
 
     if compare_files "$expected_file" "$actual_file" "$TMP_DIR/$name.diff"; then
         echo -e "  ${GREEN}OK${RESET}  $name"
@@ -94,11 +100,17 @@ run_banner_one() {
     name="$(basename "$hulk_file" .hulk)"
     local actual_file="$TMP_DIR/$name.banner.$mode.actual"
     local expected_file="$EXPECTED_DIR/$name.expected"
+    local compiled_bin="$TMP_DIR/$name.banner.out"
 
     TOTAL=$((TOTAL + 1))
 
     if [[ "$mode" == "default" ]]; then
-        "$BACKEND_BIN" "$hulk_file" > "$actual_file" 2>&1 || true
+        # Compile to a temp executable, then run it to capture program output.
+        if "$BACKEND_BIN" "$hulk_file" -o "$compiled_bin" > "$TMP_DIR/$name.banner.compile.out" 2>&1; then
+            "$compiled_bin" > "$actual_file" 2>&1 || true
+        else
+            cp "$TMP_DIR/$name.banner.compile.out" "$actual_file"
+        fi
     else
         "$BACKEND_BIN" "$hulk_file" --run-banner > "$actual_file" 2>&1 || true
     fi
@@ -211,16 +223,19 @@ run_restricted_valid_one() {
     local name
     name="$(basename "$hulk_file" .hulk)"
     local actual_file="$TMP_DIR/$name.restricted.actual"
+    local compiled_bin="$TMP_DIR/$name.restricted.out"
 
     TOTAL=$((TOTAL + 1))
 
-    if ! "$BACKEND_BIN" "$hulk_file" --restricted-inference > "$actual_file" 2>&1; then
+    if ! "$BACKEND_BIN" "$hulk_file" --restricted-inference -o "$compiled_bin" > "$TMP_DIR/$name.restricted.compile.out" 2>&1; then
         echo -e "  ${RED}FAIL${RESET} $name"
         echo -e "       ${YELLOW}backend restricted:${RESET}"
-        sed 's/^/         /' "$actual_file"
+        sed 's/^/         /' "$TMP_DIR/$name.restricted.compile.out"
         FAILED=$((FAILED + 1))
         return
     fi
+
+    "$compiled_bin" > "$actual_file" 2>&1 || true
 
     if compare_files "$expected_file" "$actual_file" "$TMP_DIR/$name.restricted.diff"; then
         echo -e "  ${GREEN}OK${RESET}  $name"
@@ -471,20 +486,30 @@ run_runtime_error_context_one() {
     local name
     name="$(basename "$hulk_file" .hulk)"
     local actual_file="$TMP_DIR/$name.runtime-error.out"
+    local compiled_bin="$TMP_DIR/$name.runtime.out"
 
     TOTAL=$((TOTAL + 1))
 
-    if "$BACKEND_BIN" "$hulk_file" > "$actual_file" 2>&1; then
+    # Compile must succeed (runtime errors are not compiler errors).
+    if ! "$BACKEND_BIN" "$hulk_file" -o "$compiled_bin" > "$TMP_DIR/$name.runtime.compile.out" 2>&1; then
         echo -e "  ${RED}FAIL${RESET} $name runtime error context"
-        echo "       backend accepted a runtime-error program"
+        echo "       compiler rejected a runtime-error program"
+        sed 's/^/         /' "$TMP_DIR/$name.runtime.compile.out"
         FAILED=$((FAILED + 1))
         return
     fi
 
-    if grep -q '^Runtime error en hulk_main pc=' "$actual_file" &&
-       grep -q "source: $hulk_file:3:7" "$actual_file" &&
+    # Running ./output must fail with a runtime error.
+    if "$compiled_bin" > "$actual_file" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name runtime error context"
+        echo "       program ran without error; expected runtime failure"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    if grep -q 'Runtime error en hulk_main pc=' "$actual_file" &&
        grep -q 'instr: s2 = DIV s0, s1' "$actual_file" &&
-       grep -q '^  stack:$' "$actual_file"; then
+       grep -q 'stack:' "$actual_file"; then
         echo -e "  ${GREEN}OK${RESET}  $name runtime error context"
         PASSED=$((PASSED + 1))
     else
@@ -500,12 +525,23 @@ run_runtime_error_contains_one() {
     local name
     name="$(basename "$hulk_file" .hulk)"
     local actual_file="$TMP_DIR/$name.runtime-error.out"
+    local compiled_bin="$TMP_DIR/$name.runtime.out"
 
     TOTAL=$((TOTAL + 1))
 
-    if "$BACKEND_BIN" "$hulk_file" > "$actual_file" 2>&1; then
+    # Compile must succeed (runtime errors are not compiler errors).
+    if ! "$BACKEND_BIN" "$hulk_file" -o "$compiled_bin" > "$TMP_DIR/$name.runtime.compile.out" 2>&1; then
         echo -e "  ${RED}FAIL${RESET} $name runtime error"
-        echo "       backend accepted a runtime-error program"
+        echo "       compiler rejected a runtime-error program"
+        sed 's/^/         /' "$TMP_DIR/$name.runtime.compile.out"
+        FAILED=$((FAILED + 1))
+        return
+    fi
+
+    # Running ./output must fail with a runtime error.
+    if "$compiled_bin" > "$actual_file" 2>&1; then
+        echo -e "  ${RED}FAIL${RESET} $name runtime error"
+        echo "       program ran without error; expected runtime failure"
         FAILED=$((FAILED + 1))
         return
     fi

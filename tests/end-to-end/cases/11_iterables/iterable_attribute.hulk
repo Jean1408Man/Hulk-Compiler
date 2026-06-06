@@ -1,0 +1,10 @@
+type Pair(a: Number, b: Number) {
+    a: Number = a;
+    b: Number = b;
+    sum_range(): Number =>
+        let s = 0 in {
+            for (k in range(self.a, self.b)) s := s + k;
+            s;
+        };
+}
+let p = new Pair(1, 5) in print(p.sum_range());

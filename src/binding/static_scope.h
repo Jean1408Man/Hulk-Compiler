@@ -13,36 +13,21 @@ namespace Hulk {
 
 namespace Hulk {
 
-    // -----------------------------------------------------------------------
-    // SyntheticSymbol — símbolo introducido implícitamente por el compilador,
-    // sin un nodo VariableBinding ni Param en el AST.
-    //
-    // Ejemplos: variable del for, self.
-    // -----------------------------------------------------------------------
     enum class SyntheticKind {
-        ForVariable, // variable del for (x in ...)
-        Self         // self dentro de un método
+        ForVariable, 
+        Self         
     };
 
     struct SyntheticSymbol {
         std::string   name;
         SyntheticKind kind;
-        std::string   type_name; // para Self: nombre del tipo actual; vacío para otros
+        std::string   type_name; 
     };
 
-    // -----------------------------------------------------------------------
     // StaticScope — tabla de símbolos para análisis estático (sin valores).
-    //
-    // Análogo a Environment (src/eval/environment.h), pero almacena
-    // punteros a declaraciones en lugar de valores en runtime:
-    //
     //   - VariableBinding* → para variables declaradas via let/in
     //   - Param* (const)   → para parámetros de funciones y métodos
     //   - SyntheticSymbol* → para variables sintéticas (for, self, etc.)
-    //
-    // Se encadena igual que Environment: cada scope apunta a su padre.
-    // La búsqueda sube la cadena hasta el scope global (parent == nullptr).
-    // -----------------------------------------------------------------------
     class StaticScope {
     public:
         explicit StaticScope(std::shared_ptr<StaticScope> parent = nullptr)
@@ -67,7 +52,6 @@ namespace Hulk {
         };
 
         ResolvedSymbol lookup(const std::string& name) const {
-            // Buscar en el scope actual (todas las categorías)
             auto it_b = bindings_.find(name);
             if (it_b != bindings_.end()) return { .binding = it_b->second };
 
@@ -77,7 +61,6 @@ namespace Hulk {
             auto it_s = synthetics_.find(name);
             if (it_s != synthetics_.end()) return { .synthetic = it_s->second };
 
-            // Si no está, buscar en el padre
             if (parent_) return parent_->lookup(name);
             return {};
         }

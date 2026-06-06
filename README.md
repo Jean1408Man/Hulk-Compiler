@@ -1,6 +1,8 @@
 # HULK Compiler
 
-Compilador completo para el lenguaje **HULK**: tipado dinámico, orientado a objetos y con características funcionales. El pipeline va de código fuente hasta ejecución en una máquina virtual de stack propia (BannerVM).
+Compilador para el lenguaje **HULK**: tipado estático con inferencia de tipos, orientado a objetos y con características funcionales.
+
+> **Requisito de entorno**: los binarios compilados son ELF Linux. Todos los comandos `make` deben ejecutarse desde **WSL** (Windows Subsystem for Linux) o una terminal Linux/macOS nativa. 
 
 ---
 
@@ -10,8 +12,10 @@ Compilador completo para el lenguaje **HULK**: tipado dinámico, orientado a obj
 - [Compilar el Proyecto](#-compilar-el-proyecto)
 - [Ejecutar Programas](#-ejecutar-programas)
   - [Via Evaluador (árbol)](#1-via-evaluador-de-árbol)
-  - [Via VM completa](#2-via-pipeline-completo--bannervm)
-  - [Emitir Banner IR](#3-emitir-banner-ir)
+  - [Via compilación a ejecutable](#2-via-compilación-a-ejecutable-modo-producción)
+  - [Via VM directa](#3-via-vm-directa-sin-ejecutable)
+  - [Emitir Banner IR](#4-emitir-banner-ir)
+- [Modelo de Ejecución del Compilador](#-modelo-de-ejecución-del-compilador)
 - [Arquitectura del Compilador](#-arquitectura-del-compilador)
 - [Referencia de Comandos Make](#-referencia-de-comandos-make)
 - [Comandos de Test](#-comandos-de-test)
@@ -23,17 +27,13 @@ Compilador completo para el lenguaje **HULK**: tipado dinámico, orientado a obj
 ## Inicio Rápido
 
 ```bash
-# 1. Clonar el repositorio
-git clone <url-del-repositorio>
-cd Hulk
-
-# 2. Compilar todos los binarios principales
+# 1. Compilar todos los binarios
 make compile
 
-# 3. Editar o crear un archivo de entrada
+# 2. Editar o crear un archivo de entrada
 #    (ya hay un ejemplo listo en examples/example.hulk)
 
-# 4. Ejecutar via VM
+# 3. Ejecutar via VM
 make run-vm FILE=examples/example.hulk
 ```
 
@@ -52,21 +52,24 @@ Construye los dos binarios principales:
 | Binario | Descripción |
 |---|---|
 | `hulk_eval` | Evaluador de árbol (sin backend, para desarrollo rápido) |
-| `hulk_backend` | Compilador completo con BannerVM |
+| `hulk_backend` | Compilador completo — produce ejecutables nativos con VM embebida |
+
+También existe el target `make build` que compila únicamente `hulk_backend` y lo expone como `./hulk`, el binario de producción.
 
 **Requisitos**: `g++` con soporte C++20, `bison`, `make`.
 
-> Si solo necesitas uno de los dos:
+> Si solo necesitas uno:
 > ```bash
 > make eval      # solo hulk_eval
 > make backend   # solo hulk_backend
+> make build     # hulk_backend como ./hulk
 > ```
 
 ---
 
 ## Ejecutar Programas
 
-Los tres comandos principales de ejecución toman el archivo de entrada via la variable `FILE`. El valor por defecto es `examples/example.hulk`.
+Los comandos de ejecución toman el archivo de entrada via la variable `FILE`. El valor por defecto es `examples/example.hulk`.
 
 ### 1. Via Evaluador de Árbol
 
@@ -74,43 +77,70 @@ Los tres comandos principales de ejecución toman el archivo de entrada via la v
 make run-eval FILE=examples/example.hulk
 ```
 
-Ejecuta el programa con el **evaluador de árbol** (`hulk_eval`): pasa por Lexer → Parser → Análisis Semántico → Evaluador. Útil para prototipado rápido y depuración temprana. No requiere que el backend esté compilado.
+Ejecuta el programa con el **evaluador de árbol** (`hulk_eval`): pasa por Lexer → Parser → Análisis Semántico → Evaluador. Útil para prototipado rápido y depuración temprana.
 
 ```bash
 # Equivalente manual
 ./hulk_eval examples/example.hulk
 ```
 
-### 2. Via Pipeline Completo + BannerVM
+### 2. Via Compilación a Ejecutable (modo producción)
 
 ```bash
 make run-vm FILE=examples/example.hulk
 ```
 
-Ejecuta el programa pasando por el **pipeline completo**: análisis semántico → generación de IR → lowering a BannerIR → ejecución en la BannerVM (máquina virtual de stack con GC). Es el modo de producción.
+Compila el archivo `.hulk` y produce un ejecutable `./output` con la BannerVM embebida, luego lo ejecuta automáticamente. Es el **modo de producción**.
 
 ```bash
-# Equivalente manual
+# Equivalentes manuales (dos pasos)
+./hulk examples/example.hulk   # compila → genera ./output
+./output                        # ejecuta el programa
+```
+
+### 3. Via VM Directa (sin ejecutable)
+
+Ejecuta en la BannerVM sin generar `./output`. Útil para depuración interna del compilador:
+
+```bash
 ./hulk_backend --run-banner examples/example.hulk
 ```
 
-### 3. Emitir Banner IR
+### 4. Emitir Banner IR
 
 ```bash
 make emit-banner FILE=examples/example.hulk
 ```
 
-Compila el archivo, **guarda el Banner IR generado** en `outputs/<nombre>.banner` e imprime su contenido en la terminal. Útil para inspeccionar la representación de bajo nivel antes de la ejecución en la VM.
+Compila y **guarda el Banner IR** en `outputs/<nombre>.banner`. Útil para inspeccionar la representación de bajo nivel.
 
 ```bash
-# Equivalente manual (solo a archivo)
+# Equivalente manual
 ./hulk_backend --emit-banner -o outputs/example.banner examples/example.hulk
-
-# Ver el contenido después
 cat outputs/example.banner
 ```
 
 El directorio `outputs/` se crea automáticamente si no existe.
+
+---
+
+## Modelo de Ejecución del Compilador
+
+El compilador HULK produce ejecutables **autocontenidos** en dos pasos:
+
+```
+./hulk programa.hulk   →   genera ./output
+./output               →   ejecuta el programa, imprime resultados
+```
+
+El ejecutable `./output` es un binario nativo que lleva el Banner IR del programa embebido junto con la BannerVM. Al ejecutarse, la VM desempaqueta el IR y lo corre directamente — no necesita el compilador ni archivos externos.
+
+Este modelo de dos pasos es el que usan las suites de test (`tests/hulk/`, `tests/end-to-end/`) y la bandera `-o` del compilador permite cambiar el nombre del ejecutable de salida:
+
+```bash
+./hulk programa.hulk -o mi_programa
+./mi_programa
+```
 
 ---
 
@@ -124,14 +154,14 @@ Lexer  (src/lexer/)
   │  Tokenización y keywords
   ▼
 Parser / Bison  (src/parser/)
-  │  Gramática LALR(1); produce AST 
+  │  Gramática LALR(1); produce AST
   ▼
 AST  (src/ast/)
   │
   ▼
 SemanticAnalyzer  (src/semantic/)
   ├── SymbolResolver  (src/binding/)    — 3 pasadas: registrar, validar, enlazar
-  ├── TypeInferencer  (src/inference/)  — inferencia de tipos
+  ├── TypeInferencer  (src/inference/)  — inferencia de tipos 
   └── TypeChecker     (src/typecheck/)  — compatibilidad de tipos
   │
   ▼
@@ -142,10 +172,13 @@ HulkIRToBanner  (src/backend/hulkir_to_banner.cpp)
   │  Lowering: IR estructurado → IR linealizado
   ▼
 BannerIR  (src/banner/)
-  │  IR de bajo nivel 
+  │  IR de bajo nivel (3-address, stack-based)
   ▼
-BannerVM  (src/vm/)
-     Máquina virtual de stack con GC
+OutputPackager  (src/backend/output_packager.cpp)
+  │  Empaqueta BannerIR + BannerVM en un ejecutable nativo (./output)
+  ▼
+./output
+     Ejecutable autocontenido: BannerVM + IR embebido
 ```
 
 También existe un **evaluador de árbol** independiente (`src/eval/`) que recorre el AST directamente sin pasar por el backend. Se usa para las primeras etapas de prueba.
@@ -159,15 +192,16 @@ También existe un **evaluador de árbol** independiente (`src/eval/`) que recor
 | Comando | Descripción |
 |---|---|
 | `make compile` | Compila `hulk_eval` y `hulk_backend` |
+| `make build` | Compila el backend como `./hulk` (binario) |
 | `make run-eval FILE=<ruta>` | Ejecuta un archivo via evaluador de árbol |
-| `make run-vm FILE=<ruta>` | Ejecuta un archivo via pipeline completo + BannerVM |
+| `make run-vm FILE=<ruta>` | Compila + ejecuta via BannerVM |
 | `make emit-banner FILE=<ruta>` | Emite Banner IR a `outputs/` e imprime en terminal |
 
 La variable `FILE` tiene como valor por defecto `examples/example.hulk`.
 
 #### Modo restringido (`--restricted-inference`)
 
-Ambos pipelines soportan inferencia restringida. En este modo el compilador **exige anotaciones de tipo explícitas en todos los parámetros de función**; si alguno carece de anotación, la compilación falla con un error de diagnóstico.
+Ambos pipelines soportan inferencia restringida. En este modo el compilador **exige anotaciones de tipo explícitas en todos los parámetros de función**.
 
 ```bash
 # Via evaluador de árbol
@@ -184,6 +218,7 @@ Ambos pipelines soportan inferencia restringida. En este modo el compilador **ex
 | `make eval` | `hulk_eval` | Evaluador de árbol |
 | `make semantic` | `hulk_semantic` | Analizador semántico |
 | `make backend` | `hulk_backend` | Compilador completo + BannerVM |
+| `make build` | `hulk` | Backend como binario de producción (`./hulk`) |
 | `make lexer` | `hulk_lexer` | Analizador léxico |
 | `make parser-demo` | `hulk_parser_demo` | Demo del parser |
 | `make parser-gen` | — | Regenera `parser.cpp` desde `grammar.y` |
@@ -193,15 +228,13 @@ Ambos pipelines soportan inferencia restringida. En este modo el compilador **ex
 
 ## Comandos de Test
 
+> Todos los comandos de test deben ejecutarse desde WSL o Linux.
+
 ```bash
-make run-tests          # Ejecuta todas las suites
-make eval-tests         # Tests del evaluador
-make semantic-tests     # Tests del analizador semántico
-make backend-tests      # Tests del backend
-make end-to-end-tests   # Tests end-to-end (A.2–A.9 de la documentación)
-make vm-tests           # Tests unitarios de la BannerVM
-make err-tests          # Tests que deben fallar con diagnóstico
-make extension-tests    # Tests de extensiones de lenguaje
+make run-tests          # Eval + semántico + typecheck (usa hulk_eval y hulk_semantic)
+make backend-tests      # Tests del backend (compila + ejecuta ./output)
+make end-to-end-tests   # Tests end-to-end completos (A.2–A.9)
+make hulk-tests         # Suite de calificación externa (tests/hulk/)
 make update-expected    # Regenera archivos .expected tras cambios intencionales
 ```
 
@@ -212,13 +245,11 @@ make end-to-end-tests FOLDER=06_objects
 make end-to-end-tests FOLDER=08_inference
 ```
 
-Las suites disponibles son: `01_arithmetic`, `02_strings_builtins`, `03_variables`, `04_control_flow`, `05_functions`, `06_objects`, `07_type_check`, `08_inference`, `09_restricted`.
-
 ---
 
 ## Opciones Avanzadas del Backend
 
-El binario `hulk_backend` acepta las siguientes flags directamente:
+El binario `hulk_backend` (o `hulk`) acepta las siguientes flags:
 
 ```bash
 ./hulk_backend <archivo.hulk> [opciones]
@@ -226,23 +257,29 @@ El binario `hulk_backend` acepta las siguientes flags directamente:
 
 | Opción | Descripción |
 |---|---|
-| `--run-banner` | Ejecuta el programa en la BannerVM (modo producción) |
-| `--emit-ir` | Guarda el HulkIR (IR de nivel medio) en `<archivo>.hir` |
-| `--emit-banner` | Guarda el BannerIR en `<archivo>.banner` |
-| `--emit-banner-compiled` | Guarda la vista compilada del BannerIR |
-| `-o <ruta>` | Especifica la ruta de salida para los modos `--emit-*` |
-| `--restricted-inference` | Requiere anotaciones explícitas en parámetros de funciones |
+| _(ninguna)_ | Compila a ejecutable `./output` (modo por defecto) |
+| `-o <ruta>` | Cambia el nombre del ejecutable de salida |
+| `--run-banner` | Ejecuta en la BannerVM sin generar ejecutable |
+| `--emit-ir` | Guarda el HulkIR en `<ruta>.hir` |
+| `--emit-banner` | Guarda el BannerIR en `<ruta>.banner` |
+| `--restricted-inference` | Requiere anotaciones explícitas en parámetros |
 
 **Ejemplos:**
 
 ```bash
-# Ejecutar via VM
+# Compilar a ejecutable y correr (dos pasos)
+./hulk examples/example.hulk
+./output
+
+# Compilar con nombre de salida personalizado
+./hulk examples/example.hulk -o mi_programa
+./mi_programa
+
+# Ejecutar directamente en la VM (sin generar ejecutable)
 ./hulk_backend --run-banner examples/example.hulk
 
-# Emitir HulkIR a un archivo específico
+# Inspeccionar IR
 ./hulk_backend --emit-ir -o outputs/example.hir examples/example.hulk
-
-# Emitir BannerIR
 ./hulk_backend --emit-banner -o outputs/example.banner examples/example.hulk
 
 # Modo restringido
@@ -276,6 +313,7 @@ Hulk/
 │   ├── typecheck/
 │   ├── backend/
 │   ├── end-to-end/
+│   ├── hulk/      
 │   └── vm/
 ├── examples/
 │   └── example.hulk
@@ -286,11 +324,8 @@ Hulk/
 
 ### Archivos de Ejemplo
 
-El archivo `examples/example.hulk` es el punto de entrada de referencia para los comandos `run-eval`, `run-vm` y `emit-banner`. Modifícalo o crea nuevos archivos en esa carpeta para experimentar:
+El archivo `examples/example.hulk` es el punto de entrada de referencia. Modifícalo o crea nuevos archivos en esa carpeta para experimentar:
 
 ```hulk
 let x = 42 in print(x);
-function id(x) => x;
-x := x + 1;
-if (x >= 10) print("ok") else print("no");
 ```

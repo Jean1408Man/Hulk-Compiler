@@ -6,16 +6,11 @@
 #include <string>
 #include <vector>
 
-// Forward declaration
 namespace Hulk { class FunctionDecl; }
 
 namespace Hulk {
 
-    // -----------------------------------------------------------------------
     // SemanticFuncInfo — información estática de un FunctionDecl completo.
-    //
-    // Registrada en SemanticTables durante el Pase 1 del SymbolResolver.
-    // -----------------------------------------------------------------------
     struct SemanticFuncInfo {
         std::string         name;
         std::vector<Param>  params;

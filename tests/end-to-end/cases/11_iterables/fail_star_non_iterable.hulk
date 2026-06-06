@@ -1,0 +1,2 @@
+function sum(xs: Number*): Number => 0;
+print(sum(42));

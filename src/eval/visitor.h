@@ -1,7 +1,6 @@
 #ifndef HULK_VISITOR_H
 #define HULK_VISITOR_H
 
-// Forward declarations — todos los nodos concretos del AST
 namespace Hulk {
 
     // Literales
@@ -66,9 +65,7 @@ namespace Hulk {
 
 namespace Hulk {
 
-    // -----------------------------------------------------------------------
     // ExprVisitor — visita todos los nodos que heredan de Expr
-    // -----------------------------------------------------------------------
     class ExprVisitor {
     public:
         virtual ~ExprVisitor() = default;
@@ -121,9 +118,7 @@ namespace Hulk {
 
     };
 
-    // -----------------------------------------------------------------------
     // DeclVisitor — visita todos los nodos que heredan de Decl
-    // -----------------------------------------------------------------------
     class DeclVisitor {
     public:
         virtual ~DeclVisitor() = default;
@@ -135,15 +130,13 @@ namespace Hulk {
         virtual void visit(ProtocolDecl&) = 0;
     };
 
-    // -----------------------------------------------------------------------
     // ProgramVisitor — visita el nodo raíz Program
-    // -----------------------------------------------------------------------
     class ProgramVisitor {
     public:
         virtual ~ProgramVisitor() = default;
         virtual void visit(Program&) = 0;
     };
 
-} // namespace Hulk
+}
 
-#endif // HULK_VISITOR_H
+#endif

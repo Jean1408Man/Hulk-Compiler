@@ -1,2 +1,2 @@
-error [4:12 - 4:13]: La variable 'x' no ha sido declarada en este ámbito.
-error [4:5 - 4:14]: No se pudo inferir el tipo de retorno del método 'm'. Se requiere una anotación de tipo explícita.
+(4,12) SEMANTIC: La variable 'x' no ha sido declarada en este ámbito.
+(4,5) SEMANTIC: No se pudo inferir el tipo de retorno del método 'm'. Se requiere una anotación de tipo explícita.

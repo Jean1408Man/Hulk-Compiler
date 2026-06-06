@@ -1,0 +1,13 @@
+type Animal {
+    kind(): String => "animal";
+}
+type Dog inherits Animal {
+    kind(): String => "dog";
+}
+protocol Inspector {
+    look(d: Dog): String;
+}
+type AnimalInspector {
+    look(a: Animal): String => a.kind();
+}
+let i: Inspector = new AnimalInspector() in print(i.look(new Dog()));

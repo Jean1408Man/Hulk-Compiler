@@ -13,9 +13,7 @@ namespace Hulk {
     // Nil representa la ausencia de valor (while sin iteraciones, void, etc.)
     struct Nil {};
 
-    // -----------------------------------------------------------------------
     // HulkValue — unión tipada de todos los valores posibles en runtime
-    // -----------------------------------------------------------------------
     class HulkValue {
     public:
         using Inner = std::variant<
@@ -57,6 +55,6 @@ namespace Hulk {
         }
     };
 
-} // namespace Hulk
+}
 
-#endif // HULK_VALUE_H
+#endif 

@@ -1,0 +1,4 @@
+type BadIter {
+    current(): Number => 0;
+}
+for (x in new BadIter()) print(x);
