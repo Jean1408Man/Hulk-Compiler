@@ -8,9 +8,6 @@ CXXFLAGS_BISON := -std=c++20 -w -Isrc
 
 OBJDIR := build
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Fuentes compartidas: lexer + todos los nodos del AST + accept() centralizado
-# ─────────────────────────────────────────────────────────────────────────────
 LEXER_AST_SRCS := \
 	src/lexer/lexer.cpp \
 	src/lexer/lexer_rules.cpp \
@@ -85,23 +82,17 @@ BACKEND_SRCS := \
 SEMANTIC_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SEMANTIC_SRCS))
 BACKEND_OBJS  := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(BACKEND_SRCS))
 
-# Objetos pre-compilados (se reusan entre targets para no recompilar Bison)
 LEXER_AST_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(LEXER_AST_SRCS))
 PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
                   $(OBJDIR)/parser/parser_driver.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-# Archivo de entrada por defecto para run-eval / run-vm / emit-banner
 FILE ?= examples/example.hulk
 
 .PHONY: all build compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-sync-check lexer lexer-nfa-tests parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Comandos principales de usuario
-# ─────────────────────────────────────────────────────────────────────────────
 
 # Compila todos los binarios principales (evaluador + compilador completo)
 compile: eval backend
@@ -130,14 +121,11 @@ emit-banner: backend
 eval-restricted-tests: eval
 	@bash tests/eval/run_eval_restricted_tests.sh
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Directorios de objetos
-# ─────────────────────────────────────────────────────────────────────────────
 $(OBJDIR)/%.o: src/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# parser.cpp es código Bison generado: compilar sin -Wall/-Wextra para no colgarse
 $(OBJDIR)/parser/parser.o: src/parser/parser.cpp
 	@mkdir -p $(OBJDIR)/parser
 	$(CXX) $(CXXFLAGS_BISON) -c $< -o $@
@@ -150,9 +138,7 @@ $(OBJDIR)/parser/parser_lexer_adapter.o: src/parser/parser_lexer_adapter.cpp
 	@mkdir -p $(OBJDIR)/parser
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Targets de binarios
-# ─────────────────────────────────────────────────────────────────────────────
 parser-gen:
 	bison -d -o src/parser/parser.cpp src/parser/grammar.y
 
@@ -185,9 +171,6 @@ parser-demo: $(LEXER_AST_OBJS) $(PARSER_OBJS)
 		$(OBJDIR)/parser_main/main.o \
 		-o hulk_parser_demo
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Evaluador (cortes 4, 5 y 6)
-# ─────────────────────────────────────────────────────────────────────────────
 $(OBJDIR)/eval_main/main.o: src/eval/main.cpp
 	@mkdir -p $(OBJDIR)/eval_main
 	$(CXX) $(CXXFLAGS) -c src/eval/main.cpp -o $(OBJDIR)/eval_main/main.o
@@ -198,9 +181,7 @@ eval: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS) $(SEMANTIC_OBJS) $(OBJDIR)/e
 		$(OBJDIR)/eval_main/main.o \
 		-o hulk_eval
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Tests
-# ─────────────────────────────────────────────────────────────────────────────
 parser-tests: parser-demo
 	@for f in tests/parser/*.hulk; do \
 		echo "===== $$f ====="; \
@@ -289,7 +270,6 @@ vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.
 	./hulk_vm_limits_tests
 	./hulk_vm_semantics_tests
 
-# Tests unitarios del núcleo AFN aislado (regex + Thompson + simulador)
 lexer-nfa-tests:
 	@mkdir -p $(OBJDIR)/lexer_tests
 	$(CXX) $(CXXFLAGS) \
@@ -342,10 +322,6 @@ extension-tests: semantic
 		./hulk_semantic $$f 1>/dev/null; \
 		echo; \
 	done
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Test runner unificado con expected y AST dumps
-# ─────────────────────────────────────────────────────────────────────────────
 
 # Ejecuta todos los tests (o una suite: eval | semantic | typecheck)
 run-tests: eval parser-demo semantic
