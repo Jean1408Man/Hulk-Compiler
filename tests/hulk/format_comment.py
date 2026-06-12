@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Format run_tests.sh output into a GitHub issue Markdown comment."""
 import argparse
 import re

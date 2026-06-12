@@ -1,43 +1,12 @@
-#!/usr/bin/env bash
-# ============================================================================
-#  run_tests.sh — Suite de tests end-to-end para el compilador de HULK
-# ============================================================================
-#
-#  Convención de archivos (en cases/<feature>/):
-#
-#    nombre.hulk          -> programa de entrada
-#    nombre.out           -> (caso VÁLIDO) stdout exacto esperado del programa
-#    nombre.err           -> (caso INVÁLIDO) el compilador DEBE fallar.
-#                            Si el archivo .err tiene contenido, además se
-#                            exige que la salida (stdout+stderr) contenga ese
-#                            texto como substring (una línea = un substring
-#                            que debe aparecer). Si está vacío, basta con que
-#                            el compilador retorne código de salida != 0.
-#
-#  Un .hulk con .out  => se espera EXIT 0 y stdout idéntico.
-#  Un .hulk con .err  => se espera EXIT != 0 (y substrings, si los hay).
-#  Un .hulk sin ninguno => error de configuración del test.
-#
-#  Uso:
-#    ./run_tests.sh                 # corre todo
-#    ./run_tests.sh 08_inference    # corre solo una carpeta
-#    HULK=./build/hulk ./run_tests.sh   # usa otro binario
-#
-# ============================================================================
-
 set -u
 
-# --- Configuración ----------------------------------------------------------
 HULK="${HULK:-./hulk}"              # binario del compilador (override con env)
 CASES_DIR="${CASES_DIR:-cases}"
 TIMEOUT_SECS="${TIMEOUT_SECS:-15}"
 
-# Flag que activa el restricted mode de la extensión. Ajusta si tu CLI usa otro.
 RESTRICTED_FLAG="${RESTRICTED_FLAG:---restricted-inference}"
-# Carpeta cuyos casos se ejecutan en restricted mode:
 RESTRICTED_DIR="09_restricted"
 
-# --- Colores -----------------------------------------------------------------
 if [ -t 1 ]; then
   RED=$'\e[31m'; GRN=$'\e[32m'; YEL=$'\e[33m'; BLU=$'\e[34m'; DIM=$'\e[2m'; RST=$'\e[0m'
 else
@@ -47,7 +16,6 @@ fi
 PASS=0; FAIL=0; SKIP=0
 FAILED_LIST=()
 
-# --- Localizar el binario ----------------------------------------------------
 if ! command -v "$HULK" >/dev/null 2>&1 && [ ! -x "$HULK" ]; then
   echo "${YEL}AVISO:${RST} no se encontró el compilador en '$HULK'."
   echo "       Define la variable HULK, p. ej.:  HULK=./build/hulk ./run_tests.sh"
@@ -58,7 +26,6 @@ else
   DRYRUN=0
 fi
 
-# --- Helper: ejecuta el compilador con timeout, captura salida y exit ---------
 run_hulk() {
   # $1 = archivo .hulk ; $2... = flags extra
   local file="$1"; shift
@@ -69,14 +36,13 @@ run_hulk() {
   fi
 }
 
-# --- Ejecuta un único caso ---------------------------------------------------
 run_case() {
   local hulk_file="$1"
   local base="${hulk_file%.hulk}"
   local name; name="$(basename "$base")"
   local dir; dir="$(basename "$(dirname "$hulk_file")")"
 
-  # ¿restricted mode?
+  # restricted mode
   local extra_flags=()
   if [ "$dir" = "$RESTRICTED_DIR" ]; then
     extra_flags+=("$RESTRICTED_FLAG")
@@ -107,7 +73,6 @@ run_case() {
   exit_code=$?
 
   if [ "$mode" = "out" ]; then
-    # Caso válido: ./hulk compila (exit 0), luego ./output produce el stdout esperado
     local expected; expected="$(cat "${base}.out")"
     if [ "$exit_code" -ne 0 ]; then
       printf "  ${RED}FAIL${RST} %-34s ${DIM}(compilacion fallo exit=%s)${RST}\n" "$name" "$exit_code"
@@ -202,7 +167,6 @@ run_case() {
   fi
 }
 
-# --- Main --------------------------------------------------------------------
 echo "${BLU}========================================================${RST}"
 echo "${BLU} HULK — Suite de tests end-to-end${RST}"
 echo "${BLU}========================================================${RST}"
@@ -227,7 +191,6 @@ for feat_dir in "$CASES_DIR"/*/; do
   echo
 done
 
-# --- Resumen -----------------------------------------------------------------
 echo "${BLU}--------------------------------------------------------${RST}"
 if [ "$DRYRUN" = "1" ]; then
   echo " ${YEL}Dry-run: define HULK=<ruta-al-binario> para ejecutar.${RST}"

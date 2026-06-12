@@ -1,22 +1,12 @@
 #include "lexer.hpp"
-#include <cctype>
+#include <string>
 #include <string_view>
 #include "keywords.hpp"
+#include "lexer_rules.hpp"
+#include "regex/nfa_simulator.hpp"
 
 namespace hulk::lexer {
 namespace {
-
-bool is_alpha(char c) {
-    return std::isalpha(static_cast<unsigned char>(c)) != 0;
-}
-
-bool is_digit(char c) {
-    return std::isdigit(static_cast<unsigned char>(c)) != 0;
-}
-
-bool is_alnum(char c) {
-    return std::isalnum(static_cast<unsigned char>(c)) != 0;
-}
 
 bool is_whitespace(char c) {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -36,21 +26,40 @@ Token Lexer::next_token() {
         return make_token(TokenKind::EndOfFile, "", start, start);
     }
 
-    const char c = cursor_.peek();
-
-    if (is_alpha(c)) {
-        return scan_identifier_or_keyword();
-    }
-
-    if (is_digit(c)) {
-        return scan_number();
-    }
-
-    if (c == '"') {
+    if (cursor_.peek() == '"') {
         return scan_string();
     }
 
-    return scan_operator_or_delimiter();
+    // simulación del AFN (Thompson + conjunto de estados)
+    const regex::MatchResult m = regex::longest_match(
+        lexer_nfa(),
+        [this](std::size_t i) -> int {
+            return static_cast<unsigned char>(cursor_.peek(i));
+        });
+
+    if (!m.matched) {
+        // Ningún token empieza con este carácter: carácter inválido.
+        const char bad = cursor_.advance();
+        const hulk::common::Position end = cursor_.position();
+        return error_token("INVALID_CHAR", start, end, std::string(1, bad));
+    }
+
+    std::string lexeme;
+    lexeme.reserve(m.length);
+    for (std::size_t i = 0; i < m.length; ++i) {
+        lexeme += cursor_.advance();
+    }
+    const hulk::common::Position end = cursor_.position();
+
+    TokenKind kind = m.kind;
+    if (kind == TokenKind::Identifier) {
+        const auto it = kKeywords.find(std::string_view(lexeme));
+        if (it != kKeywords.end()) {
+            kind = it->second;
+        }
+    }
+
+    return make_token(kind, lexeme, start, end);
 }
 
 std::vector<Token> Lexer::tokenize() {
@@ -86,52 +95,6 @@ void Lexer::skip_whitespace_and_comments() {
 
         break;
     }
-}
-
-Token Lexer::scan_identifier_or_keyword() {
-    const hulk::common::Position start = cursor_.position();
-    std::string lexeme;
-
-    lexeme += cursor_.advance();
-
-    while (!cursor_.eof()) {
-        const char c = cursor_.peek();
-        if (is_alnum(c) || c == '_') {
-            lexeme += cursor_.advance();
-        } else {
-            break;
-        }
-    }
-
-    const hulk::common::Position end = cursor_.position();
-
-    const auto it = kKeywords.find(std::string_view(lexeme));
-    if (it != kKeywords.end()) {
-        return make_token(it->second, lexeme, start, end);
-    }
-
-    return make_token(TokenKind::Identifier, lexeme, start, end);
-}
-
-Token Lexer::scan_number() {
-    const hulk::common::Position start = cursor_.position();
-    std::string lexeme;
-
-    while (!cursor_.eof() && is_digit(cursor_.peek())) {
-        lexeme += cursor_.advance();
-    }
-
-    // Parte decimal opcional: solo si '.' va seguida de dígito.
-    if (cursor_.peek() == '.' && is_digit(cursor_.peek(1))) {
-        lexeme += cursor_.advance(); // consume '.'
-
-        while (!cursor_.eof() && is_digit(cursor_.peek())) {
-            lexeme += cursor_.advance();
-        }
-    }
-
-    const hulk::common::Position end = cursor_.position();
-    return make_token(TokenKind::Number, lexeme, start, end);
 }
 
 Token Lexer::scan_string() {
@@ -172,68 +135,6 @@ Token Lexer::scan_string() {
 
     const hulk::common::Position end = cursor_.position();
     return error_token("UNTERMINATED_STRING_EOF", start, end, lexeme);
-}
-
-Token Lexer::scan_operator_or_delimiter() {
-    const hulk::common::Position start = cursor_.position();
-
-    // Longest-match primero
-    if (cursor_.match(":=")) {
-        return make_token(TokenKind::DestructiveAssign, ":=", start, cursor_.position());
-    }
-    if (cursor_.match("==")) {
-        return make_token(TokenKind::EqualEqual, "==", start, cursor_.position());
-    }
-    if (cursor_.match("!=")) {
-        return make_token(TokenKind::NotEqual, "!=", start, cursor_.position());
-    }
-    if (cursor_.match("<=")) {
-        return make_token(TokenKind::LessEqual, "<=", start, cursor_.position());
-    }
-    if (cursor_.match(">=")) {
-        return make_token(TokenKind::GreaterEqual, ">=", start, cursor_.position());
-    }
-    if (cursor_.match("=>")) {
-        return make_token(TokenKind::FatArrow, "=>", start, cursor_.position());
-    }
-    if (cursor_.match("@@")) {
-    return make_token(TokenKind::DoubleConcat, "@@", start, cursor_.position());
-}
-
-    const char c = cursor_.advance();
-    const hulk::common::Position end = cursor_.position();
-
-    switch (c) {
-        case '+': return make_token(TokenKind::Plus, "+", start, end);
-        case '-': return make_token(TokenKind::Minus, "-", start, end);
-        case '*': return make_token(TokenKind::Star, "*", start, end);
-        case '/': return make_token(TokenKind::Slash, "/", start, end);
-        case '%': return make_token(TokenKind::Percent, "%", start, end);
-        case '^': return make_token(TokenKind::Caret, "^", start, end);
-
-        case '=': return make_token(TokenKind::Assign, "=", start, end);
-        case '<': return make_token(TokenKind::Less, "<", start, end);
-        case '>': return make_token(TokenKind::Greater, ">", start, end);
-
-        case '&': return make_token(TokenKind::And, "&", start, end);
-        case '|': return make_token(TokenKind::Or, "|", start, end);
-        case '!': return make_token(TokenKind::Not, "!", start, end);
-        case '@': return make_token(TokenKind::Concat, "@", start, end);
-
-        case '(': return make_token(TokenKind::LParen, "(", start, end);
-        case ')': return make_token(TokenKind::RParen, ")", start, end);
-        case '{': return make_token(TokenKind::LBrace, "{", start, end);
-        case '}': return make_token(TokenKind::RBrace, "}", start, end);
-
-        case ',': return make_token(TokenKind::Comma, ",", start, end);
-        case ';': return make_token(TokenKind::Semicolon, ";", start, end);
-        case ':': return make_token(TokenKind::Colon, ":", start, end);
-        case '.': return make_token(TokenKind::Dot, ".", start, end);
-        case '_': return make_token(TokenKind::Underscore, "_", start, end);
-
-        default:
-            return error_token("INVALID_CHAR", start, end, std::string(1, c));
-    }
 }
 
 Token Lexer::make_token(TokenKind kind,

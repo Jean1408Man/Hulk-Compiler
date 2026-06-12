@@ -1,11 +1,3 @@
-#!/bin/bash
-# run_tests.sh [project_root] [tests_dir]
-#
-# Corre la suite de calificación HULK contra el binario compilado.
-# Sin argumentos, autodetecta rutas desde la ubicación del script.
-# Overrides: HULK=<ruta_binario>  TIMEOUT_SECS=<segundos>
-# Exits 0 si todos los tests REQUIRED pasan, 1 si alguno falla, 2 si el binario no existe.
-
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

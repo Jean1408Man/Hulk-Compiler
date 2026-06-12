@@ -13,6 +13,9 @@ OBJDIR := build
 # ─────────────────────────────────────────────────────────────────────────────
 LEXER_AST_SRCS := \
 	src/lexer/lexer.cpp \
+	src/lexer/lexer_rules.cpp \
+	src/lexer/regex/thompson.cpp \
+	src/lexer/regex/nfa_simulator.cpp \
 	src/ast/literales/number.cpp \
 	src/ast/literales/string.cpp \
 	src/ast/literales/boolean.cpp \
@@ -92,7 +95,7 @@ EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 # Archivo de entrada por defecto para run-eval / run-vm / emit-banner
 FILE ?= examples/example.hulk
 
-.PHONY: all build compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
+.PHONY: all build compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-sync-check lexer lexer-nfa-tests parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
 
@@ -169,6 +172,9 @@ lexer:
 	$(CXX) $(CXXFLAGS) \
 		src/lexer/main.cpp \
 		src/lexer/lexer.cpp \
+		src/lexer/lexer_rules.cpp \
+		src/lexer/regex/thompson.cpp \
+		src/lexer/regex/nfa_simulator.cpp \
 		-o hulk_lexer
 
 parser-demo: $(LEXER_AST_OBJS) $(PARSER_OBJS)
@@ -283,6 +289,17 @@ vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.
 	./hulk_vm_limits_tests
 	./hulk_vm_semantics_tests
 
+# Tests unitarios del núcleo AFN aislado (regex + Thompson + simulador)
+lexer-nfa-tests:
+	@mkdir -p $(OBJDIR)/lexer_tests
+	$(CXX) $(CXXFLAGS) \
+		tests/lexer/nfa_tests.cpp \
+		src/lexer/lexer_rules.cpp \
+		src/lexer/regex/thompson.cpp \
+		src/lexer/regex/nfa_simulator.cpp \
+		-o hulk_nfa_tests
+	./hulk_nfa_tests && echo "lexer-nfa-tests: OK"
+
 backend-tests: backend
 	@bash tests/backend/run_backend_tests.sh
 
@@ -371,4 +388,5 @@ clean:
 		hulk.exe hulk_lexer.exe hulk_parser_demo.exe hulk_eval.exe hulk_semantic.exe hulk_backend.exe \
 		output output.exe \
 		hulk_vm_value_tests hulk_vm_tests hulk_vm_limits_tests hulk_vm_semantics_tests \
-		hulk_vm_value_tests.exe hulk_vm_tests.exe hulk_vm_limits_tests.exe hulk_vm_semantics_tests.exe
+		hulk_vm_value_tests.exe hulk_vm_tests.exe hulk_vm_limits_tests.exe hulk_vm_semantics_tests.exe \
+		hulk_nfa_tests hulk_nfa_tests.exe
