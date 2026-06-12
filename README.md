@@ -56,7 +56,7 @@ Construye los dos binarios principales:
 
 También existe el target `make build` que compila únicamente `hulk_backend` y lo expone como `./hulk`, el binario de producción.
 
-**Requisitos**: `g++` con soporte C++20, `bison`, `make`.
+**Requisitos**: `g++` con soporte C++20 y `make`.
 
 > Si solo necesitas uno:
 > ```bash
@@ -153,8 +153,8 @@ Fuente (.hulk)
 Lexer  (src/lexer/)
   │  Tokenización y keywords
   ▼
-Parser / Bison  (src/parser/)
-  │  Gramática LALR(1); produce AST
+Parser LALR(1) propio  (src/parser/ + tools/parsergen/)
+  │  Tablas generadas desde hulk.grammar; produce AST
   ▼
 AST  (src/ast/)
   │
@@ -221,7 +221,8 @@ Ambos pipelines soportan inferencia restringida. En este modo el compilador **ex
 | `make build` | `hulk` | Backend como binario de producción (`./hulk`) |
 | `make lexer` | `hulk_lexer` | Analizador léxico |
 | `make parser-demo` | `hulk_parser_demo` | Demo del parser |
-| `make parser-gen` | — | Regenera `parser.cpp` desde `grammar.y` |
+| `make parser-gen` | — | Regenera `parser_tables.cpp/.hpp` desde `hulk.grammar` |
+| `make parser-sync-check` | — | Verifica que las tablas generadas estén sincronizadas |
 | `make clean` | — | Elimina artefactos de compilación |
 
 ---
