@@ -147,4 +147,4 @@ void run_semantic_action(int rule,
                          ParserValue& result_value,
                          ParserDriver& driver);
 
-} // namespace hulk::parser::parser_tables
+}

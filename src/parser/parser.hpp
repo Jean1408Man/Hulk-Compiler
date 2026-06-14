@@ -24,4 +24,4 @@ private:
 
 Parser::symbol_type yylex(ParserDriver& driver);
 
-} // namespace hulk::parser
+}

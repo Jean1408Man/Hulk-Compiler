@@ -46,4 +46,4 @@ struct StackEntry {
     hulk::common::Span span {};
 };
 
-} // namespace hulk::parser
+}

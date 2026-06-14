@@ -74,4 +74,4 @@ struct TopLevelItems {
     bool hasGlobalExpr = false;
 };
 
-} // namespace hulk::parser
+}

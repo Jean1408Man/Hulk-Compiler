@@ -50,7 +50,7 @@ struct Grammar {
     std::unordered_map<std::string, int> terminal_by_name;
     std::unordered_map<std::string, int> nonterminal_by_name;
     std::unordered_map<int, std::string> type_by_symbol;
-    std::vector<Production> productions; // Actual grammar rules, numbered from 1.
+    std::vector<Production> productions;
     int end_symbol = -1;
     int accept_symbol = -1;
 
@@ -1361,7 +1361,7 @@ std::string emit_header(const Grammar& grammar,
     out << "                         hulk::common::Span& result_span,\n";
     out << "                         ParserValue& result_value,\n";
     out << "                         ParserDriver& driver);\n\n";
-    out << "} // namespace hulk::parser::parser_tables\n";
+    out << "}\n";
     return out.str();
 }
 
@@ -1437,7 +1437,7 @@ std::string emit_source(const Grammar& grammar,
     out << "hulk::common::Span to_span(const hulk::common::Span& span) {\n";
     out << "    return span;\n";
     out << "}\n\n";
-    out << "} // namespace\n\n";
+    out << "}\n\n";
 
     out << "int action(int state, int terminal) {\n";
     out << "    if (state < 0 || state >= state_count || terminal < 0 || terminal >= terminal_count) {\n";
@@ -1528,7 +1528,7 @@ std::string emit_source(const Grammar& grammar,
     out << "            break;\n";
     out << "    }\n";
     out << "}\n\n";
-    out << "} // namespace hulk::parser::parser_tables\n";
+    out << "}\n";
     return out.str();
 }
 
@@ -1547,7 +1547,7 @@ void usage() {
     std::cerr << "usage: parsergen <grammar> -o <output-prefix> [--conflicts <baseline>]\n";
 }
 
-} // namespace
+}
 
 int main(int argc, char** argv) {
     try {

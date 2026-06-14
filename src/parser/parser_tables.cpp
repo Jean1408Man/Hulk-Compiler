@@ -654,7 +654,7 @@ hulk::common::Span to_span(const hulk::common::Span& span) {
     return span;
 }
 
-} // namespace
+}
 
 int action(int state, int terminal) {
     if (state < 0 || state >= state_count || terminal < 0 || terminal >= terminal_count) {
@@ -1901,4 +1901,4 @@ void run_semantic_action(int rule,
     }
 }
 
-} // namespace hulk::parser::parser_tables
+}

@@ -1,16 +1,3 @@
-# Bison conflict baseline for src/parser/grammar.y
-# Generated with:
-#   bison --report=all -Wcounterexamples -d -o /tmp/hulk-parser-bison/parser.cpp src/parser/grammar.y
-#
-# Bison version: GNU Bison 3.8.2
-# Summary: 3 shift/reduce conflicts, 0 reduce/reduce conflicts.
-# Unused terminals: ERROR_TOKEN
-#
-# Format:
-#   sr token=<TOKEN> reduce_rule=<RULE> shift_rule=<RULE> bison_state=<STATE>
-# The bison_state field is informational; the parser generator compares the
-# normalized conflict identity before it compares state numbers.
-
 sr token=MINUS reduce_rule=80 shift_rule=82 bison_state=49
 sr token=LPAREN reduce_rule=92 shift_rule=94 bison_state=53
 sr token=LPAREN reduce_rule=92 shift_rule=94 bison_state=77
