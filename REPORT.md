@@ -20,9 +20,9 @@ La recuperación de errores está integrada: en lugar de lanzar una excepción a
 
 ### 2.2 Parser
 
-El parser es generado por **Bison** (LALR(1)) a partir de la gramática en `src/parser/grammar.y`. La precedencia de operadores — aritmética, lógica, comparación, concatenación de strings, potencia y operadores de test de tipo — se declara con directivas `%left`, `%right` y `%nonassoc`, que Bison usa para resolver conflictos shift/reduce automáticamente.
+El parser es LALR(1) y se genera con una herramienta propia en C++ (`tools/parsergen/`) a partir de `src/parser/hulk.grammar`. El generador construye la coleccion canonica LR(1), fusiona estados con el mismo core LR(0) para obtener LALR(1), resuelve conflictos con la misma politica que Bison y emite `src/parser/parser_tables.cpp/.hpp`.
 
-Un `ParserDriver` es dueño del lexer y le entrega tokens al parser de Bison uno a uno a través de un `ParserLexerAdapter` que traduce entre el formato de token del proyecto y el `symbol_type` que Bison espera. El parser construye el AST directamente a través de acciones semánticas en C++ asociadas a cada regla de la gramática.
+En runtime, `src/parser/lr_engine.cpp` ejecuta esas tablas con un motor shift/reduce generico. `ParserDriver` conserva el mismo contrato publico: toma tokens del lexer, reporta diagnosticos y recibe el AST final. `parser_lexer_adapter.cpp` traduce `TokenKind` al `Symbol` del parser, preservando la validacion de literales numericos y strings. Las acciones semanticas de la gramatica se copian al archivo `.grammar` y el generador las transforma en un `switch` C++ que construye el AST.
 
 ### 2.3 Árbol de Sintaxis Abstracta (AST)
 
