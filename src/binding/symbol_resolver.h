@@ -204,6 +204,8 @@ namespace Hulk {
                                     const std::string& type_name,
                                     const std::string& attr_name) const;
 
+        std::string object_declared_type(Expr* obj) const;
+
         void visit(Number& n)             override;
         void visit(String& n)             override;
         void visit(Boolean& n)            override;

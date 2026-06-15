@@ -59,6 +59,14 @@ Token Lexer::next_token() {
         }
     }
 
+    if (kind == TokenKind::Base) {
+        std::size_t k = 0;
+        while (is_whitespace(cursor_.peek(k))) ++k;
+        if (cursor_.peek(k) != '(') {
+            kind = TokenKind::Identifier;
+        }
+    }
+
     return make_token(kind, lexeme, start, end);
 }
 
@@ -113,6 +121,13 @@ Token Lexer::scan_string() {
             if (cursor_.eof()) {
                 const hulk::common::Position end = cursor_.position();
                 return error_token("INCOMPLETE_ESCAPE", start, end, lexeme);
+            }
+
+            const char esc = cursor_.peek();
+            if (esc != 'n' && esc != 'r' && esc != 't' && esc != '"' && esc != '\\') {
+                cursor_.advance();
+                const hulk::common::Position end = cursor_.position();
+                return error_token("INVALID_ESCAPE", start, end, std::string(1, esc));
             }
 
             lexeme += cursor_.advance();
