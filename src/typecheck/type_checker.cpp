@@ -486,6 +486,12 @@ namespace Hulk {
             if (!info && !obj_type.is_unknown() && !obj_type.is_error()) {
                 report_error(node.span, "Tipo '" + obj_type.name() + "' no tiene un método '" + node.GetMethodName() + "'.");
             }
+        } else if (obj_type.kind() == HulkType::Kind::Number ||
+                   obj_type.kind() == HulkType::Kind::String  ||
+                   obj_type.kind() == HulkType::Kind::Boolean) {
+            // Los tipos builtin no tienen métodos de usuario: cualquier llamada es error.
+            report_error(node.span, "Tipo '" + obj_type.to_string() +
+                         "' no tiene un método '" + node.GetMethodName() + "'.");
         }
 
         if (info) {

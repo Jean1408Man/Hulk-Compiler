@@ -3,16 +3,16 @@ export TEMP := /tmp
 export TMP  := /tmp
 CXX      := g++
 CXXFLAGS := -std=c++20 -Wall -Wextra -pedantic -Isrc
-# Flags sin warnings para código generado por Bison (parser.cpp / parser.hpp)
-CXXFLAGS_BISON := -std=c++20 -w -Isrc
+CXXFLAGS_GENERATED := -std=c++20 -w -Isrc
 
 OBJDIR := build
+PARSERGEN := $(OBJDIR)/tools/parsergen/parsergen
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Fuentes compartidas: lexer + todos los nodos del AST + accept() centralizado
-# ─────────────────────────────────────────────────────────────────────────────
 LEXER_AST_SRCS := \
 	src/lexer/lexer.cpp \
+	src/lexer/lexer_rules.cpp \
+	src/lexer/regex/thompson.cpp \
+	src/lexer/regex/nfa_simulator.cpp \
 	src/ast/literales/number.cpp \
 	src/ast/literales/string.cpp \
 	src/ast/literales/boolean.cpp \
@@ -82,23 +82,18 @@ BACKEND_SRCS := \
 SEMANTIC_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(SEMANTIC_SRCS))
 BACKEND_OBJS  := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(BACKEND_SRCS))
 
-# Objetos pre-compilados (se reusan entre targets para no recompilar Bison)
 LEXER_AST_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(LEXER_AST_SRCS))
-PARSER_OBJS    := $(OBJDIR)/parser/parser.o \
+PARSER_OBJS    := $(OBJDIR)/parser/lr_engine.o \
+                  $(OBJDIR)/parser/parser_tables.o \
                   $(OBJDIR)/parser/parser_driver.o \
                   $(OBJDIR)/parser/parser_lexer_adapter.o
 EVAL_OBJS      := $(patsubst src/%.cpp,$(OBJDIR)/%.o,$(EVAL_SRCS))
 
-# Archivo de entrada por defecto para run-eval / run-vm / emit-banner
 FILE ?= examples/example.hulk
 
-.PHONY: all build compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-sync-check lexer parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
+.PHONY: all build compile run-eval run-vm emit-banner eval-restricted-tests parser-gen parser-gen-own parser-gen-bison parser-sync-check parser-sync-check-own parser-sync-check-bison lexer lexer-nfa-tests parser-demo parser-tests eval eval-tests err-tests semantic semantic-tests extension-tests backend vm-tests backend-tests end-to-end-tests run-tests update-expected clean
 
 all: lexer parser-demo eval semantic
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Comandos principales de usuario
-# ─────────────────────────────────────────────────────────────────────────────
 
 # Compila todos los binarios principales (evaluador + compilador completo)
 compile: eval backend
@@ -127,48 +122,85 @@ emit-banner: backend
 eval-restricted-tests: eval
 	@bash tests/eval/run_eval_restricted_tests.sh
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Directorios de objetos
-# ─────────────────────────────────────────────────────────────────────────────
 $(OBJDIR)/%.o: src/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# parser.cpp es código Bison generado: compilar sin -Wall/-Wextra para no colgarse
-$(OBJDIR)/parser/parser.o: src/parser/parser.cpp
+$(PARSERGEN): tools/parsergen/parsergen.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $< -o $@
+
+src/parser/parser_tables.cpp src/parser/parser_tables.hpp: src/parser/hulk.grammar $(PARSERGEN) doc/parser/expected_conflicts.txt
+	$(PARSERGEN) src/parser/hulk.grammar -o src/parser/parser_tables --conflicts doc/parser/expected_conflicts.txt
+
+$(OBJDIR)/parser/lr_engine.o: src/parser/lr_engine.cpp src/parser/parser_tables.hpp
 	@mkdir -p $(OBJDIR)/parser
-	$(CXX) $(CXXFLAGS_BISON) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/parser/parser_tables.o: src/parser/parser_tables.cpp src/parser/parser_tables.hpp
+	@mkdir -p $(OBJDIR)/parser
+	$(CXX) $(CXXFLAGS_GENERATED) -c $< -o $@
 
 $(OBJDIR)/parser/parser_driver.o: src/parser/parser_driver.cpp
 	@mkdir -p $(OBJDIR)/parser
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJDIR)/parser/parser_lexer_adapter.o: src/parser/parser_lexer_adapter.cpp
+$(OBJDIR)/parser/parser_lexer_adapter.o: src/parser/parser_lexer_adapter.cpp src/parser/parser_tables.hpp
 	@mkdir -p $(OBJDIR)/parser
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Targets de binarios
 # ─────────────────────────────────────────────────────────────────────────────
-parser-gen:
-	bison -d -o src/parser/parser.cpp src/parser/grammar.y
+parser-gen: parser-gen-own
 
-parser-sync-check:
+parser-gen-own: src/parser/parser_tables.cpp src/parser/parser_tables.hpp
+
+parser-sync-check: parser-sync-check-own
+
+parser-sync-check-own: $(PARSERGEN)
+	@set -e; \
+	tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	mkdir -p "$$tmp_dir/src/parser"; \
+	$(PARSERGEN) src/parser/hulk.grammar -o "$$tmp_dir/src/parser/parser_tables" --conflicts doc/parser/expected_conflicts.txt; \
+	diff -u src/parser/parser_tables.cpp "$$tmp_dir/src/parser/parser_tables.cpp"; \
+	diff -u src/parser/parser_tables.hpp "$$tmp_dir/src/parser/parser_tables.hpp"; \
+	echo "parser-sync-check-own: tablas del parser sincronizadas con hulk.grammar"
+
+parser-gen-bison:
+	@if [[ "$(USE_BISON)" != "1" ]]; then \
+		echo "parser-gen-bison es solo oraculo: ejecuta USE_BISON=1 make parser-gen-bison"; \
+		exit 1; \
+	fi
+	@set -e; \
+	tmp_dir=$$(mktemp -d); \
+	mkdir -p "$$tmp_dir/src/parser"; \
+	cp src/parser/grammar.y "$$tmp_dir/src/parser/grammar.y"; \
+	( cd "$$tmp_dir" && bison --report=all -Wcounterexamples -d -o src/parser/parser.cpp src/parser/grammar.y ); \
+	echo "parser-gen-bison: oraculo generado en $$tmp_dir/src/parser"
+
+parser-sync-check-bison:
+	@if [[ "$(USE_BISON)" != "1" ]]; then \
+		echo "parser-sync-check-bison es solo oraculo: ejecuta USE_BISON=1 make parser-sync-check-bison"; \
+		exit 1; \
+	fi
 	@set -e; \
 	tmp_dir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp_dir"' EXIT; \
 	mkdir -p "$$tmp_dir/src/parser"; \
 	cp src/parser/grammar.y "$$tmp_dir/src/parser/grammar.y"; \
-	( cd "$$tmp_dir" && bison -d -o src/parser/parser.cpp src/parser/grammar.y ); \
-	diff -u src/parser/parser.cpp "$$tmp_dir/src/parser/parser.cpp"; \
-	diff -u src/parser/parser.hpp "$$tmp_dir/src/parser/parser.hpp"; \
-	diff -u src/parser/location.hh "$$tmp_dir/src/parser/location.hh"; \
-	echo "parser-sync-check: parser generado sincronizado con grammar.y"
+	( cd "$$tmp_dir" && bison --report=all -Wcounterexamples -d -o src/parser/parser.cpp src/parser/grammar.y ); \
+	grep -E "conflicts:|shift/reduce conflict|reduce/reduce conflict" "$$tmp_dir/src/parser/parser.output" || true; \
+	echo "parser-sync-check-bison: oraculo Bison regenerado en temporal"
 
 lexer:
 	$(CXX) $(CXXFLAGS) \
 		src/lexer/main.cpp \
 		src/lexer/lexer.cpp \
+		src/lexer/lexer_rules.cpp \
+		src/lexer/regex/thompson.cpp \
+		src/lexer/regex/nfa_simulator.cpp \
 		-o hulk_lexer
 
 parser-demo: $(LEXER_AST_OBJS) $(PARSER_OBJS)
@@ -179,9 +211,6 @@ parser-demo: $(LEXER_AST_OBJS) $(PARSER_OBJS)
 		$(OBJDIR)/parser_main/main.o \
 		-o hulk_parser_demo
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Evaluador (cortes 4, 5 y 6)
-# ─────────────────────────────────────────────────────────────────────────────
 $(OBJDIR)/eval_main/main.o: src/eval/main.cpp
 	@mkdir -p $(OBJDIR)/eval_main
 	$(CXX) $(CXXFLAGS) -c src/eval/main.cpp -o $(OBJDIR)/eval_main/main.o
@@ -192,9 +221,7 @@ eval: $(LEXER_AST_OBJS) $(PARSER_OBJS) $(EVAL_OBJS) $(SEMANTIC_OBJS) $(OBJDIR)/e
 		$(OBJDIR)/eval_main/main.o \
 		-o hulk_eval
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Tests
-# ─────────────────────────────────────────────────────────────────────────────
 parser-tests: parser-demo
 	@for f in tests/parser/*.hulk; do \
 		echo "===== $$f ====="; \
@@ -283,11 +310,21 @@ vm-tests: $(OBJDIR)/vm/banner_vm.o $(OBJDIR)/vm/vm_heap.o $(OBJDIR)/vm/vm_value.
 	./hulk_vm_limits_tests
 	./hulk_vm_semantics_tests
 
+lexer-nfa-tests:
+	@mkdir -p $(OBJDIR)/lexer_tests
+	$(CXX) $(CXXFLAGS) \
+		tests/lexer/nfa_tests.cpp \
+		src/lexer/lexer_rules.cpp \
+		src/lexer/regex/thompson.cpp \
+		src/lexer/regex/nfa_simulator.cpp \
+		-o hulk_nfa_tests
+	./hulk_nfa_tests && echo "lexer-nfa-tests: OK"
+
 backend-tests: backend
 	@bash tests/backend/run_backend_tests.sh
 
 end-to-end-tests: build
-	@cd tests/end-to-end && HULK=../../hulk ./end-to-end_tests.sh $(FOLDER)
+	@cd tests/end-to-end && HULK=../../hulk bash ./end-to-end_tests.sh $(FOLDER)
 
 hulk-tests: build
 	@bash tests/hulk/run_tests.sh
@@ -325,10 +362,6 @@ extension-tests: semantic
 		./hulk_semantic $$f 1>/dev/null; \
 		echo; \
 	done
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Test runner unificado con expected y AST dumps
-# ─────────────────────────────────────────────────────────────────────────────
 
 # Ejecuta todos los tests (o una suite: eval | semantic | typecheck)
 run-tests: eval parser-demo semantic
@@ -371,4 +404,5 @@ clean:
 		hulk.exe hulk_lexer.exe hulk_parser_demo.exe hulk_eval.exe hulk_semantic.exe hulk_backend.exe \
 		output output.exe \
 		hulk_vm_value_tests hulk_vm_tests hulk_vm_limits_tests hulk_vm_semantics_tests \
-		hulk_vm_value_tests.exe hulk_vm_tests.exe hulk_vm_limits_tests.exe hulk_vm_semantics_tests.exe
+		hulk_vm_value_tests.exe hulk_vm_tests.exe hulk_vm_limits_tests.exe hulk_vm_semantics_tests.exe \
+		hulk_nfa_tests hulk_nfa_tests.exe

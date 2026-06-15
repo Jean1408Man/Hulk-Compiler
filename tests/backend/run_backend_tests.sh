@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -645,7 +644,7 @@ done
 
 suite_header "BACKEND FRONTEND INVALIDOS"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/out_of_range_number.hulk" "Literal numerico fuera de rango"
-run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/invalid_string_escape.hulk" "Escape de string no soportado"
+run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/invalid_string_escape.hulk" "Secuencia de escape no soportada"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/multiple_global_exprs.hulk" "Solo se permite una expresion global final"
 run_invalid_frontend_one "$ROOT/tests/backend/frontend_invalid/lambda_expr.hulk" "syntax error"
 

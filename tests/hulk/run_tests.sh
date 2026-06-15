@@ -1,11 +1,3 @@
-#!/bin/bash
-# run_tests.sh [project_root] [tests_dir]
-#
-# Corre la suite de calificación HULK contra el binario compilado.
-# Sin argumentos, autodetecta rutas desde la ubicación del script.
-# Overrides: HULK=<ruta_binario>  TIMEOUT_SECS=<segundos>
-# Exits 0 si todos los tests REQUIRED pasan, 1 si alguno falla, 2 si el binario no existe.
-
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -151,47 +143,24 @@ echo "Timeout:    ${TIMEOUT_SECS}s"
 echo ""
 
 # ── Run tests ─────────────────────────────────────────────────────────────────
-
-for hulk_file in "$TESTS_DIR/ok/minimal/"*.hulk; do
-    [ -f "$hulk_file" ] || continue
-    name=$(basename "$hulk_file" .hulk)
-    run_ok_test "$hulk_file" "$TESTS_DIR/ok/minimal/$name.expected" "ok/minimal" "$name"
+for dir in "$TESTS_DIR"/ok/*/; do
+    [ -d "$dir" ] || continue
+    cat="ok/$(basename "$dir")"
+    for hulk_file in "$dir"*.hulk; do
+        [ -f "$hulk_file" ] || continue
+        name=$(basename "$hulk_file" .hulk)
+        run_ok_test "$hulk_file" "${dir}${name}.expected" "$cat" "$name"
+    done
 done
 
-for hulk_file in "$TESTS_DIR/ok/types/"*.hulk; do
-    [ -f "$hulk_file" ] || continue
-    name=$(basename "$hulk_file" .hulk)
-    run_ok_test "$hulk_file" "$TESTS_DIR/ok/types/$name.expected" "ok/types" "$name"
-done
-
-for hulk_file in "$TESTS_DIR/ok/oop/"*.hulk; do
-    [ -f "$hulk_file" ] || continue
-    name=$(basename "$hulk_file" .hulk)
-    run_ok_test "$hulk_file" "$TESTS_DIR/ok/oop/$name.expected" "ok/oop" "$name"
-done
-
-for hulk_file in "$TESTS_DIR/ok/extras/"*.hulk; do
-    [ -f "$hulk_file" ] || continue
-    name=$(basename "$hulk_file" .hulk)
-    run_ok_test "$hulk_file" "$TESTS_DIR/ok/extras/$name.expected" "ok/extras" "$name"
-done
-
-for hulk_file in "$TESTS_DIR/errors/lexical/"*.hulk; do
-    [ -f "$hulk_file" ] || continue
-    name=$(basename "$hulk_file" .hulk)
-    run_error_test "$hulk_file" "$TESTS_DIR/errors/lexical/$name.exit" "errors/lexical" "$name"
-done
-
-for hulk_file in "$TESTS_DIR/errors/syntactic/"*.hulk; do
-    [ -f "$hulk_file" ] || continue
-    name=$(basename "$hulk_file" .hulk)
-    run_error_test "$hulk_file" "$TESTS_DIR/errors/syntactic/$name.exit" "errors/syntactic" "$name"
-done
-
-for hulk_file in "$TESTS_DIR/errors/semantic/"*.hulk; do
-    [ -f "$hulk_file" ] || continue
-    name=$(basename "$hulk_file" .hulk)
-    run_error_test "$hulk_file" "$TESTS_DIR/errors/semantic/$name.exit" "errors/semantic" "$name"
+for dir in "$TESTS_DIR"/errors/*/; do
+    [ -d "$dir" ] || continue
+    cat="errors/$(basename "$dir")"
+    for hulk_file in "$dir"*.hulk; do
+        [ -f "$hulk_file" ] || continue
+        name=$(basename "$hulk_file" .hulk)
+        run_error_test "$hulk_file" "${dir}${name}.exit" "$cat" "$name"
+    done
 done
 
 # ── Summary ───────────────────────────────────────────────────────────────────
@@ -201,16 +170,28 @@ echo "=============================="
 echo "       GRADING SUMMARY"
 echo "=============================="
 
-REQUIRED=("ok/minimal" "ok/types" "ok/oop" "errors/lexical" "errors/syntactic" "errors/semantic")
+BONUS_CATS=("ok/extras")
+REQUIRED_PRESENT=("ok/minimal" "ok/types" "ok/oop" "errors/lexical" "errors/syntactic" "errors/semantic")
+
+is_bonus() {
+    local c="$1" b
+    for b in "${BONUS_CATS[@]}"; do [ "$c" = "$b" ] && return 0; done
+    return 1
+}
+
 ALL_GREEN=true
 
 printf "%-28s %s\n" "Category" "Result"
 printf "%-28s %s\n" "--------" "------"
-for cat in "${REQUIRED[@]}" "ok/extras"; do
+
+# Todas las categorías que se ejecutaron, ordenadas alfabéticamente.
+all_cats=$(printf '%s\n' "${!CAT_PASS[@]}" "${!CAT_FAIL[@]}" | sort -u)
+while IFS= read -r cat; do
+    [ -n "$cat" ] || continue
     p=${CAT_PASS[$cat]:-0}
     f=${CAT_FAIL[$cat]:-0}
     total=$(( p + f ))
-    if [ "$cat" = "ok/extras" ]; then
+    if is_bonus "$cat"; then
         label="bonus"
     elif [ "$f" -eq 0 ] && [ "$total" -gt 0 ]; then
         label="PASS"
@@ -219,6 +200,14 @@ for cat in "${REQUIRED[@]}" "ok/extras"; do
         ALL_GREEN=false
     fi
     printf "%-28s %d/%d [%s]\n" "$cat" "$p" "$total" "$label"
+done <<< "$all_cats"
+
+# Aviso si falta alguna categoría core (no debería ocurrir).
+for req in "${REQUIRED_PRESENT[@]}"; do
+    if [ -z "${CAT_PASS[$req]:-}${CAT_FAIL[$req]:-}" ]; then
+        printf "%-28s %s\n" "$req" "0/0 [MISSING]"
+        ALL_GREEN=false
+    fi
 done
 
 echo ""

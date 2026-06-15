@@ -1,6 +1,3 @@
-#!/usr/bin/env bash
-# run_tests.sh — ejecuta todos los tests, compara con .expected, vuelca AST
-# Uso: bash tests/run_tests.sh [suite]   suite = eval | semantic | typecheck | all (default)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,16 +11,13 @@ EXPECTED_DIR="$SCRIPT_DIR/expected"
 
 SUITE="${1:-all}"
 
-# ── contadores globales ──────────────────────────────────────────────────────
 TOTAL=0; PASSED=0; FAILED=0
 
-# ── colores ──────────────────────────────────────────────────────────────────
 GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; RESET='\033[0m'
 BOLD='\033[1m'
 
 mkdir -p "$AST_DIR"
 
-# ── dump_ast: parsea el archivo y guarda la estructura del AST ───────────────
 dump_ast() {
     local hulk_file="$1"       # tests/eval/c4_arithmetic.hulk
     local suite="$2"           # eval | semantic | typecheck
@@ -38,7 +32,6 @@ dump_ast() {
     fi
 }
 
-# ── run_one: ejecuta un test y compara con su .expected ──────────────────────
 run_one() {
     local bin="$1"
     local hulk_file="$2"
@@ -49,14 +42,12 @@ run_one() {
     name="$(basename "$hulk_file" .hulk)"
     TOTAL=$((TOTAL + 1))
 
-    # captura stdout+stderr juntos (igual que el .expected)
     local actual
     actual="$({ "$bin" "$hulk_file" 2>&1 || true; } | tr -d '\r')"
 
     local expected
     expected="$({ cat "$expected_file" 2>/dev/null || echo ''; } | tr -d '\r')"
 
-    # genera siempre el AST dump (sobreescribe si ya existe)
     dump_ast "$hulk_file" "$suite"
 
     if [[ "$actual" == "$expected" ]]; then
@@ -72,7 +63,6 @@ run_one() {
     fi
 }
 
-# ── suite_header ─────────────────────────────────────────────────────────────
 suite_header() {
     echo ""
     echo -e "${BOLD}══════════════════════════════════════════${RESET}"
@@ -80,7 +70,6 @@ suite_header() {
     echo -e "${BOLD}══════════════════════════════════════════${RESET}"
 }
 
-# ── EVAL ─────────────────────────────────────────────────────────────────────
 run_eval() {
     suite_header "EVAL — Corte 4"
     for f in "$SCRIPT_DIR"/eval/c4_*.hulk; do
@@ -107,7 +96,6 @@ run_eval() {
     done
 }
 
-# ── SEMANTIC ─────────────────────────────────────────────────────────────────
 run_semantic() {
     suite_header "SEMÁNTICO — Programas válidos"
     for f in "$SCRIPT_DIR"/semantic/ok_*.hulk; do
@@ -122,7 +110,6 @@ run_semantic() {
     done
 }
 
-# ── TYPECHECK ─────────────────────────────────────────────────────────────────
 run_typecheck() {
     suite_header "TYPE CHECK"
     for f in "$SCRIPT_DIR"/typecheck/*.hulk; do
@@ -131,7 +118,6 @@ run_typecheck() {
     done
 }
 
-# ── RESUMEN ──────────────────────────────────────────────────────────────────
 print_summary() {
     echo ""
     echo -e "${BOLD}══════════════════════════════════════════${RESET}"
@@ -155,7 +141,6 @@ print_summary() {
     echo ""
 }
 
-# ── DISPATCH ─────────────────────────────────────────────────────────────────
 case "$SUITE" in
     eval)      run_eval ;;
     semantic)  run_semantic ;;
@@ -169,5 +154,4 @@ esac
 
 print_summary
 
-# exit code refleja si hubo fallos
 [[ $FAILED -eq 0 ]]

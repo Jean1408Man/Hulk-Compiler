@@ -719,7 +719,11 @@ void SymbolResolver::visit(DestructiveAssignMember& n) {
     resolve(n.GetObject());
 
     auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
-    if (!self_ref) {
+    const bool same_type =
+        !self_ref && !current_type_name_.empty() &&
+        object_declared_type(n.GetObject()) == current_type_name_;
+
+    if (!self_ref && !same_type) {
         report_raw(n.span, "Los atributos son privados. Solo se pueden modificar mediante 'self'.");
         resolution_map_[&n] = ResolutionResult{};
     }
@@ -830,16 +834,34 @@ void SymbolResolver::visit(NewExpr& n) {
 }
 
 // resolver MemberAccess sobre self
+std::string SymbolResolver::object_declared_type(Expr* obj) const {
+    auto* var_ref = dynamic_cast<VariableReference*>(obj);
+    if (!var_ref) return "";
+    auto it = resolution_map_.find(var_ref);
+    if (it == resolution_map_.end()) return "";
+    const ResolutionResult& r = it->second;
+    if (r.kind == ResolutionKind::Param && r.param && r.param->HasTypeAnnotation())
+        return r.param->typeAnnotation;
+    if (r.kind == ResolutionKind::Variable && r.binding && r.binding->HasTypeAnnotation())
+        return r.binding->GetTypeAnnotation();
+    return "";
+}
+
 void SymbolResolver::visit(MemberAccess& n) {
     resolve(n.GetObject());
     auto* self_ref = dynamic_cast<SelfRef*>(n.GetObject());
 
-    if (self_ref) {
-        if (current_type_name_.empty()) {
-            report_raw(n.span, "'self' no es válido en este contexto.");
-            resolution_map_[&n] = ResolutionResult{};
-            return;
-        }
+    const bool same_type =
+        !self_ref && !current_type_name_.empty() &&
+        object_declared_type(n.GetObject()) == current_type_name_;
+
+    if (self_ref && current_type_name_.empty()) {
+        report_raw(n.span, "'self' no es válido en este contexto.");
+        resolution_map_[&n] = ResolutionResult{};
+        return;
+    }
+
+    if (self_ref || same_type) {
         const SemanticAttrInfo* attr = find_attribute_in_ancestors(current_type_name_, n.GetMemberName());
         if (!attr) {
             report_raw(n.span, "Atributo '" + n.GetMemberName() +

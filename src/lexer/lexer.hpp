@@ -25,10 +25,7 @@ private:
 
     void skip_whitespace_and_comments();
 
-    Token scan_identifier_or_keyword();
-    Token scan_number();
     Token scan_string();
-    Token scan_operator_or_delimiter();
 
     Token make_token(TokenKind kind, const std::string& lexeme,
                      hulk::common::Position start,

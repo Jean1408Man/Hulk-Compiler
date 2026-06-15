@@ -1,0 +1,3 @@
+sr token=MINUS reduce_rule=80 shift_rule=82 bison_state=49
+sr token=LPAREN reduce_rule=92 shift_rule=94 bison_state=53
+sr token=LPAREN reduce_rule=92 shift_rule=94 bison_state=77

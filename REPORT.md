@@ -14,15 +14,15 @@ El pipeline corre en ocho fases secuenciales. Cada fase consume la salida de la 
 
 ### 2.1 Lexer
 
-El lexer está escrito a mano en `src/lexer/`. Lee la cadena fuente carácter a carácter y produce una lista plana de tokens. Cada token lleva su `kind`, el lexema original y un `Span` que registra la línea y columna de inicio y fin en el archivo fuente. Ese span se propaga a través de todas las fases posteriores para que los mensajes de error puedan señalar la ubicación exacta en el código.
+El lexer a partir de una tabla con una expresión regular por clase de token, construye un autómata finito no determinista (AFN) mediante el método de Thompson y lo ejecuta por simulación de conjunto de estados con cierre-ε. El motor aplica maximal munch y desempata por el orden de declaración de las reglas, de modo que operadores como `:=`, `==`, `<=` o `@@` ganan a sus prefijos de un solo carácter sin casos especiales. Tres responsabilidades quedan deliberadamente fuera del autómata: las palabras reservadas se resuelven con una tabla hash tras reconocer un identificador, mientras que los strings (con sus comillas escapadas) y el salto de espacios y comentarios `//` se manejan con scanners dedicados alrededor del AFN. Cada token lleva su `kind`, el lexema original y un `Span` que registra la línea y columna de inicio y fin en el archivo fuente. Ese span se propaga a través de todas las fases posteriores para que los mensajes de error puedan señalar la ubicación exacta en el código.
 
 La recuperación de errores está integrada: en lugar de lanzar una excepción ante un carácter inválido, el lexer registra un diagnóstico en el `DiagnosticEngine` y emite un token de clase error. El parser puede saltarlo y continuar, permitiendo reportar múltiples problemas en una sola pasada.
 
 ### 2.2 Parser
 
-El parser es generado por **Bison** (LALR(1)) a partir de la gramática en `src/parser/grammar.y`. La precedencia de operadores — aritmética, lógica, comparación, concatenación de strings, potencia y operadores de test de tipo — se declara con directivas `%left`, `%right` y `%nonassoc`, que Bison usa para resolver conflictos shift/reduce automáticamente.
+El parser es LALR(1) y se genera con una herramienta propia en C++ (`tools/parsergen/`) a partir de `src/parser/hulk.grammar`. El generador construye la coleccion canonica LR(1), fusiona estados con el mismo core LR(0) para obtener LALR(1), resuelve conflictos con la misma politica que Bison y emite `src/parser/parser_tables.cpp/.hpp`.
 
-Un `ParserDriver` es dueño del lexer y le entrega tokens al parser de Bison uno a uno a través de un `ParserLexerAdapter` que traduce entre el formato de token del proyecto y el `symbol_type` que Bison espera. El parser construye el AST directamente a través de acciones semánticas en C++ asociadas a cada regla de la gramática.
+En runtime, `src/parser/lr_engine.cpp` ejecuta esas tablas con un motor shift/reduce generico. `ParserDriver` conserva el mismo contrato publico: toma tokens del lexer, reporta diagnosticos y recibe el AST final. `parser_lexer_adapter.cpp` traduce `TokenKind` al `Symbol` del parser, preservando la validacion de literales numericos y strings. Las acciones semanticas de la gramatica se copian al archivo `.grammar` y el generador las transforma en un `switch` C++ que construye el AST.
 
 ### 2.3 Árbol de Sintaxis Abstracta (AST)
 
