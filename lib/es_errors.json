@@ -6,6 +6,7 @@
   "UNTERMINATED_STRING_EOL":"String sin cerrar: se encontró un salto de línea antes del cierre '\"'.",
   "UNTERMINATED_STRING_EOF":"String sin cerrar: se llegó al fin del archivo sin encontrar '\"'.",
   "INCOMPLETE_ESCAPE":      "Secuencia de escape incompleta: se llegó al fin del archivo después de '\\'.",
+  "INVALID_ESCAPE":         "Secuencia de escape no soportada: '\\{}'.",
 
   "BIND_UNDECLARED_VAR":    "Variable no declarada: '{}'.",
   "BIND_UNDECLARED_FUNC":   "Función no definida: '{}'.",

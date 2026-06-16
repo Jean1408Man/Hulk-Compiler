@@ -127,8 +127,8 @@ struct symbol_id {
 inline constexpr int terminal_count = 64;
 inline constexpr int nonterminal_count = 49;
 inline constexpr int symbol_count = 114;
-inline constexpr int state_count = 251;
-inline constexpr int rule_count = 124;
+inline constexpr int state_count = 253;
+inline constexpr int rule_count = 126;
 inline constexpr int error_action = 0;
 inline constexpr int accept_action = 2147483647;
 
