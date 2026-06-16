@@ -842,6 +842,14 @@ primary
           $$ = std::make_unique<Hulk::Number>(2.71828182845904523536);
           $$->span = to_span(@$);
       }
+    | if_expr
+      {
+          $$ = std::move($1);
+      }
+    | let_expr
+      {
+          $$ = std::move($1);
+      }
     ;
 
 args_opt
