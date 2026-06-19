@@ -14,12 +14,12 @@ Parser::Parser(ParserDriver& driver)
 
 std::string Parser::syntax_error_message(int state, const Symbol& lookahead) const {
     std::ostringstream out;
-    out << "syntax error";
+    out << "error de sintaxis";
 
     if (lookahead.sym >= 0 && lookahead.sym < parser_tables::terminal_count) {
-        out << ", unexpected " << parser_tables::symbol_name(lookahead.sym);
+        out << ", no se esperaba " << parser_tables::symbol_name(lookahead.sym);
     } else {
-        out << ", unexpected invalid token";
+        out << ", token inválido inesperado";
     }
 
     std::vector<std::string> expected;
@@ -35,10 +35,10 @@ std::string Parser::syntax_error_message(int state, const Symbol& lookahead) con
     }
 
     if (!expected.empty()) {
-        out << ", expecting ";
+        out << ", se esperaba ";
         for (std::size_t i = 0; i < expected.size(); ++i) {
             if (i > 0) {
-                out << (i + 1 == expected.size() ? " or " : ", ");
+                out << (i + 1 == expected.size() ? " o " : ", ");
             }
             out << expected[i];
         }

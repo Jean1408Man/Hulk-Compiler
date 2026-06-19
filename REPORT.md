@@ -123,6 +123,18 @@ Si un hueco tiene una única resolución válida, se sustituye y el type checker
 
 **Interacción con `--restricted-inference`.** Cuando esta bandera está activa, omitir una anotación de tipo es un error de compilación; solo `_`, `auto` o un nombre de tipo explícito son aceptables. Esto hace ejecutable en tiempo de compilación la distinción entre "el programador olvidó anotar" y "el programador pidió deliberadamente inferencia".
 
+### 4.1 Comparación con otros lenguajes
+
+Situar esta extensión frente a otros lenguajes ayuda a entender sus decisiones de diseño:
+
+**Generalidad posicional.** La mayoría de lenguajes —C++ (`auto`), C# (`var`), Go (`:=`), Kotlin (`var`)— restringen su placeholder a variables locales: no pueden usarse en la firma de una función para inferir el tipo de un parámetro. El hueco de HULK es más general en ese eje: es válido en *cualquier* posición de anotación —parámetros, retornos y atributos incluidos— acercándolo más a la inferencia posicionalmente libre de TypeScript o Scala que al `auto` restringido de C++. La generalidad es viable porque el inferidor ya opera global y bidireccionalmente sobre el cuerpo de las funciones; el hueco no es más que un punto de anclaje al que el inferidor adjunta una variable de tipo.
+
+**Doble sintaxis `_` / `auto`.** Pocos lenguajes ofrecen dos grafías intercambiables para el mismo concepto. La decisión es ergonómica: `_` es minimalista y reconocible como "hueco" por quien viene de Rust o Haskell, mientras que `auto` es autoexplicativo y cómodo para quien viene de C++. Al ser estrictamente equivalentes no añaden carga cognitiva: no hay una regla sutil que distinga cuándo usar una u otra.
+
+**Typed holes: la inspiración de Haskell e Idris.** El término *type hole* proviene de Haskell (extensión *typed holes* de GHC) y de lenguajes con tipos dependientes como Idris y Agda, donde un `_` provoca que el compilador reporte qué tipo debería tener esa posición, sirviendo como herramienta de desarrollo interactivo. HULK comparte el nombre y el espíritu —un `_` que el sistema de tipos debe "rellenar"— pero difiere en el rol: aquí el hueco es de **inferencia productiva** (el compilador deduce el tipo y continúa la compilación), no de **interrogación** (el compilador informa y exige al humano completar). Esto es coherente con un sistema de tipos sin polimorfismo paramétrico, donde para una posición dada casi siempre existe un único tipo concreto consistente; reportarlo y exigir que el humano lo transcriba sería trabajo redundante.
+
+**Por qué punto fijo y no Hindley-Milner.** Frente al algoritmo HM estándar de la familia ML (OCaml, Haskell, SML), HULK usa iteración de punto fijo porque su sistema de tipos lo favorece: (1) **sin polimorfismo paramétrico** —cada expresión tiene un tipo concreto monomórfico, por lo que la unificación y generalización de HM son innecesarias—; (2) **subtipado nominal** por herencia (`Dog ⪯ Animal`), que HM clásico no maneja y cuya extensión con restricciones de subtipo es bastante más compleja, mientras que el punto fijo con LCA para condicionales lo modela de forma directa; (3) **predecibilidad y diagnósticos**, ya que el estado intermedio inspeccionable en cada paso facilita señalar qué restricción falló, evitando los errores difíciles de interpretar típicos de la unificación; y (4) **terminación trivial**, garantizada por una red de tipos finita con refinamientos monótonos. En resumen, HM sería sobreingeniería para un sistema sin generics y con subtipado nominal: el punto fijo iterativo es la herramienta correcta para este dominio.
+
 ---
 
 ## 5. Limitaciones notables
