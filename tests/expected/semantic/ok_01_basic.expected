@@ -3,7 +3,7 @@
 Funciones registradas e inferidas:
   function greet(1 params) : String
 Tipos registrados:
-  type Animal inherits Object { 1 attrs, 1 methods }
+  type Animal inherits Object { 1 attrs, 2 methods }
   type Dog inherits Animal { 0 attrs, 1 methods }
 Tipo de expresión global: String
-Referencias resueltas: 8
+Referencias resueltas: 10

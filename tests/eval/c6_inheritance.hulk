@@ -1,14 +1,15 @@
-type Animal(name) {
-    name = name;
+type Animal(name: String) {
+    name: String = name;
+    get_name(): String => self.name;
     speak() => print("...");
 }
 
 type Dog(name) inherits Animal(name) {
-    speak() => print("Woof! Soy " @ self.name);
+    speak() => print("Woof! Soy " @ self.get_name());
 }
 
 type Cat(name) inherits Animal(name) {
-    speak() => print("Miau! Soy " @ self.name);
+    speak() => print("Miau! Soy " @ self.get_name());
 }
 
 {

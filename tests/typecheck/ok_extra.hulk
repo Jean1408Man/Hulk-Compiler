@@ -2,10 +2,12 @@
 type Point(x: Number, y: Number) {
     x: Number = x;
     y: Number = y;
+    getX(): Number => self.x;
+    getY(): Number => self.y;
 }
 
 type PolarPoint inherits Point {
-    rho(): Number => sqrt(self.x ^ 2 + self.y ^ 2);
+    rho(): Number => sqrt(self.getX() ^ 2 + self.getY() ^ 2);
 }
 
 type A {

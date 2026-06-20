@@ -204,6 +204,11 @@ namespace Hulk {
                                     const std::string& type_name,
                                     const std::string& attr_name) const;
 
+        // Devuelve el nombre del tipo donde se define el atributo (subiendo por
+        // la cadena de herencia), o "" si no existe en ningún ancestro.
+        std::string attribute_owner_type(const std::string& type_name,
+                                         const std::string& attr_name) const;
+
         std::string object_declared_type(Expr* obj) const;
 
         void visit(Number& n)             override;

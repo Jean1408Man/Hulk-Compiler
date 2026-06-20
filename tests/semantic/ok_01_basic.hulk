@@ -3,13 +3,14 @@
 
 function greet(name: String): String => "Hola " @ name;
 
-type Animal(name) {
-    name = name;
+type Animal(name: String) {
+    name: String = name;
+    get_name(): String => self.name;
     speak() => print("...");
 }
 
 type Dog(name) inherits Animal(name) {
-    speak() => print("Woof! I am " @ self.name);
+    speak() => print("Woof! I am " @ self.get_name());
 }
 
 {

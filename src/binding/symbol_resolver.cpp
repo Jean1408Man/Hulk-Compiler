@@ -313,6 +313,20 @@ const SemanticAttrInfo* SymbolResolver::find_attribute_in_ancestors(
     return nullptr;
 }
 
+std::string SymbolResolver::attribute_owner_type(
+        const std::string& type_name, const std::string& attr_name) const {
+    std::string current = type_name;
+    constexpr int MAX = 256;
+    for (int depth = 0; !current.empty() && depth < MAX; ++depth) {
+        const auto* ti = tables_.lookup_type(current);
+        if (!ti) break;
+        for (const auto& a : ti->attributes)
+            if (a.name == attr_name) return current;
+        current = ti->parent_name;
+    }
+    return "";
+}
+
 //  Pase 1 — Registro de declaraciones 
 
 void SymbolResolver::visit(FunctionDecl& n) {
@@ -726,6 +740,16 @@ void SymbolResolver::visit(DestructiveAssignMember& n) {
     if (!self_ref && !same_type) {
         report_raw(n.span, "Los atributos son privados. Solo se pueden modificar mediante 'self'.");
         resolution_map_[&n] = ResolutionResult{};
+    } else {
+        // un atributo solo es accesible (lectura/escritura) dentro del tipo que
+        // lo define; ni siquiera los herederos pueden modificarlo.
+        const std::string owner = attribute_owner_type(current_type_name_, n.GetMemberName());
+        if (!owner.empty() && owner != current_type_name_) {
+            report_raw(n.span, "Atributo '" + n.GetMemberName() +
+                       "' es privado: solo es accesible dentro del tipo '" + owner +
+                       "' que lo define (ni siquiera por herederos).");
+            resolution_map_[&n] = ResolutionResult{};
+        }
     }
 
     resolve(n.GetValue());
@@ -868,7 +892,17 @@ void SymbolResolver::visit(MemberAccess& n) {
                        "' no existe en tipo '" + current_type_name_ + "'.");
             resolution_map_[&n] = ResolutionResult{};
         } else {
-            resolution_map_[&n] = ResolutionResult::from_attr(attr);
+            // un atributo solo es accesible dentro del tipo que lo define;
+            // ni siquiera los herederos pueden leerlo/escribirlo (privacidad estricta).
+            const std::string owner = attribute_owner_type(current_type_name_, n.GetMemberName());
+            if (owner == current_type_name_) {
+                resolution_map_[&n] = ResolutionResult::from_attr(attr);
+            } else {
+                report_raw(n.span, "Atributo '" + n.GetMemberName() +
+                           "' es privado: solo es accesible dentro del tipo '" + owner +
+                           "' que lo define (ni siquiera por herederos).");
+                resolution_map_[&n] = ResolutionResult{};
+            }
         }
     } else {
         report_raw(n.span, "Los atributos son privados. Solo se pueden acceder mediante 'self'.");
